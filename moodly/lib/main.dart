@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'pages/diary_month_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const MoodlyApp());
 }
@@ -93,18 +92,12 @@ class MainMenuPage extends StatelessWidget {
           children: [
             const Text(
               'Fitur yang sudah/disediakan untuk demo',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
               'Klik salah satu menu untuk melihat progres tiap fitur.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -212,10 +205,7 @@ class DemoPageTemplate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: Text(title), backgroundColor: Colors.transparent),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
