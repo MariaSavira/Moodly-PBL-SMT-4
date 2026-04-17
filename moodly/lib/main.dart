@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'pages/afirmasi_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +26,7 @@ class MoodlyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
         useMaterial3: true,
       ),
-      home: const MainMenuPage(),
+      home: const AfirmasiPage(),
     );
   }
 }
