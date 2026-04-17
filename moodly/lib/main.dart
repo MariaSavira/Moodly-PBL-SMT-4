@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:moodly/pages/pages.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -68,7 +69,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Curhat Anonim',
       subtitle: 'Ruang berbagi anonim',
       icon: Icons.forum_rounded,
-      page: AnonymousPage(),
+      page: HomeChatAnonim(),
     ),
     _FeatureItem(
       title: 'Bantuan Darurat',
