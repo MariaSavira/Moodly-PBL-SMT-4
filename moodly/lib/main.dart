@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:moodly/pages/Login_page.dart';
+import 'package:moodly/pages/register_page.dart';
+import 'package:moodly/pages/Register_success_page.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -35,10 +38,22 @@ class MainMenuPage extends StatelessWidget {
 
   final List<_FeatureItem> features = const [
     _FeatureItem(
-      title: 'Login & Register',
-      subtitle: 'Demo autentikasi pengguna',
+      title: 'Login',
+      subtitle: 'Demo autentikasi login',
       icon: Icons.login_rounded,
-      page: AuthPage(),
+      page: LoginPage(),
+    ),
+    _FeatureItem(
+      title: 'Register',
+      subtitle: 'Demo autentikasi register',
+      icon: Icons.login_rounded,
+      page: RegisterPage(),
+    ),
+    _FeatureItem(
+      title: 'Register Sukses',
+      subtitle: 'Register Berhasil',
+      icon: Icons.login_rounded,
+      page: RegisterSuccessPage(),
     ),
     _FeatureItem(
       title: 'Mood Harian',

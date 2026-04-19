@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/app_text_styles.dart';
 import '../core/validators.dart';
-import '../services/auth_service.dart';
+import '../services/Auth_sevice.dart';
 import '../widgets/moodly_text_field.dart';
 import '../widgets/moodly_error_banner.dart';
 import '../widgets/moodly_primary_button.dart';
 import '../widgets/or_divider.dart';
 import '../widgets/social_sign_in_button.dart';
 import 'register_page.dart';
-import 'forgot_password_page.dart';
+import 'Forget_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
