@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
+import 'pages/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,7 +65,7 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainMenuPage(),
+      home: const SplashScreenMoodly(),
     );
   }
 }

@@ -1,4 +1,3 @@
-// Flutter material package for core UI widgets like Scaffold, Container, Text, Icon, etc.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -42,8 +41,41 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   bool isProfilePressed = false;
   bool isCtaPressed = false;
 
-  // Static data for the three gender cards.
-  // Each option stores its text, icon, colors, and border style.
+  // Profile overlay state
+  bool showProfileOverlay = false;
+  bool showAvatarPicker = false;
+
+  String profileName = 'Spaghetti Unyu';
+  String selectedProfileImage = 'assets/profile_pic/PP.png';
+
+  final TextEditingController profileNameController =
+      TextEditingController(text: 'Spaghetti Unyu');
+
+  // Adjust these file names if your avatar asset names are different.
+  final List<String> profileAvatars = const [
+    'assets/profile_pic/PP.png',
+    'assets/profile_pic/PP_2.png',
+    'assets/profile_pic/PP_3.png',
+    'assets/profile_pic/PP_4.png',
+    'assets/profile_pic/PP_5.png',
+    'assets/profile_pic/PP_6.png',
+    'assets/profile_pic/PP_7.png',
+    'assets/profile_pic/PP_8.png',
+    'assets/profile_pic/PP_9.png',
+    'assets/profile_pic/PP_10.png',
+    'assets/profile_pic/PP_11.png',
+    'assets/profile_pic/PP_12.png',
+    'assets/profile_pic/PP_13.png',
+    'assets/profile_pic/PP_14.png',
+    'assets/profile_pic/PP_15.png',
+    'assets/profile_pic/PP_16.png',
+    'assets/profile_pic/PP_17.png',
+    'assets/profile_pic/PP_18.png',
+    'assets/profile_pic/PP_19.png',
+    'assets/profile_pic/PP_20.png',
+    'assets/profile_pic/PP_21.png',
+    'assets/profile_pic/PP_22.png',
+  ];
 
   final List<_NavItemData> navItems = const [
     _NavItemData(
@@ -93,6 +125,12 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   ];
 
   @override
+  void dispose() {
+    profileNameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -106,10 +144,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       child: Scaffold(
         backgroundColor: const Color(0xFFDDE2C4),
         extendBody: true,
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: Stack(
             children: [
-              Positioned.fill(child: Container(color: const Color(0xFFF3FADC))),
+              Positioned.fill(
+                child: Container(color: const Color(0xFFF3FADC)),
+              ),
 
               // TOP CONTENT
               Positioned(
@@ -119,7 +160,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
+                    Opacity(
+                      opacity: showProfileOverlay ? 0.0 : 1.0,
+                      child: IgnorePointer(
+                        ignoring: showProfileOverlay,
+                        child: _buildHeader(),
+                      ),
+                    ),
                     const SizedBox(height: 88),
                     _buildCenterContent(),
                     const SizedBox(height: 52),
@@ -127,7 +174,11 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 ),
               ),
 
-              Positioned(right: 20, bottom: 350, child: _buildProfileButton()),
+              Positioned(
+                right: 20,
+                bottom: 350,
+                child: _buildProfileButton(),
+              ),
 
               // BOTTOM SHEET
               Positioned(
@@ -144,14 +195,14 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 child: IgnorePointer(
                   child: Container(
                     height: 140,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                        Color(0x00EFCACC),
-                        Color(0x66EFCACC),
-                        Color(0xFFEFCACC),
+                          Color(0x00EFCACC),
+                          Color(0x66EFCACC),
+                          Color(0xFFEFCACC),
                         ],
                         stops: [0.0, 0.5, 1.0],
                       ),
@@ -167,6 +218,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 bottom: 0,
                 child: _buildFloatingBottomNav(),
               ),
+
+              if (showProfileOverlay) _buildProfileOverlay(),
             ],
           ),
         ),
@@ -191,7 +244,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   // Center hero content.
-  // Recreates the circular face avatar, anonymous username, and prompt text.
   Widget _buildCenterContent() {
     return Center(
       child: Column(
@@ -211,14 +263,14 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             ),
             child: ClipOval(
               child: Image.asset(
-                'assets/profile_pic/PP.png',
+                selectedProfileImage,
                 fit: BoxFit.cover,
               ),
             ),
           ),
           const SizedBox(height: 18),
           Text(
-            'Spaghetti Unyu',
+            profileName,
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 6),
@@ -232,7 +284,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   // Green rounded button on the right.
-  // In the screenshot this acts like a profile setup shortcut.
   Widget _buildProfileButton() {
     return GestureDetector(
       onTapDown: (_) {
@@ -251,12 +302,12 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         });
       },
       onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => const AturProfilSheet(),
-        );
+        FocusScope.of(context).unfocus();
+        setState(() {
+          showProfileOverlay = true;
+          showAvatarPicker = false;
+          profileNameController.text = profileName;
+        });
       },
       child: AnimatedScale(
         scale: isProfilePressed ? 0.96 : 1.0,
@@ -288,7 +339,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   // Rounded card above the navbar.
-  // Holds filter title, gender options, CTA button, and helper text.
   Widget _buildFilterCard() {
     return Container(
       height: 340,
@@ -412,7 +462,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                         ),
                       ),
                     ),
-
                     if (index != 1)
                       Positioned(
                         top: -8,
@@ -481,17 +530,18 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(height: 1.2, color: Colors.black87),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(height: 1.2, color: Colors.black87),
           children: [
             const TextSpan(text: 'Tolong hormati orang lain dan patuhi '),
             TextSpan(
               text: 'peraturan kami',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF7DCB66),
-                fontWeight: FontWeight.w900,
-              ),
+                    color: const Color(0xFF7DCB66),
+                    fontWeight: FontWeight.w900,
+                  ),
             ),
           ],
         ),
@@ -499,142 +549,432 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     );
   }
 
-  // Floating bottom navigation bar.
-  // Built with Stack so the center Connect button can sit above the bar.
-Widget _buildFloatingBottomNav() {
-  const double navHeight = 84;
-  const double bubbleSize = 60;
-  const double outerBottom = 14;
-  const double horizontalMargin = 10;
-  const double navHorizontalPadding = 12;
-  const Duration animDuration = Duration(milliseconds: 260);
+  Widget _buildFloatingBottomNav() {
+    const double navHeight = 84;
+    const double bubbleSize = 60;
+    const double outerBottom = 14;
+    const double horizontalMargin = 10;
+    const double navHorizontalPadding = 12;
+    const Duration animDuration = Duration(milliseconds: 260);
 
-  return SizedBox(
-    height: 126,
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final double barWidth = constraints.maxWidth - (horizontalMargin * 2);
-        final double contentWidth = barWidth - (navHorizontalPadding * 2);
-        final double itemWidth = contentWidth / navItems.length;
+    return SizedBox(
+      height: 126,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double barWidth = constraints.maxWidth - (horizontalMargin * 2);
+          final double contentWidth = barWidth - (navHorizontalPadding * 2);
+          final double itemWidth = contentWidth / navItems.length;
 
-        final List<double> slotCenters = List.generate(
-          navItems.length,
-          (index) =>
-              navHorizontalPadding + (itemWidth * index) + (itemWidth / 2),
-        );
+          final List<double> slotCenters = List.generate(
+            navItems.length,
+            (index) =>
+                navHorizontalPadding + (itemWidth * index) + (itemWidth / 2),
+          );
 
-        final double selectedCenterX = slotCenters[selectedNavIndex];
-        final double bubbleLeft =
-            horizontalMargin + selectedCenterX - (bubbleSize / 2);
+          final double selectedCenterX = slotCenters[selectedNavIndex];
+          final double bubbleLeft =
+              horizontalMargin + selectedCenterX - (bubbleSize / 2);
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              left: horizontalMargin,
-              right: horizontalMargin,
-              bottom: outerBottom,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(end: selectedCenterX),
-                duration: animDuration,
-                curve: Curves.easeOutCubic,
-                builder: (context, animatedCenterX, _) {
-                  return CustomPaint(
-                    painter: _NavBarNotchPainter(
-                      selectedCenterX: animatedCenterX,
-                    ),
-                    child: SizedBox(
-                      height: navHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          navHorizontalPadding,
-                          8,
-                          navHorizontalPadding,
-                          10,
-                        ),
-                        child: Row(
-                          children: List.generate(navItems.length, (index) {
-                            final item = navItems[index];
-                            final isSelected = selectedNavIndex == index;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: horizontalMargin,
+                right: horizontalMargin,
+                bottom: outerBottom,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(end: selectedCenterX),
+                  duration: animDuration,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, animatedCenterX, _) {
+                    return CustomPaint(
+                      painter: _NavBarNotchPainter(
+                        selectedCenterX: animatedCenterX,
+                      ),
+                      child: SizedBox(
+                        height: navHeight,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            navHorizontalPadding,
+                            8,
+                            navHorizontalPadding,
+                            10,
+                          ),
+                          child: Row(
+                            children: List.generate(navItems.length, (index) {
+                              final item = navItems[index];
+                              final isSelected = selectedNavIndex == index;
 
-                            return SizedBox(
-                              width: itemWidth,
-                              child: _BottomNavItem(
-                                icon: item.outlineIcon,
-                                label: item.label,
-                                selected: isSelected,
-                                filledAsset: item.filledAsset,
-                                onTap: () {
-                                  if (selectedNavIndex == index) return;
-                                  setState(() {
-                                    selectedNavIndex = index;
-                                  });
-                                },
-                              ),
-                            );
-                          }),
+                              return SizedBox(
+                                width: itemWidth,
+                                child: _BottomNavItem(
+                                  icon: item.outlineIcon,
+                                  label: item.label,
+                                  selected: isSelected,
+                                  filledAsset: item.filledAsset,
+                                  onTap: () {
+                                    if (selectedNavIndex == index) return;
+                                    setState(() {
+                                      selectedNavIndex = index;
+                                    });
+                                  },
+                                ),
+                              );
+                            }),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            AnimatedPositioned(
-              duration: animDuration,
-              curve: Curves.easeOutCubic,
-              left: bubbleLeft,
-              bottom: outerBottom + 56,
-              child: Container(
-                width: bubbleSize,
-                height: bubbleSize,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFF5F5F1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x4D000000), // 30%
-                      offset: Offset(0, 10),
-                      blurRadius: 20,
-                      spreadRadius: 0,
-                    ),
-                  ],
+                    );
+                  },
                 ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeOut,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(
-                          scale: Tween<double>(
-                            begin: 0.92,
-                            end: 1.0,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: SvgPicture.asset(
-                      navItems[selectedNavIndex].filledAsset,
-                      key: ValueKey(navItems[selectedNavIndex].filledAsset),
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
+              ),
+              AnimatedPositioned(
+                duration: animDuration,
+                curve: Curves.easeOutCubic,
+                left: bubbleLeft,
+                bottom: outerBottom + 56,
+                child: Container(
+                  width: bubbleSize,
+                  height: bubbleSize,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFF5F5F1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x4D000000),
+                        offset: Offset(0, 10),
+                        blurRadius: 20,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeOut,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(
+                              begin: 0.92,
+                              end: 1.0,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: SvgPicture.asset(
+                        navItems[selectedNavIndex].filledAsset,
+                        key: ValueKey(navItems[selectedNavIndex].filledAsset),
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
-}
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProfileOverlay() {
+    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final bool keyboardOpen = keyboardHeight > 0;
+
+    return Positioned.fill(
+      child: Material(
+        color: const Color(0x80000000),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 16,
+                left: 20,
+                right: 20,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      'Atur Profil',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineLarge
+                          ?.copyWith(color: Colors.white),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          FocusScope.of(context).unfocus();
+                          setState(() {
+                            showProfileOverlay = false;
+                            showAvatarPicker = false;
+                          });
+                        },
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF84C76A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Color(0xFF6F8B5E),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Positioned(
+                top: 140,
+                left: 0,
+                right: 0,
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        FocusScope.of(context).unfocus();
+                        setState(() {
+                          showAvatarPicker = !showAvatarPicker;
+                        });
+                      },
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 105,
+                            height: 105,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x22000000),
+                                  blurRadius: 12,
+                                  offset: Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Image.asset(
+                                selectedProfileImage,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: Color(0x55FFFFFF),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 210,
+                      height: 42,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: profileNameController,
+                              textAlign: TextAlign.center,
+                              maxLength: 20,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black87,
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                counterText: '',
+                                isCollapsed: true,
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  showAvatarPicker = false;
+                                });
+                              },
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              FocusScope.of(context).unfocus();
+                              setState(() {
+                                showAvatarPicker = !showAvatarPicker;
+                              });
+                            },
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF84C76A),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.casino_rounded,
+                                size: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '*Jangan gunakan nama asli\n*Maksimal 20 huruf',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              Positioned(
+                right: 20,
+                bottom: 350,
+                child: GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    setState(() {
+                      final String trimmed = profileNameController.text.trim();
+                      profileName = trimmed.isEmpty ? 'Spaghetti Unyu' : trimmed;
+                      showProfileOverlay = false;
+                      showAvatarPicker = false;
+                    });
+                  },
+                  child: Container(
+                    width: 126,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF84C76A),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Konfirmasi',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ),
+                ),
+              ),
+
+              if (showAvatarPicker && !keyboardOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    height: 320,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFDCE9BE),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 16,
+                          offset: Offset(0, -2),
+                        ),
+                      ],
+                    ),
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      radius: const Radius.circular(20),
+                      thickness: 4,
+                      child: GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(22, 24, 22, 36),
+                        itemCount: profileAvatars.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 18,
+                          crossAxisSpacing: 18,
+                        ),
+                        itemBuilder: (context, index) {
+                          final String avatar = profileAvatars[index];
+                          final bool isSelected =
+                              avatar == selectedProfileImage;
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedProfileImage = avatar;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: isSelected
+                                    ? Border.all(
+                                        color: const Color(0xFF84C76A),
+                                        width: 4,
+                                      )
+                                    : null,
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  avatar,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // Simple data model for each gender card.
@@ -692,7 +1032,6 @@ class _BottomNavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        // Drastically push the active item down into the cutout area
         padding: EdgeInsets.only(top: selected ? 22 : 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -735,7 +1074,6 @@ class _BottomNavItem extends StatelessWidget {
 class _CuteFacePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // Paint objects define how strokes/fills will look.
     final eyePaint = Paint()
       ..color = Colors.black
       ..strokeWidth = 2.4
@@ -782,7 +1120,6 @@ class _CuteFacePainter extends CustomPainter {
     canvas.drawCircle(const Offset(14, 50), 2.2, cheekPaint);
     canvas.drawCircle(const Offset(66, 50), 2.2, cheekPaint);
 
-    // Smiling mouth path.
     final mouthPath = Path()
       ..moveTo(24, 49)
       ..quadraticBezierTo(41, 62, 57, 49);
@@ -810,7 +1147,6 @@ class _CuteFacePainter extends CustomPainter {
 }
 
 // Paints the floating navbar background with a center notch.
-// The notch visually makes space for the circular Connect button.
 class _NavBarNotchPainter extends CustomPainter {
   final double selectedCenterX;
 
@@ -819,253 +1155,96 @@ class _NavBarNotchPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint shadowPaint = Paint()
-      ..color = const Color(0x4D000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+      ..color = const Color(0x30000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
-    final Paint fillPaint = Paint()
-      ..color = const Color(0xFFB5E0A6);
+    final Paint fillPaint = Paint()..color = const Color(0xFFB5E0A6);
 
     const double cornerRadius = 32.0;
-    const double notchRadius = 38.0; // Wider
-    const double notchDepth = 48.0; // Deeper
-    const double shoulderSpread = 28.0;
 
-    // Do NOT clamp the center. Let it bleed out of bounds to carve out the edge corners perfectly!
-    final double center = selectedCenterX;
-    final double leftStart = center - notchRadius - shoulderSpread;
-    final double rightEnd = center + notchRadius + shoulderSpread;
+    // Dibikin lebih halus dan membulat
+    const double notchDepth = 30.0;
+    const double notchHalfWidth = 44.0;
+    const double shoulderWidth = 22.0;
 
-    // 1. The perfect Base Rounded Rectangle
-    final RRect baseRRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      const Radius.circular(cornerRadius),
+    final double center = selectedCenterX.clamp(
+      notchHalfWidth + shoulderWidth + 12,
+      size.width - notchHalfWidth - shoulderWidth - 12,
     );
-    final Path basePath = Path()..addRRect(baseRRect);
 
-    // 2. The Shape we want to "cut out" of the base
-    final Path notchPath = Path()
-      ..moveTo(leftStart, -50) // Start high above the container
-      ..lineTo(leftStart, 0)
+    final double leftShoulder = center - notchHalfWidth - shoulderWidth;
+    final double leftDipStart = center - notchHalfWidth;
+    final double rightDipEnd = center + notchHalfWidth;
+    final double rightShoulder = center + notchHalfWidth + shoulderWidth;
+
+    final Path path = Path()
+      ..moveTo(cornerRadius, 0)
+
+      // kiri atas sampai sebelum notch
+      ..lineTo(leftShoulder, 0)
+
+      // masuk ke notch dengan transisi halus
       ..cubicTo(
-        leftStart + shoulderSpread * 0.7,
+        leftShoulder + shoulderWidth * 0.45,
         0,
-        center - notchRadius * 0.8,
-        notchDepth,
-        center,
-        notchDepth,
+        leftDipStart - shoulderWidth * 0.35,
+        notchDepth * 0.18,
+        leftDipStart,
+        notchDepth * 0.42,
       )
+
+      // lembah notch utama
       ..cubicTo(
-        center + notchRadius * 0.8,
+        center - notchHalfWidth * 0.55,
         notchDepth,
-        rightEnd - shoulderSpread * 0.7,
+        center + notchHalfWidth * 0.55,
+        notchDepth,
+        rightDipEnd,
+        notchDepth * 0.42,
+      )
+
+      // keluar notch dengan halus
+      ..cubicTo(
+        rightDipEnd + shoulderWidth * 0.35,
+        notchDepth * 0.18,
+        rightShoulder - shoulderWidth * 0.45,
         0,
-        rightEnd,
+        rightShoulder,
         0,
       )
-      ..lineTo(rightEnd, -50)
+
+      // kanan atas
+      ..lineTo(size.width - cornerRadius, 0)
+      ..quadraticBezierTo(size.width, 0, size.width, cornerRadius)
+
+      // kanan bawah
+      ..lineTo(size.width, size.height - cornerRadius)
+      ..quadraticBezierTo(
+        size.width,
+        size.height,
+        size.width - cornerRadius,
+        size.height,
+      )
+
+      // kiri bawah
+      ..lineTo(cornerRadius, size.height)
+      ..quadraticBezierTo(0, size.height, 0, size.height - cornerRadius)
+
+      // kiri atas
+      ..lineTo(0, cornerRadius)
+      ..quadraticBezierTo(0, 0, cornerRadius, 0)
       ..close();
 
-    // 3. Subtract the notch from the base container
-    final Path finalPath = Path.combine(
-      PathOperation.difference,
-      basePath,
-      notchPath,
-    );
-
-    // Draw shadow slightly shifted down to prevent it muddying up the inside of the hole
     canvas.save();
-    canvas.translate(0, 10);
-    canvas.drawPath(finalPath, shadowPaint);
+    canvas.translate(0, 8);
+    canvas.drawPath(path, shadowPaint);
     canvas.restore();
 
-    canvas.drawPath(finalPath, fillPaint);
+    canvas.drawPath(path, fillPaint);
   }
 
   @override
   bool shouldRepaint(covariant _NavBarNotchPainter oldDelegate) {
     return oldDelegate.selectedCenterX != selectedCenterX;
-  }
-}
-
-class AturProfilSheet extends StatefulWidget {
-  const AturProfilSheet({super.key});
-
-  @override
-  State<AturProfilSheet> createState() => _AturProfilSheetState();
-}
-
-class _AturProfilSheetState extends State<AturProfilSheet> {
-  final TextEditingController controller =
-      TextEditingController(text: "Spaghetti Unyu");
-
-  bool showAvatarPicker = false;
-
-  int selectedAvatar = 0;
-
-  final List<String> avatars = List.generate(
-    12,
-    (i) => 'assets/profile_pic/avatar_$i.png',
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.4),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // MAIN CONTENT
-            Column(
-              children: [
-                const SizedBox(height: 20),
-
-                // HEADER
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Atur Profil",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 40),
-
-                // AVATAR
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showAvatarPicker = !showAvatarPicker;
-                    });
-                  },
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: AssetImage(avatars[selectedAvatar]),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // INPUT NAMA
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: TextField(
-                    controller: controller,
-                    maxLength: 20,
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      counterText: "",
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                const Text(
-                  "*Jangan gunakan nama asli\n*Maksimal 20 huruf",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-
-                const Spacer(),
-
-                // BUTTON
-                Padding(
-                  padding: const EdgeInsets.only(right: 20, bottom: 120),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 26, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF84C76A),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        "Konfirmasi",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // AVATAR PICKER (BOTTOM)
-            if (showAvatarPicker)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  height: 260,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEAF5DE),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: avatars.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                    ),
-                    itemBuilder: (_, index) {
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedAvatar = index;
-                          });
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selectedAvatar == index
-                                  ? Colors.green
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              avatars[index],
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }
