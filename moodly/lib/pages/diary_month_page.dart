@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../controllers/diary_controller.dart';
-import 'package:moodly/widgets/diary_bottom_nav.dart';
 
 class DiaryMonthPage extends StatefulWidget {
   const DiaryMonthPage({super.key});
@@ -22,7 +21,6 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
             _buildHeader(context),
             _buildToolbar(context),
             _buildYearLabel(),
-
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -51,28 +49,12 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 80),
           ],
         ),
-      ),
-      extendBody: true,
-      bottomNavigationBar: DiaryBottomNav(
-        currentIndex: controller.navIndex,
-        onTap: (index) {
-          setState(() {
-            controller.changeNavIndex(index);
-          });
-
-          if (index != 1) {
-            final labels = ['Beranda', 'Diary', 'Connect', 'Afirmasi'];
-            _showSnackbar(context, 'Pindah ke: ${labels[index]}');
-          }
-        },
       ),
     );
   }
 
-  // HEADER
   Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -95,7 +77,6 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
     );
   }
 
-  // TOOLBAR
   Widget _buildToolbar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
