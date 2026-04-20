@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'pages/diary_month_page.dart';
+import 'package:moodly/pages/diary_month_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -193,6 +193,7 @@ class DemoPageTemplate extends StatelessWidget {
   final IconData icon;
   final String description;
   final List<String> progressItems;
+  final void Function(int index, String title)? onProgressTap; // ✅ TAMBAH
 
   const DemoPageTemplate({
     super.key,
@@ -200,6 +201,7 @@ class DemoPageTemplate extends StatelessWidget {
     required this.icon,
     required this.description,
     required this.progressItems,
+    this.onProgressTap,
   });
 
   @override
@@ -253,6 +255,9 @@ class DemoPageTemplate extends StatelessWidget {
                     child: ListTile(
                       leading: const Icon(Icons.check_circle_outline_rounded),
                       title: Text(progressItems[index]),
+                      onTap: onProgressTap != null
+                          ? () => onProgressTap!(index, progressItems[index])
+                          : null,
                     ),
                   );
                 },
@@ -308,16 +313,24 @@ class DiaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DemoPageTemplate(
+    return DemoPageTemplate(
       title: 'Diary Online',
       icon: Icons.menu_book_rounded,
       description: 'Fitur diary untuk refleksi diri pengguna.',
-      progressItems: [
+      progressItems: const [
         'Tulis diary harian',
         'Mode private/public',
         'Edit dan hapus diary',
         'Nantinya bisa tambah foto',
       ],
+      onProgressTap: (index, title) {
+        if (title == 'Mode private/public') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DiaryMonthPage()),
+          );
+        }
+      },
     );
   }
 }
