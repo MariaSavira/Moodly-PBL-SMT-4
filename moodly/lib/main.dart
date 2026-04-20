@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'pages/afirmasi_page.dart';
+import 'pages/afirmasi/afirmasi_page.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:moodly/pages/pages.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +27,43 @@ class MoodlyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
         useMaterial3: true,
+
+        textTheme: GoogleFonts.fredokaTextTheme().copyWith(
+          // TITLE
+          headlineLarge: GoogleFonts.fredoka(
+            fontSize: 24,
+            fontWeight: FontWeight.w600, // semi-bold
+            color: Colors.black,
+          ),
+
+          // SUB TITLE
+          titleMedium: GoogleFonts.fredoka(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+
+          // NORMAL TEXT (Open Sans)
+          bodyMedium: GoogleFonts.openSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+
+          // NORMAL TEXT 2 (Fredoka)
+          bodySmall: GoogleFonts.fredoka(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+
+          // BUTTON TEXT 1 (Open Sans)
+          labelLarge: GoogleFonts.openSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600, // semi-bold
+            color: const Color.fromARGB(255, 255, 255, 255),
+          ),
+        ),
       ),
       home: const AfirmasiPage(),
     );
@@ -69,7 +108,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Curhat Anonim',
       subtitle: 'Ruang berbagi anonim',
       icon: Icons.forum_rounded,
-      page: AnonymousPage(),
+      page: HomeChatAnonim(),
     ),
     _FeatureItem(
       title: 'Bantuan Darurat',
