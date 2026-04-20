@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-<<<<<<< HEAD
 import 'package:moodly/pages/diary_month_page.dart';
-=======
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
->>>>>>> 68c4995bf02ec3ae4fe43d91824b19d302b9584e
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
