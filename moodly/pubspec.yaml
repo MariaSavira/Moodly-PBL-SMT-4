@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   firebase_core: ^4.7.0
+  google_fonts: ^8.0.2
+  flutter_svg: ^2.2.4
   flutter:
     sdk: flutter
 
@@ -20,9 +22,12 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon/icon.png"
+  image_path: "assets/launcher_icon/icon.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/icon/images/
+    - assets/profile_pic/
+    - assets/icons/
+    - assets/icons/navbar/

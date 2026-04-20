@@ -89,25 +89,16 @@ class AfirmasiPage extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 18),
-                      const Text(
+                      Text(
                         'Tentukan Afirmasi',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2A2A2A),
-                        ),
+                        style: Theme.of(context).textTheme.headlineLarge,
                       ),
                       const SizedBox(height: 18),
-                      const Text(
+                      Text(
                         'Apa yang paling anda butuhkan\nsaat ini?',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          height: 1.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2A2A2A),
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 34),
 
@@ -135,7 +126,7 @@ class AfirmasiPage extends StatelessWidget {
                         }).toList(),
                       ),
 
-                      const SizedBox(height: 260),
+                      const SizedBox(height: 290),
                     ],
                   ),
                 ),
@@ -150,8 +141,9 @@ class AfirmasiPage extends StatelessWidget {
                 child: Image.asset(
                   'assets/icon/images/plant_bottom.png',
                   width: double.infinity,
-                  fit: BoxFit.fitWidth,
-                  alignment: Alignment.bottomCenter,
+                  height: 280,
+                  fit: BoxFit.fill,
+                  alignment: Alignment.topCenter,
                   errorBuilder: (context, error, stackTrace) {
                     return const SizedBox.shrink();
                   },
@@ -196,12 +188,7 @@ class _KategoriButton extends StatelessWidget {
               child: Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  height: 1.3,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF4A4A4A),
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ),
