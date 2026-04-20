@@ -20,7 +20,7 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
           children: [
             _buildHeader(context),
             _buildToolbar(context),
-            _buildYearLabel(),
+            _buildYearLabel(context),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -64,14 +64,7 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
             icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
             onPressed: () => Navigator.pop(context),
           ),
-          const Text(
-            'Private Diary',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D2D2D),
-            ),
-          ),
+          Text('Private Diary', style: Theme.of(context).textTheme.titleMedium),
         ],
       ),
     );
@@ -179,17 +172,15 @@ class _DiaryMonthPageState extends State<DiaryMonthPage> {
     );
   }
 
-  Widget _buildYearLabel() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 8, 0, 16),
+  Widget _buildYearLabel(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 0, 16),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           '2025',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D2D2D),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold, // 👈 PAKSA TEBEL
           ),
         ),
       ),
@@ -243,10 +234,8 @@ class MonthGridItem extends StatelessWidget {
         child: Center(
           child: Text(
             monthName,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D2D2D),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.bold, // 👈 PAKSA TEBEL
             ),
           ),
         ),
