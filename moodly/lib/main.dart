@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
-import 'pages/MoodInput_Adhe.dart';
+import 'pages/MoodCalendar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +84,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodInput_Adhe(),
+      page: MoodCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
