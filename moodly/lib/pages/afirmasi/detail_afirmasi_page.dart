@@ -1,12 +1,15 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import '../../services/afirmasi/afirmasi_service.dart';
+import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
+import 'package:moodly/services/afirmasi/afirmasi_service.dart';
 
 class DetailAfirmasiPage extends StatefulWidget {
-  final String kategori;
+  final List<String> selectedCategories;
 
   const DetailAfirmasiPage({
     super.key,
-    required this.kategori,
+    required this.selectedCategories,
   });
 
   @override
@@ -14,294 +17,318 @@ class DetailAfirmasiPage extends StatefulWidget {
 }
 
 class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
-  late final List<String> daftarAfirmasi;
-  int currentIndex = 0;
+  final PageController _pageController = PageController();
 
-  final Set<String> favoritAfirmasi = {};
+  List<Map<String, String>> _afirmasiList = [];
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    daftarAfirmasi = AfirmasiService.getAfirmasiByKategori(widget.kategori);
+    _loadAfirmasi();
   }
 
-  String get afirmasiAktif {
-    if (daftarAfirmasi.isEmpty) {
-      return 'Belum ada afirmasi untuk kategori ini.';
-    }
-    return daftarAfirmasi[currentIndex];
-  }
+  void _loadAfirmasi() {
+    final data =
+        AfirmasiService.getAfirmasiByCategories(widget.selectedCategories);
 
-  bool get isFavorite => favoritAfirmasi.contains(afirmasiAktif);
-
-  void nextAfirmasi() {
-    if (daftarAfirmasi.isEmpty) return;
+    data.shuffle(Random());
 
     setState(() {
-      currentIndex = (currentIndex + 1) % daftarAfirmasi.length;
+      _afirmasiList = data.isNotEmpty
+          ? List<Map<String, String>>.from(data)
+          : [
+              {
+                'kategori': 'Afirmasi',
+                'teks': 'Belum ada afirmasi yang tersedia.',
+              }
+            ];
     });
   }
 
-  void toggleFavorite() {
+  bool get _isCurrentFavorite =>
+      AfirmasiService.isFavorite(_afirmasiList[_currentIndex]);
+
+  void _toggleFavorite() {
+    final currentItem = _afirmasiList[_currentIndex];
+    final wasFavorite = AfirmasiService.isFavorite(currentItem);
+
     setState(() {
-      if (favoritAfirmasi.contains(afirmasiAktif)) {
-        favoritAfirmasi.remove(afirmasiAktif);
-        _showMessage('Afirmasi dihapus dari favorit');
-      } else {
-        favoritAfirmasi.add(afirmasiAktif);
-        _showMessage('Afirmasi disimpan ke favorit');
-      }
+      AfirmasiService.toggleFavorite(currentItem);
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          wasFavorite
+              ? 'Afirmasi dihapus dari favorit'
+              : 'Afirmasi disimpan ke favorit',
+        ),
+      ),
+    );
   }
 
-  void downloadAfirmasi() {
-    _showMessage('Fitur unduh belum dihubungkan');
+  void _downloadAfirmasi() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur download afirmasi akan ditambahkan'),
+      ),
+    );
   }
 
-  void shareAfirmasi() {
-    _showMessage('Fitur share belum dihubungkan');
+  void _shareAfirmasi() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur share afirmasi akan ditambahkan'),
+      ),
+    );
   }
 
-  void openWidgetFeature() {
-    _showMessage('Pengaturan widget belum dihubungkan');
-  }
+  Future<void> _showFavoriteList() async {
+    final favoritItems = AfirmasiService.getFavoritItems();
 
-  void resetKategoriAfirmasi() {
-    Navigator.pop(context);
-  }
-
-  void openFavoritPage() {
-    if (favoritAfirmasi.isEmpty) {
-      _showMessage('Belum ada afirmasi favorit');
+    if (favoritItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Belum ada afirmasi favorit'),
+        ),
+      );
       return;
     }
 
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AfirmasiFavoritPage(),
+      ),
+    );
+
+    setState(() {});
+  }
+
+  void _showSettingsMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F6F2),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        final favoritList = favoritAfirmasi.toList();
-
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Afirmasi Favorit',
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: Colors.black87,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              ...favoritList.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    '• $item',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.black87,
-                        ),
-                  ),
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: const Text('Atur ulang kategori afirmasi'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
                 ),
-              ),
-            ],
+                ListTile(
+                  leading: const Icon(Icons.widgets_outlined),
+                  title: const Text('Pengaturan widget'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Fitur pengaturan widget akan ditambahkan'),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  void onMenuSelected(String value) {
-    if (value == 'reset_kategori') {
-      resetKategoriAfirmasi();
-    } else if (value == 'widget_setting') {
-      openWidgetFeature();
-    }
+  Widget _buildDots() {
+    final int dotCount = _afirmasiList.length > 3 ? 3 : _afirmasiList.length;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        dotCount,
+        (index) {
+          final bool isActive = index == (_currentIndex % dotCount);
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive ? const Color(0xFFA6D68A) : Colors.white70,
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+  Widget _buildBottomButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(
+        icon,
+        size: 38,
+        color: active ? const Color(0xFFFFC0CB) : Colors.white,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final afirmasi = afirmasiAktif;
+    final currentItem = _afirmasiList[_currentIndex];
+    final currentCategory = currentItem['kategori'] ?? 'Afirmasi';
 
     return Scaffold(
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/icon/images/bg_afirmasi.png',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: const Color(0xFF8C6A8E),
-              );
-            },
+          Positioned.fill(
+            child: Image.asset(
+              'assets/icon/images/bg_afirmasi.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: const Color(0xFF8C6A8E),
+                );
+              },
+            ),
           ),
-          Container(
-            color: Colors.black.withOpacity(0.28),
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.10),
+            ),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Column(
-                children: [
-                  Row(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Row(
                     children: [
                       IconButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
+                        onPressed: () => Navigator.pop(context),
                         icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
+                          Icons.arrow_back_ios_new,
                           color: Colors.white,
-                          size: 22,
+                          size: 34,
                         ),
                       ),
                       Expanded(
                         child: Center(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 22,
-                              vertical: 8,
+                              horizontal: 28,
+                              vertical: 14,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
+                           decoration: BoxDecoration(
+                            color: const Color(0x80FFFFFF),
+                            borderRadius: BorderRadius.circular(28),
                             ),
                             child: Text(
-                              widget.kategori,
+                              currentCategory,
                               style: Theme.of(context)
                                   .textTheme
-                                  .labelLarge
+                                  .titleMedium
                                   ?.copyWith(
                                     color: Colors.black87,
+                                    fontWeight: FontWeight.w700,
                                   ),
                             ),
                           ),
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        onSelected: onMenuSelected,
-                        color: Colors.white,
+                      IconButton(
+                        onPressed: _showSettingsMenu,
                         icon: const Icon(
                           Icons.settings_outlined,
                           color: Colors.white,
-                          size: 24,
+                          size: 38,
                         ),
-                        itemBuilder: (context) => [
-                          PopupMenuItem<String>(
-                            value: 'reset_kategori',
-                            child: Text(
-                              'Atur ulang kategori afirmasi',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'widget_setting',
-                            child: Text(
-                              'Pengaturan widget',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
+                ),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _afirmasiList.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final item = _afirmasiList[index];
 
-                  const SizedBox(height: 80),
-
-                  Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: Text(
-                          afirmasi,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                              ),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              item['teks'] ?? '',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.35,
+                                  ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      daftarAfirmasi.isEmpty ? 1 : daftarAfirmasi.length,
-                      (index) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: currentIndex == index
-                              ? const Color(0xFFA8D39B)
-                              : Colors.white54,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 26),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: _buildDots(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 28),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        onPressed: toggleFavorite,
-                        icon: Icon(
-                          isFavorite
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: Colors.white,
-                          size: 30,
-                        ),
+                      _buildBottomButton(
+                        icon: _isCurrentFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        onTap: _toggleFavorite,
+                        active: _isCurrentFavorite,
                       ),
-                      IconButton(
-                        onPressed: downloadAfirmasi,
-                        icon: const Icon(
-                          Icons.download_outlined,
-                          color: Colors.white,
-                          size: 30,
-                        ),
+                      _buildBottomButton(
+                        icon: Icons.system_update_alt_rounded,
+                        onTap: _downloadAfirmasi,
                       ),
-                      IconButton(
-                        onPressed: shareAfirmasi,
-                        icon: const Icon(
-                          Icons.ios_share_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                      _buildBottomButton(
+                        icon: Icons.ios_share_outlined,
+                        onTap: _shareAfirmasi,
                       ),
-                      IconButton(
-                        onPressed: openFavoritPage,
-                        icon: const Icon(
-                          Icons.bookmark_border_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                      _buildBottomButton(
+                        icon: Icons.bookmark_border,
+                        onTap: _showFavoriteList,
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 18),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

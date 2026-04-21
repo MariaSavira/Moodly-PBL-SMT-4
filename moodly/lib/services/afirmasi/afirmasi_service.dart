@@ -1,33 +1,152 @@
-class AfirmasiService {
-  static final Map<String, List<String>> dataAfirmasi = {
-    'Rasa Syukur': [
-      'Aku bersyukur atas setiap hal kecil yang hadir dalam hidupku hari ini.',
-      'Hidupku dipenuhi banyak kebaikan yang layak aku syukuri.',
-      'Aku memilih melihat sisi baik dari setiap proses yang aku jalani.',
-    ],
-    'Meredakan Kecemasan': [
-      'Aku aman, aku tenang, dan aku mampu melewati ini satu langkah demi satu langkah.',
-      'Aku melepaskan rasa takut dan memberi ruang bagi ketenangan di dalam diriku.',
-      'Aku bernapas perlahan, dan setiap tarikan napas membawaku pada rasa damai.',
-    ],
-    'Motivasi': [
-      'Aku percaya bahwa setiap proses yang aku jalani hari ini sedang membentuk versi terbaik dari diriku di masa depan. Meskipun jalannya tidak selalu mudah, aku tetap melangkah dengan penuh keyakinan dan keberanian.',
-      'Aku memiliki kekuatan untuk terus mencoba, bahkan ketika keadaan terasa sulit.',
-      'Setiap langkah kecil yang aku ambil hari ini membawaku lebih dekat pada tujuan besarku.',
-    ],
-    'Kesehatan Mental': [
-      'Perasaanku valid, dan aku berhak memberi waktu untuk diriku sendiri.',
-      'Aku tidak harus selalu kuat. Aku boleh beristirahat dan memulihkan diri.',
-      'Kesehatan mentalku penting, dan aku layak menjaganya dengan penuh kasih.',
-    ],
-    'Cinta Diri': [
-      'Aku menerima diriku apa adanya, dengan segala kelebihan dan kekuranganku.',
-      'Aku layak dicintai, dihargai, dan diperlakukan dengan lembut, terutama oleh diriku sendiri.',
-      'Aku cukup, dan keberadaanku memiliki nilai yang berarti.',
-    ],
-  };
+import 'dart:math';
 
-  static List<String> getAfirmasiByKategori(String kategori) {
-    return dataAfirmasi[kategori] ?? [];
+class AfirmasiService {
+  static final Random _random = Random();
+
+  static final List<Map<String, String>> _afirmasiData = [
+    {
+      'kategori': 'Rasa Syukur',
+      'teks': 'Aku bersyukur atas setiap hal kecil yang hadir dalam hidupku hari ini.',
+    },
+    {
+      'kategori': 'Rasa Syukur',
+      'teks': 'Aku menghargai hidupku dan segala kebaikan yang datang hari ini.',
+    },
+    {
+      'kategori': 'Rasa Syukur',
+      'teks': 'Aku bersyukur atas kesempatan untuk tumbuh dan berkembang.',
+    },
+    {
+      'kategori': 'Meredakan Kecemasan',
+      'teks': 'Aku memilih untuk tenang di saat ini.',
+    },
+    {
+      'kategori': 'Meredakan Kecemasan',
+      'teks': 'Aku mengatur napasku dan menenangkan pikiranku.',
+    },
+    {
+      'kategori': 'Meredakan Kecemasan',
+      'teks': 'Perasaan ini hanya sementara, aku akan melewatinya.',
+    },
+    {
+      'kategori': 'Motivasi',
+      'teks': 'Keberhasilan dimulai dengan keyakinan bahwa kamu bisa.',
+    },
+    {
+      'kategori': 'Motivasi',
+      'teks': 'Kesulitan bukan akhir dari perjalanan, tetapi awal dari sebuah kemenangan.',
+    },
+    {
+      'kategori': 'Motivasi',
+      'teks': 'Aku mampu melangkah maju satu langkah kecil setiap hari.',
+    },
+    {
+      'kategori': 'Kesehatan Mental',
+      'teks': 'Aku menerima semua perasaanku tanpa menghakimi.',
+    },
+    {
+      'kategori': 'Kesehatan Mental',
+      'teks': 'Aku merawat pikiranku dengan penuh kasih.',
+    },
+    {
+      'kategori': 'Kesehatan Mental',
+      'teks': 'Aku boleh beristirahat tanpa merasa bersalah.',
+    },
+    {
+      'kategori': 'Cinta Diri',
+      'teks': 'Aku berhak bahagia dalam hidupku.',
+    },
+    {
+      'kategori': 'Cinta Diri',
+      'teks': 'Aku menerima semua kekuatan dan kelemahan dalam diriku.',
+    },
+    {
+      'kategori': 'Cinta Diri',
+      'teks': 'Aku layak dicintai, terutama oleh diriku sendiri.',
+    },
+  ];
+
+  static final List<Map<String, String>> _favoritItems = [];
+
+  static List<Map<String, String>> getAfirmasiByCategories(
+    List<String> categories,
+  ) {
+    return _afirmasiData
+        .where((item) => categories.contains(item['kategori']))
+        .toList();
+  }
+
+  static List<Map<String, String>> getFavoritItems() {
+    return List<Map<String, String>>.from(_favoritItems);
+  }
+
+  static bool isFavorite(Map<String, String> item) {
+    return _favoritItems.any(
+      (fav) =>
+          fav['kategori'] == item['kategori'] &&
+          fav['teks'] == item['teks'],
+    );
+  }
+
+  static void toggleFavorite(Map<String, String> item) {
+    final index = _favoritItems.indexWhere(
+      (fav) =>
+          fav['kategori'] == item['kategori'] &&
+          fav['teks'] == item['teks'],
+    );
+
+    if (index >= 0) {
+      _favoritItems.removeAt(index);
+    } else {
+      _favoritItems.add(Map<String, String>.from(item));
+    }
+  }
+
+  static void removeFavorite(Map<String, String> item) {
+    _favoritItems.removeWhere(
+      (fav) =>
+          fav['kategori'] == item['kategori'] &&
+          fav['teks'] == item['teks'],
+    );
+  }
+
+  static void removeManyFavorites(List<Map<String, String>> items) {
+    for (final item in items) {
+      removeFavorite(item);
+    }
+  }
+
+  static Map<String, String> getRandomWeightedAfirmasi(
+    List<String> categories, {
+    Map<String, String>? exclude,
+  }) {
+    final source = getAfirmasiByCategories(categories);
+
+    if (source.isEmpty) {
+      return {
+        'kategori': 'Afirmasi',
+        'teks': 'Belum ada afirmasi yang tersedia.',
+      };
+    }
+
+    final List<Map<String, String>> weightedPool = [];
+
+    for (final item in source) {
+      final isExcluded = exclude != null &&
+          item['kategori'] == exclude['kategori'] &&
+          item['teks'] == exclude['teks'];
+
+      if (isExcluded && source.length > 1) continue;
+
+      weightedPool.add(item);
+
+      if (isFavorite(item)) {
+        weightedPool.add(item);
+        weightedPool.add(item);
+        weightedPool.add(item);
+      }
+    }
+
+    return weightedPool[_random.nextInt(weightedPool.length)];
   }
 }
