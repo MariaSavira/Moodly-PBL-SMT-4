@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'profil_anonim.dart';
 
 // App entry point.
-// Flutter starts here, then mounts HomeChatAnonim as the root widget.
 void main() {
   runApp(const HomeChatAnonim());
 }
 
 // Root application widget.
-// Keeps global app config like theme, title, and first page.
 class HomeChatAnonim extends StatelessWidget {
   const HomeChatAnonim({super.key});
 
@@ -20,7 +20,6 @@ class HomeChatAnonim extends StatelessWidget {
 }
 
 // Homepage widget.
-// Stateful because gender selection and navbar selection can change.
 class AnonymousChatHomePage extends StatefulWidget {
   const AnonymousChatHomePage({super.key});
 
@@ -29,29 +28,18 @@ class AnonymousChatHomePage extends StatefulWidget {
 }
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
-  // Tracks which gender card is selected.
-  // 0 = Laki-laki, 1 = Keduanya, 2 = Perempuan.
   int selectedGenderIndex = 1;
-
-  // Tracks which bottom navigation item is active.
-  // Default is 2 because Connect is selected in the design.
   int selectedNavIndex = 2;
 
   int? pressedGenderIndex;
   bool isProfilePressed = false;
   bool isCtaPressed = false;
 
-  // Profile overlay state
   bool showProfileOverlay = false;
-  bool showAvatarPicker = false;
 
   String profileName = 'Spaghetti Unyu';
   String selectedProfileImage = 'assets/profile_pic/PP.png';
 
-  final TextEditingController profileNameController =
-      TextEditingController(text: 'Spaghetti Unyu');
-
-  // Adjust these file names if your avatar asset names are different.
   final List<String> profileAvatars = const [
     'assets/profile_pic/PP.png',
     'assets/profile_pic/PP_2.png',
@@ -125,9 +113,27 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   ];
 
   @override
-  void dispose() {
-    profileNameController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    loadProfileData();
+  }
+
+  Future<void> loadProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+
+    setState(() {
+      profileName = prefs.getString('profileName') ?? 'Spaghetti Unyu';
+      selectedProfileImage =
+          prefs.getString('selectedProfileImage') ?? 'assets/profile_pic/PP.png';
+    });
+  }
+
+  Future<void> saveProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profileName', profileName);
+    await prefs.setString('selectedProfileImage', selectedProfileImage);
   }
 
   @override
@@ -168,7 +174,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                       ),
                     ),
                     const SizedBox(height: 88),
-                    _buildCenterContent(),
+                    Opacity(
+                      opacity: showProfileOverlay ? 0.0 : 1.0,
+                      child: IgnorePointer(
+                        ignoring: showProfileOverlay,
+                        child: _buildCenterContent(),
+                      ),
+                    ),
                     const SizedBox(height: 52),
                   ],
                 ),
@@ -177,7 +189,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               Positioned(
                 right: 20,
                 bottom: 350,
-                child: _buildProfileButton(),
+                child: Opacity(
+                  opacity: showProfileOverlay ? 0.0 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: showProfileOverlay,
+                    child: _buildProfileButton(),
+                  ),
+                ),
               ),
 
               // BOTTOM SHEET
@@ -218,8 +236,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 bottom: 0,
                 child: _buildFloatingBottomNav(),
               ),
-
-              if (showProfileOverlay) _buildProfileOverlay(),
             ],
           ),
         ),
@@ -227,8 +243,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     );
   }
 
-  // Top header section.
-  // Contains the back button and page title.
   Widget _buildHeader() {
     return Row(
       children: [
@@ -243,7 +257,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     );
   }
 
-  // Center hero content.
   Widget _buildCenterContent() {
     return Center(
       child: Column(
@@ -283,7 +296,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     );
   }
 
-  // Green rounded button on the right.
   Widget _buildProfileButton() {
     return GestureDetector(
       onTapDown: (_) {
@@ -301,13 +313,49 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           isProfilePressed = false;
         });
       },
-      onTap: () {
+      onTap: () async {
         FocusScope.of(context).unfocus();
+
         setState(() {
           showProfileOverlay = true;
-          showAvatarPicker = false;
-          profileNameController.text = profileName;
         });
+
+        final result = await Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            barrierDismissible: false,
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                ProfileOverlayPage(
+              profileName: profileName,
+              selectedProfileImage: selectedProfileImage,
+              profileAvatars: profileAvatars,
+            ),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 150),
+            reverseTransitionDuration: const Duration(milliseconds: 150),
+          ),
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          showProfileOverlay = false;
+        });
+
+        if (result is Map<String, dynamic>) {
+          setState(() {
+            profileName = result['profileName'] as String;
+            selectedProfileImage = result['selectedProfileImage'] as String;
+          });
+
+          await saveProfileData();
+        }
       },
       child: AnimatedScale(
         scale: isProfilePressed ? 0.96 : 1.0,
@@ -338,7 +386,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     );
   }
 
-  // Rounded card above the navbar.
   Widget _buildFilterCard() {
     return Container(
       height: 340,
@@ -371,13 +418,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'Filter Gender',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                Text(
+                  'Filter Gender',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 14),
                 _buildGenderOptions(),
@@ -502,9 +545,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           isCtaPressed = false;
         });
       },
-      onTap: () {
-        // TODO: action for CTA button
-      },
+      onTap: () {},
       child: AnimatedScale(
         scale: isCtaPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
@@ -682,302 +723,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       ),
     );
   }
-
-  Widget _buildProfileOverlay() {
-    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final bool keyboardOpen = keyboardHeight > 0;
-
-    return Positioned.fill(
-      child: Material(
-        color: const Color(0x80000000),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: 16,
-                left: 20,
-                right: 20,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Text(
-                      'Atur Profil',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineLarge
-                          ?.copyWith(color: Colors.white),
-                    ),
-                    Positioned(
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          FocusScope.of(context).unfocus();
-                          setState(() {
-                            showProfileOverlay = false;
-                            showAvatarPicker = false;
-                          });
-                        },
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF84C76A),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Color(0xFF6F8B5E),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Positioned(
-                top: 140,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        FocusScope.of(context).unfocus();
-                        setState(() {
-                          showAvatarPicker = !showAvatarPicker;
-                        });
-                      },
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 105,
-                            height: 105,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x22000000),
-                                  blurRadius: 12,
-                                  offset: Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                selectedProfileImage,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: const BoxDecoration(
-                              color: Color(0x55FFFFFF),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 210,
-                      height: 42,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x22000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: profileNameController,
-                              textAlign: TextAlign.center,
-                              maxLength: 20,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black87,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                counterText: '',
-                                isCollapsed: true,
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  showAvatarPicker = false;
-                                });
-                              },
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              FocusScope.of(context).unfocus();
-                              setState(() {
-                                showAvatarPicker = !showAvatarPicker;
-                              });
-                            },
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF84C76A),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.casino_rounded,
-                                size: 15,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '*Jangan gunakan nama asli\n*Maksimal 20 huruf',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              Positioned(
-                right: 20,
-                bottom: 350,
-                child: GestureDetector(
-                  onTap: () {
-                    FocusScope.of(context).unfocus();
-                    setState(() {
-                      final String trimmed = profileNameController.text.trim();
-                      profileName = trimmed.isEmpty ? 'Spaghetti Unyu' : trimmed;
-                      showProfileOverlay = false;
-                      showAvatarPicker = false;
-                    });
-                  },
-                  child: Container(
-                    width: 126,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF84C76A),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Konfirmasi',
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                  ),
-                ),
-              ),
-
-              if (showAvatarPicker && !keyboardOpen)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    height: 320,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFDCE9BE),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(28),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 16,
-                          offset: Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    child: Scrollbar(
-                      thumbVisibility: true,
-                      radius: const Radius.circular(20),
-                      thickness: 4,
-                      child: GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(22, 24, 22, 36),
-                        itemCount: profileAvatars.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          mainAxisSpacing: 18,
-                          crossAxisSpacing: 18,
-                        ),
-                        itemBuilder: (context, index) {
-                          final String avatar = profileAvatars[index];
-                          final bool isSelected =
-                              avatar == selectedProfileImage;
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedProfileImage = avatar;
-                              });
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: isSelected
-                                    ? Border.all(
-                                        color: const Color(0xFF84C76A),
-                                        width: 4,
-                                      )
-                                    : null,
-                              ),
-                              child: ClipOval(
-                                child: Image.asset(
-                                  avatar,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-// Simple data model for each gender card.
 class _GenderOption {
   final String label;
   final IconData icon;
@@ -1006,7 +753,6 @@ class _NavItemData {
   });
 }
 
-// Reusable widget for the bottom nav items.
 class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1069,84 +815,6 @@ class _BottomNavItem extends StatelessWidget {
   }
 }
 
-// Paints the small face inside the avatar.
-// Using CustomPainter makes it easy to mimic the exact playful expression.
-class _CuteFacePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final eyePaint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final cheekPaint = Paint()
-      ..color = const Color(0xFFEA6E80)
-      ..style = PaintingStyle.fill;
-
-    final mouthPaint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.6
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawCircle(
-      const Offset(16, 39),
-      2.1,
-      eyePaint..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      const Offset(64, 39),
-      2.1,
-      eyePaint..style = PaintingStyle.fill,
-    );
-
-    eyePaint.style = PaintingStyle.stroke;
-    canvas.drawArc(
-      Rect.fromCircle(center: const Offset(16, 36), radius: 5),
-      3.8,
-      1.0,
-      false,
-      eyePaint,
-    );
-    canvas.drawArc(
-      Rect.fromCircle(center: const Offset(64, 36), radius: 5),
-      5.7,
-      1.0,
-      false,
-      eyePaint,
-    );
-
-    canvas.drawCircle(const Offset(14, 50), 2.2, cheekPaint);
-    canvas.drawCircle(const Offset(66, 50), 2.2, cheekPaint);
-
-    final mouthPath = Path()
-      ..moveTo(24, 49)
-      ..quadraticBezierTo(41, 62, 57, 49);
-    canvas.drawPath(mouthPath, mouthPaint);
-
-    canvas.drawArc(
-      const Rect.fromLTWH(28, 40, 9, 8),
-      0.6,
-      1.7,
-      false,
-      mouthPaint,
-    );
-
-    canvas.drawArc(
-      const Rect.fromLTWH(52, 42, 6, 10),
-      -0.2,
-      1.4,
-      false,
-      mouthPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// Paints the floating navbar background with a center notch.
 class _NavBarNotchPainter extends CustomPainter {
   final double selectedCenterX;
 
@@ -1161,8 +829,6 @@ class _NavBarNotchPainter extends CustomPainter {
     final Paint fillPaint = Paint()..color = const Color(0xFFB5E0A6);
 
     const double cornerRadius = 32.0;
-
-    // Dibikin lebih halus dan membulat
     const double notchDepth = 30.0;
     const double notchHalfWidth = 44.0;
     const double shoulderWidth = 22.0;
@@ -1179,11 +845,7 @@ class _NavBarNotchPainter extends CustomPainter {
 
     final Path path = Path()
       ..moveTo(cornerRadius, 0)
-
-      // kiri atas sampai sebelum notch
       ..lineTo(leftShoulder, 0)
-
-      // masuk ke notch dengan transisi halus
       ..cubicTo(
         leftShoulder + shoulderWidth * 0.45,
         0,
@@ -1192,8 +854,6 @@ class _NavBarNotchPainter extends CustomPainter {
         leftDipStart,
         notchDepth * 0.42,
       )
-
-      // lembah notch utama
       ..cubicTo(
         center - notchHalfWidth * 0.55,
         notchDepth,
@@ -1202,8 +862,6 @@ class _NavBarNotchPainter extends CustomPainter {
         rightDipEnd,
         notchDepth * 0.42,
       )
-
-      // keluar notch dengan halus
       ..cubicTo(
         rightDipEnd + shoulderWidth * 0.35,
         notchDepth * 0.18,
@@ -1212,12 +870,8 @@ class _NavBarNotchPainter extends CustomPainter {
         rightShoulder,
         0,
       )
-
-      // kanan atas
       ..lineTo(size.width - cornerRadius, 0)
       ..quadraticBezierTo(size.width, 0, size.width, cornerRadius)
-
-      // kanan bawah
       ..lineTo(size.width, size.height - cornerRadius)
       ..quadraticBezierTo(
         size.width,
@@ -1225,12 +879,8 @@ class _NavBarNotchPainter extends CustomPainter {
         size.width - cornerRadius,
         size.height,
       )
-
-      // kiri bawah
       ..lineTo(cornerRadius, size.height)
       ..quadraticBezierTo(0, size.height, 0, size.height - cornerRadius)
-
-      // kiri atas
       ..lineTo(0, cornerRadius)
       ..quadraticBezierTo(0, 0, cornerRadius, 0)
       ..close();
