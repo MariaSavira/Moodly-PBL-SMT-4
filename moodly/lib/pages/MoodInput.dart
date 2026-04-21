@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class MoodInput_Adhe extends StatefulWidget {
-  const MoodInput_Adhe({super.key});
+class MoodInput extends StatefulWidget {
+  const MoodInput({super.key});
 
   @override
-  State<MoodInput_Adhe> createState() => _MoodInput_AdheState();
+  State<MoodInput> createState() => _MoodInputState();
 }
 
-class _MoodInput_AdheState extends State<MoodInput_Adhe> {
+class _MoodInputState extends State<MoodInput> {
   String? selectedMood;
   final TextEditingController _noteController = TextEditingController();
 
@@ -36,9 +36,9 @@ class _MoodInput_AdheState extends State<MoodInput_Adhe> {
 
   Color _getMoodCardColor(String mood) {
     switch (mood) {
-      case 'Senang': return const Color(0xFFCCFF90);
+      case 'Senang': return const Color(0xFFA8F4AB);
       case 'Netral': return const Color(0xFFFFECB3);
-      case 'Sedih': return const Color(0xFFE0E0E0);
+      case 'Sedih': return const Color(0xFFC8E6C9);
       case 'Marah': return const Color(0xFFEF9A9A);
       default: return Colors.white;
     }
@@ -183,7 +183,7 @@ class _MoodInput_AdheState extends State<MoodInput_Adhe> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔷 BOX PINK ATAS (Tetap)
+
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -283,9 +283,9 @@ class _MoodInput_AdheState extends State<MoodInput_Adhe> {
                         child: ElevatedButton(
                           onPressed: selectedMood == null ? null : () => _showAddNoteDialog(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF81C784),
+                            backgroundColor: const Color(0xFF7CB342),
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey.shade300,
+                            disabledBackgroundColor: Colors.grey.shade400,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
@@ -312,9 +312,9 @@ class _MoodInput_AdheState extends State<MoodInput_Adhe> {
                         child: ElevatedButton(
                           onPressed: selectedMood == null ? null : () => _saveMood(withNote: false),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF81C784),
+                            backgroundColor: const Color(0xFF7CB342),
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey.shade300,
+                            disabledBackgroundColor: Colors.grey.shade400,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(25),
