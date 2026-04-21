@@ -1,49 +1,58 @@
-import 'package:flutter/foundation.dart';
+import '../models/diary_model.dart';
+import '../services/diary_service.dart';
 
-class DiaryController extends ChangeNotifier {
-  // STATE
-  String _selectedMonth = 'MAR';
-  bool _isBulanView = true;
-  int _navIndex = 1; // 0: Beranda, 1: Diary, 2: Connect, 3: Afirmasi
+class DiaryController {
+  final DiaryService _service = DiaryService();
+  List<DiaryModel> diaries = [];
+  bool isSelectionMode = false;
+  Set<String> selectedIds = {};
+  String viewMode = 'month'; // 'month' atau 'week'
 
-  // GETTER
-  String get selectedMonth => _selectedMonth;
-  bool get isBulanView => _isBulanView;
-  int get navIndex => _navIndex;
+  bool isFutureMonth(int month, int year) {
+    final now = DateTime.now();
+    return (year > now.year) || (year == now.year && month > now.month);
+  }
 
-  // DATA BULAN
-  final List<String> months = [
-    'JAN',
-    'FEB',
-    'MAR',
-    'APR',
-    'MEI',
-    'JUN',
-    'JUL',
-    'AGS',
-    'SEP',
-    'OKT',
-    'NOV',
-    'DES',
-  ];
+  bool isCurrentMonth(int month, int year) {
+    final now = DateTime.now();
+    return month == now.month && year == now.year;
+  }
 
-  // LOGIC
-  void selectMonth(String month) {
-    if (_selectedMonth != month) {
-      _selectedMonth = month;
-      notifyListeners();
+  void loadData(int? month, int? year) {
+    if (month != null && year != null) {
+      diaries = _service.getByMonthAndYear(month, year);
+    } else {
+      diaries = _service.getByCurrentWeek();
     }
   }
 
-  void toggleViewMode() {
-    _isBulanView = !_isBulanView;
-    notifyListeners();
+  void changeViewMode(String mode) {
+    viewMode = mode;
+    loadData(null, null);
   }
 
-  void changeNavIndex(int index) {
-    if (_navIndex != index) {
-      _navIndex = index;
-      notifyListeners();
+  void deleteSingle(String id) {
+    _service.delete(id);
+  }
+
+  void toggleSelectionMode() {
+    isSelectionMode = !isSelectionMode;
+    if (!isSelectionMode) selectedIds.clear();
+  }
+
+  void toggleSelection(String id) {
+    if (selectedIds.contains(id)) {
+      selectedIds.remove(id);
+    } else {
+      selectedIds.add(id);
+    }
+  }
+
+  void selectAll() {
+    if (selectedIds.length == diaries.length) {
+      selectedIds.clear();
+    } else {
+      selectedIds = diaries.map((d) => d.id).toSet();
     }
   }
 }
