@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:moodly/pages/diary_month_page.dart';
+import 'package:moodly/pages/private_diary/month_selection_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 
@@ -366,7 +366,7 @@ class DiaryPage extends StatelessWidget {
         if (title == 'Mode private/public') {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const DiaryMonthPage()),
+            MaterialPageRoute(builder: (_) => const MonthSelectionPage()),
           );
         }
       },
