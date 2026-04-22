@@ -16,24 +16,24 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
       'warna': const Color(0xFFB7D99A),
     },
     {
-      'label': 'Meredakan\nKecemasan',
+      'label': 'Meredakan\nkecemasan',
       'kategori': 'Meredakan Kecemasan',
-      'warna': const Color(0xFFF3C6CF),
+      'warna': const Color(0xFFFFE0E2),
     },
     {
       'label': 'Motivasi',
       'kategori': 'Motivasi',
-      'warna': const Color(0xFFDCEB9B),
+      'warna': const Color(0xFFD9ED84),
     },
     {
       'label': 'Kesehatan\nMental',
       'kategori': 'Kesehatan Mental',
-      'warna': const Color(0xFFAEE3F5),
+      'warna': const Color(0xFF9DDBF7),
     },
     {
       'label': 'Cinta Diri',
       'kategori': 'Cinta Diri',
-      'warna': const Color(0xFFF6B6BE),
+      'warna': const Color(0xFFF5B2BC),
     },
   ];
 
@@ -91,7 +91,6 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                   child: Column(
                     children: [
                       const SizedBox(height: 12),
-
                       Row(
                         children: [
                           IconButton(
@@ -104,9 +103,7 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 8),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -125,28 +122,22 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 18),
-
                       Text(
                         'Tentukan Afirmasi',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineLarge,
                       ),
-
                       const SizedBox(height: 18),
-
                       Text(
                         'Apa yang paling anda butuhkan\nsaat ini?',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-
                       const SizedBox(height: 34),
-
                       Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
+                        spacing: 52,
+                        runSpacing: 56,
                         alignment: WrapAlignment.center,
                         children: kategoriAfirmasi.map((item) {
                           final String label = item['label'] as String;
@@ -163,39 +154,52 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                           );
                         }).toList(),
                       ),
-
-                      const SizedBox(height: 28),
-
-                      SizedBox(
-                        width: 255,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: goToDetailPage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF92C47E),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(22),
+                      const SizedBox(height: 56),
+                      Center(
+                        child: InnerShadow(
+                          shadows: const [
+                            BoxShadow(
+                              color: Color.fromRGBO(0, 0, 0, 0.25),
+                              offset: Offset(0, 1),
+                              blurRadius: 5,
                             ),
-                          ),
-                          child: Text(
-                            'Lanjutkan',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(color: Colors.white),
+                          ],
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: goToDetailPage,
+                              child: Ink(
+                                width: 257,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF99D28F),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Lanjutkan',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 260),
                     ],
                   ),
                 ),
               ),
             ),
-
             Positioned(
               left: 0,
               right: 0,
@@ -233,38 +237,131 @@ class _KategoriBubble extends StatelessWidget {
     required this.onTap,
   });
 
+  Color _textColor(String title) {
+    if (title == 'Rasa Syukur') {
+      return const Color(0xFF295C2C);
+    }
+    if (title == 'Meredakan\nkecemasan') {
+      return const Color(0xFFC97C86);
+    }
+    if (title == 'Motivasi') {
+      return const Color(0xFF666624);
+    }
+    if (title == 'Kesehatan\nMental') {
+      return const Color(0xFF0D9EB8);
+    }
+    if (title == 'Cinta Diri') {
+      return const Color(0xFF631B1C);
+    }
+    return const Color(0xFF2F2F2F);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Ink(
-          width: 145,
-          height: 86,
+          width: 123,
+          height: 51,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected ? const Color(0xFF6E9550) : Colors.transparent,
-              width: 4,
+              width: 3,
             ),
           ),
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF2F2F2F),
-                    ),
-              ),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    height: 22 / 14,
+                    fontWeight: FontWeight.w400,
+                    color: _textColor(title),
+                  ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class InnerShadow extends StatelessWidget {
+  final Widget child;
+  final List<BoxShadow> shadows;
+
+  const InnerShadow({
+    super.key,
+    required this.child,
+    this.shadows = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      foregroundPainter: _InnerShadowPainter(shadows),
+      child: child,
+    );
+  }
+}
+
+class _InnerShadowPainter extends CustomPainter {
+  final List<BoxShadow> shadows;
+
+  _InnerShadowPainter(this.shadows);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    for (final shadow in shadows) {
+      final paint = Paint()
+        ..color = shadow.color
+        ..blendMode = BlendMode.srcATop
+        ..maskFilter = MaskFilter.blur(
+          BlurStyle.normal,
+          shadow.blurRadius,
+        );
+
+      final outerRect = Rect.fromLTWH(
+        rect.left - 20,
+        rect.top - 20,
+        rect.width + 40,
+        rect.height + 40,
+      );
+
+      final outerRRect = RRect.fromRectAndRadius(
+        outerRect,
+        const Radius.circular(16),
+      );
+
+      final innerRRect = RRect.fromRectAndRadius(
+        rect.shift(shadow.offset),
+        const Radius.circular(16),
+      );
+
+      final path = Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRRect(outerRRect)
+        ..addRRect(innerRRect);
+
+      canvas.save();
+      canvas.clipRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(16)),
+      );
+      canvas.drawPath(path, paint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
