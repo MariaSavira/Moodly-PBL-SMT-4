@@ -124,53 +124,70 @@ class _MoodCalendarState extends State<MoodCalendar> {
       calendarWidgets.add(
         GestureDetector(
           onTap: () => _handleDateTap(currentDate),
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isToday ? Colors.green.shade100 : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: isToday ? Border.all(color: Colors.green, width: 1.5) : null,
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (mood != null)
-                  Text(
-                    _getEmoji(mood),
-                    style: const TextStyle(fontSize: 28),
-                  ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // BAGIAN ATAS: Tanggal dengan Background Pink (Hanya untuk Hari Ini)
+              SizedBox(
+                height: 24, // Tinggi area tanggal
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 1. Background Lingkaran Pink (Layer Belakang) - Hanya muncul jika isToday
+                    if (isToday)
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.pink.shade100, // Pink muda
+                          shape: BoxShape.circle,
+                        ),
+                      ),
 
-                if (mood == null && !isFuture)
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.lightGreen,
-                      borderRadius: BorderRadius.circular(8),
+                    // 2. Angka Tanggal (Layer Depan)
+                    Text(
+                      '$day',
+                      style: GoogleFonts.fredoka(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isToday ? Colors.pink.shade800 : Colors.black54,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.add,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
+                  ],
+                ),
+              ),
 
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
+              const SizedBox(height: 2), // Jarak antara tanggal dan emoji/tombol
+
+              // BAGIAN BAWAH: Emoji atau Tombol + (Tanpa Background Pink)
+              mood != null
+                  ? SizedBox(
+                width: 28,
+                height: 28,
+                child: Center(
                   child: Text(
-                    '$day',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.fredoka(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black54,
-                    ),
+                    _getEmoji(mood),
+                    style: const TextStyle(fontSize: 22),
                   ),
                 ),
-              ],
-            ),
+              )
+                  : !isFuture
+                  ? Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.lightGreen,
+                  borderRadius: BorderRadius.circular(6),
+                  // Tidak ada border bold lagi
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              )
+                  : const SizedBox.shrink(),
+            ],
           ),
         ),
       );
@@ -199,7 +216,6 @@ class _MoodCalendarState extends State<MoodCalendar> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             children: [
-
               const SizedBox(height: 25),
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 5),
@@ -233,11 +249,9 @@ class _MoodCalendarState extends State<MoodCalendar> {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 50),
-
+              const SizedBox(height: 30),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -254,33 +268,31 @@ class _MoodCalendarState extends State<MoodCalendar> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: weekDays.map((day) => SizedBox(
-                        width: 40,
+                        width: 32,
                         child: Text(
                           day,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.fredoka(
-                            fontSize: 14,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
                       )).toList(),
                     ),
-                    const SizedBox(height: 10),
-
+                    const SizedBox(height: 8),
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 7,
-                      mainAxisSpacing: 4,
-                      crossAxisSpacing: 4,
-                      childAspectRatio: 1.0,
+                      mainAxisSpacing: 2,
+                      crossAxisSpacing: 2,
+                      childAspectRatio: 0.80,
                       children: calendarWidgets,
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
             ],
           ),
