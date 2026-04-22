@@ -1,36 +1,38 @@
 import '../models/diary_model.dart';
 
 class DiaryService {
-  final List<DiaryModel> _storage = [];
+  static List<DiaryModel> allData = [
+    DiaryModel(
+      title: "Perasaan Hari Ini",
+      time: "01.17 pm",
+      date: 17,
+      month: "MAR",
+    ),
+    DiaryModel(
+      title: "Hari Ini Berarti",
+      time: "09.27 pm",
+      date: 17,
+      month: "MAR",
+    ),
+    DiaryModel(
+      title: "Mencari Versi Baik",
+      time: "08.00 am",
+      date: 18,
+      month: "MAR",
+    ),
+    DiaryModel(
+      title: "Belajar Ikhlas",
+      time: "10.00 am",
+      date: 19,
+      month: "MAR",
+    ),
+  ];
 
-  List<DiaryModel> get all => List.unmodifiable(_storage);
-
-  List<DiaryModel> getByMonthAndYear(int month, int year) {
-    return _storage.where((d) => d.month == month && d.year == year).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  static List<DiaryModel> getByMonth(String month) {
+    return allData.where((e) => e.month == month).toList();
   }
 
-  List<DiaryModel> getByCurrentWeek() {
-    final now = DateTime.now();
-    final start = now.subtract(Duration(days: now.weekday - 1));
-    final end = start.add(const Duration(days: 6, hours: 23, minutes: 59));
-    return _storage
-        .where((d) => d.createdAt.isAfter(start) && d.createdAt.isBefore(end))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  static List<DiaryModel> getByWeek() {
+    return allData; // dummy minggu ini
   }
-
-  void add(String title, String content) {
-    _storage.add(
-      DiaryModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: title,
-        content: content,
-      ),
-    );
-  }
-
-  void delete(String id) => _storage.removeWhere((d) => d.id == id);
-  void deleteMultiple(List<String> ids) =>
-      _storage.removeWhere((d) => ids.contains(d.id));
 }
