@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/auth_service.dart';
 import 'profil_anonim.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'ruang_chat.dart';
 
 // App entry point.
 void main() {
@@ -28,6 +32,48 @@ class AnonymousChatHomePage extends StatefulWidget {
 }
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    initApp();
+  }
+
+  Future<void> initApp() async {
+    final user = await _authService.signInAnonymously();
+    print('AUTH UID: ${user?.uid}');
+
+    await loadProfileData();
+
+    if (!mounted) return;
+
+    await syncUserProfileToFirestore();
+    print('SYNC PROFILE TO FIRESTORE SUCCESS');
+  }
+
+  Future<void> syncUserProfileToFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('FIRESTORE SYNC BATAL: user null');
+      return;
+    }
+
+    print('SYNCING USER: ${user.uid}');
+    print('nickname: $profileName');
+    print('avatarId: $selectedProfileImage');
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'nickname': profileName,
+      'avatarId': selectedProfileImage,
+      'status': 'idle',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    print('FIRESTORE WRITE BERHASIL');
+  }
+
   int selectedGenderIndex = 1;
   int selectedNavIndex = 2;
 
@@ -112,12 +158,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    loadProfileData();
-  }
-
   Future<void> loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -126,7 +166,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     setState(() {
       profileName = prefs.getString('profileName') ?? 'Spaghetti Unyu';
       selectedProfileImage =
-          prefs.getString('selectedProfileImage') ?? 'assets/profile_pic/PP.png';
+          prefs.getString('selectedProfileImage') ??
+          'assets/profile_pic/PP.png';
     });
   }
 
@@ -154,9 +195,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         body: SafeArea(
           child: Stack(
             children: [
-              Positioned.fill(
-                child: Container(color: const Color(0xFFF3FADC)),
-              ),
+              Positioned.fill(child: Container(color: const Color(0xFFF3FADC))),
 
               // TOP CONTENT
               Positioned(
@@ -275,17 +314,11 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               ],
             ),
             child: ClipOval(
-              child: Image.asset(
-                selectedProfileImage,
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset(selectedProfileImage, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(height: 18),
-          Text(
-            profileName,
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
+          Text(profileName, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 6),
           Text(
             'Mulailah Mengobrol!',
@@ -326,17 +359,14 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             barrierDismissible: false,
             pageBuilder: (context, animation, secondaryAnimation) =>
                 ProfileOverlayPage(
-              profileName: profileName,
-              selectedProfileImage: selectedProfileImage,
-              profileAvatars: profileAvatars,
-            ),
+                  profileName: profileName,
+                  selectedProfileImage: selectedProfileImage,
+                  profileAvatars: profileAvatars,
+                ),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
+                  return FadeTransition(opacity: animation, child: child);
+                },
             transitionDuration: const Duration(milliseconds: 150),
             reverseTransitionDuration: const Duration(milliseconds: 150),
           ),
@@ -355,6 +385,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           });
 
           await saveProfileData();
+          await syncUserProfileToFirestore();
         }
       },
       child: AnimatedScale(
@@ -545,7 +576,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           isCtaPressed = false;
         });
       },
-      onTap: () {},
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ChatAnonimPage(),
+          ),
+        );
+      },
       child: AnimatedScale(
         scale: isCtaPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
@@ -571,18 +608,17 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(height: 1.2, color: Colors.black87),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(height: 1.2, color: Colors.black87),
           children: [
             const TextSpan(text: 'Tolong hormati orang lain dan patuhi '),
             TextSpan(
               text: 'peraturan kami',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF7DCB66),
-                    fontWeight: FontWeight.w900,
-                  ),
+                color: const Color(0xFF7DCB66),
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ],
         ),
@@ -802,11 +838,7 @@ class _BottomNavItem extends StatelessWidget {
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 letterSpacing: selected ? 0.2 : 0,
               ),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.visible,
-              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.visible),
             ),
           ],
         ),
