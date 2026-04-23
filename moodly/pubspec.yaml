@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  cloud_firestore: ^6.3.0
   google_fonts: ^8.0.2
   flutter_svg: ^2.2.4
   shared_preferences: ^2.5.5
