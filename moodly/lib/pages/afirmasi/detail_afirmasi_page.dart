@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
 import 'package:moodly/services/afirmasi/afirmasi_service.dart';
+import 'package:moodly/pages/afirmasi/pengaturan_widget_page.dart';
 
 class DetailAfirmasiPage extends StatefulWidget {
   final List<String> selectedCategories;
@@ -106,46 +107,47 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     setState(() {});
   }
 
-  void _showSettingsMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFFF8F6F2),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Wrap(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.refresh),
-                  title: const Text('Atur ulang kategori afirmasi'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.widgets_outlined),
-                  title: const Text('Pengaturan widget'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Fitur pengaturan widget akan ditambahkan'),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+ void _showSettingsMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFFF8F6F2),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Atur ulang kategori afirmasi'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.widgets_outlined),
+                title: const Text('Pengaturan widget'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    this.context,
+                    MaterialPageRoute(
+                      builder: (_) => const PengaturanWidgetPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildDots() {
     final int dotCount = _afirmasiList.length > 3 ? 3 : _afirmasiList.length;
@@ -228,29 +230,28 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
                         ),
                       ),
                       Expanded(
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 28,
-                              vertical: 14,
-                            ),
-                           decoration: BoxDecoration(
+                      child: Center(
+                        child: Container(
+                          width: 172,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
                             color: const Color(0x80FFFFFF),
-                            borderRadius: BorderRadius.circular(28),
-                            ),
-                            child: Text(
-                              currentCategory,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            currentCategory,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ),
                       ),
+                    ),
                       IconButton(
                         onPressed: _showSettingsMenu,
                         icon: const Icon(
