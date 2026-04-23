@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/diary_model.dart';
 import '../../services/diary_service.dart';
 import '../../widgets/date_section.dart';
+import 'package:moodly/pages/private_diary/add_diary_page.dart';
 
 class DiaryPage extends StatelessWidget {
   final String month;
@@ -178,7 +179,10 @@ class DiaryPage extends StatelessWidget {
 
           ElevatedButton.icon(
             onPressed: () {
-              // nanti ke halaman tambah diary
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddDiaryPage()),
+              );
             },
             icon: const Icon(Icons.add),
             label: const Text("Tulis Diary"),
