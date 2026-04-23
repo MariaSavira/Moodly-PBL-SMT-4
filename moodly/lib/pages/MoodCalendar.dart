@@ -3,7 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'MoodInput.dart';
 
 class MoodCalendar extends StatefulWidget {
-  const MoodCalendar({super.key});
+  final int initialYear;
+  final int initialMonth;
+
+  const MoodCalendar({
+    super.key,
+    this.initialYear = 2026,
+    this.initialMonth = 1
+  });
 
   @override
   State<MoodCalendar> createState() => _MoodCalendarState();

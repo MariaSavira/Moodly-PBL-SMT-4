@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 import 'pages/MoodCalendar.dart';
+import 'pages/MoodYearCalendar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,15 +66,15 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainMenuPage(),
+      home: MainMenuPage(),
     );
   }
 }
 
 class MainMenuPage extends StatelessWidget {
-  const MainMenuPage({super.key});
+   MainMenuPage({super.key});
 
-  final List<_FeatureItem> features = const [
+  final List<_FeatureItem> features = [
     _FeatureItem(
       title: 'Login & Register',
       subtitle: 'Demo autentikasi pengguna',
@@ -84,7 +85,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodCalendar(),
+      page: MoodYearCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
