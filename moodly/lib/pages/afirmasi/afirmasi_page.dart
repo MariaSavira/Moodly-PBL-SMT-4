@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'detail_afirmasi_page.dart';
 
 class AfirmasiPage extends StatefulWidget {
@@ -109,11 +110,11 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                         children: [
                           Image.asset(
                             'assets/icon/images/heart_mascot.png',
-                            width: 52,
-                            height: 52,
+                            width: 54,
+                            height: 54,
                             fit: BoxFit.contain,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Image.asset(
                             'assets/icon/images/brain_mascot.png',
                             width: 54,
@@ -123,16 +124,32 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      Text(
-                        'Tentukan Afirmasi',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineLarge,
+                      SizedBox(
+                        width: 234,
+                        child: Text(
+                          'Tentukan Afirmasi',
+                          textAlign: TextAlign.center,
+                         style: GoogleFonts.fredoka(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          height: 22 / 24,
+                          color: Colors.black,
+                        ),
+                        ),
                       ),
                       const SizedBox(height: 18),
-                      Text(
-                        'Apa yang paling anda butuhkan\nsaat ini?',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium,
+                      SizedBox(
+                        width: 234,
+                        child: Text(
+                          'Apa yang paling anda butuhkan\nsaat ini?',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.fredoka(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 22 / 14,
+                          color: Colors.black,
+                        ),
+                        ),
                       ),
                       const SizedBox(height: 34),
                       Wrap(
@@ -179,14 +196,12 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                                 child: Center(
                                   child: Text(
                                     'Lanjutkan',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    style: GoogleFonts.openSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      height: 22 / 14,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -280,12 +295,12 @@ class _KategoriBubble extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    height: 22 / 14,
-                    fontWeight: FontWeight.w400,
-                    color: _textColor(title),
-                  ),
+              style: GoogleFonts.openSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 22 / 14,
+                color: _textColor(title),
+              ),
             ),
           ),
         ),
