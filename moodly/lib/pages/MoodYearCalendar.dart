@@ -176,7 +176,7 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 0.85, // LEBIH BESAR agar card lebih pendek
+                      childAspectRatio: 0.85,
                     ),
                     itemCount: 12,
                     itemBuilder: (context, index) {
@@ -196,38 +196,49 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
   }
 
   Widget _buildYearSelector() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showYearDropdown = !_showYearDropdown;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.lightGreen.shade300,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$_selectedYear',
-              style: GoogleFonts.fredoka(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              _showYearDropdown ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Card Tahun
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 36),
+          decoration: BoxDecoration(
+            color: Colors.lightGreen.shade300,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Text(
+            '$_selectedYear',
+            style: GoogleFonts.fredoka(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
               color: Colors.black87,
-              size: 24,
             ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        // Tombol Dropdown
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _showYearDropdown = !_showYearDropdown;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.all(6), // Padding diperkecil
+            decoration: BoxDecoration(
+              // Ubah warna berdasarkan status dropdown (terbuka/tertutup)
+              color: _showYearDropdown ? Colors.green : Colors.lightGreen.shade300,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _showYearDropdown ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              // Ubah warna ikon agar kontras dengan background
+              color: _showYearDropdown ? Colors.white : Colors.green.shade800,
+              size: 20, // Ikon diperkecil
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -235,14 +246,15 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
     return GestureDetector(
       onTap: () => setState(() => _showYearDropdown = false),
       child: Container(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withOpacity(0.2),
         child: Center(
           child: Material(
             color: Colors.transparent,
             child: Container(
-              width: 200,
+              width: 220,
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.lightGreen.shade300,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -259,15 +271,11 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
                   return GestureDetector(
                     onTap: () => _selectYear(year),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.lightGreen.shade300 : Colors.transparent,
-                        borderRadius: BorderRadius.only(
-                          topLeft: year == _availableYears.first ? const Radius.circular(20) : Radius.zero,
-                          topRight: year == _availableYears.first ? const Radius.circular(20) : Radius.zero,
-                          bottomLeft: year == _availableYears.last ? const Radius.circular(20) : Radius.zero,
-                          bottomRight: year == _availableYears.last ? const Radius.circular(20) : Radius.zero,
-                        ),
+                        color: isSelected ? Colors.green : Colors.lightGreen.shade50,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Center(
                         child: Text(
@@ -275,7 +283,7 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
                           style: GoogleFonts.fredoka(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.black : Colors.black87,
+                            color: isSelected ? Colors.white : Colors.black87,
                           ),
                         ),
                       ),
@@ -296,7 +304,7 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
     return GestureDetector(
       onTap: () => _navigateToMonthDetail(month),
       child: Container(
-        padding: const EdgeInsets.all(8), // Padding lebih kecil
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isCurrentMonth ? Colors.lightGreen.shade200 : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -312,7 +320,6 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Nama Bulan
             Text(
               _monthNames[month - 1],
               style: GoogleFonts.fredoka(
@@ -322,8 +329,6 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
               ),
             ),
             const SizedBox(height: 6),
-
-            // Kalender Mini
             _buildMiniCalendar(month),
           ],
         ),
@@ -335,10 +340,8 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
     final daysInMonth = DateTime(_selectedYear, month + 1, 0).day;
     final firstDayOfWeek = DateTime(_selectedYear, month, 1).weekday;
 
-    // Buat grid 7 kolom x 6 baris untuk semua tanggal
     List<Widget> dayWidgets = [];
 
-    // Tambahkan header hari (S S R K J S M)
     for (var day in _weekDays) {
       dayWidgets.add(
         SizedBox(
@@ -357,12 +360,10 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
       );
     }
 
-    // Slot kosong sebelum tanggal 1
     for (int i = 1; i < firstDayOfWeek; i++) {
       dayWidgets.add(const SizedBox(width: 28, height: 28));
     }
 
-    // Generate tanggal dengan background warna
     for (int day = 1; day <= daysInMonth; day++) {
       final moodKey = '$month-$day';
       final mood = _moodDatabase['$_selectedYear']?[moodKey];
