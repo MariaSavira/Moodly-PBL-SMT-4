@@ -6,8 +6,9 @@ import 'package:moodly/pages/private_diary/add_diary_page.dart';
 
 class DiaryPage extends StatelessWidget {
   final String month;
+  final int year; // 🔥 TAMBAHAN
 
-  const DiaryPage({super.key, required this.month});
+  const DiaryPage({super.key, required this.month, required this.year});
 
   /// ================= MONTH NAME =================
   String getMonthName(String m) {
@@ -50,10 +51,15 @@ class DiaryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final selectedMonth = getMonthNumber(month);
-    final currentMonth = now.month;
 
-    final List<DiaryModel> data = DiaryService.getByMonth(month);
+    final selectedMonth = getMonthNumber(month);
+    final selectedYear = year;
+
+    final currentMonth = now.month;
+    final currentYear = now.year;
+
+    /// 🔥 FILTER BULAN + TAHUN
+    final List<DiaryModel> data = DiaryService.getByMonth(month, year);
 
     return Scaffold(
       backgroundColor: const Color(0xFFDCE3C1),
@@ -83,20 +89,22 @@ class DiaryPage extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              /// MONTH TITLE
+              /// TITLE
               Text(
-                getMonthName(month),
+                "${getMonthName(month)} $year",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
 
               const SizedBox(height: 20),
 
-              /// ================= MAIN CONTENT =================
+              /// CONTENT
               Expanded(
                 child: _buildContent(
                   context,
                   selectedMonth,
                   currentMonth,
+                  selectedYear,
+                  currentYear,
                   data,
                 ),
               ),
@@ -112,30 +120,34 @@ class DiaryPage extends StatelessWidget {
     BuildContext context,
     int selectedMonth,
     int currentMonth,
+    int selectedYear,
+    int currentYear,
     List<DiaryModel> data,
   ) {
-    /// FUTURE
-    if (selectedMonth > currentMonth) {
+    /// 🔥 FUTURE (TAHUN ATAU BULAN)
+    if (selectedYear > currentYear ||
+        (selectedYear == currentYear && selectedMonth > currentMonth)) {
       return _centerMessage(
         context,
         "Belum waktunya 😶",
-        "Kamu belum bisa menulis diary di bulan ini.",
+        "Kamu belum bisa menulis diary di waktu ini.",
       );
     }
 
-    /// PAST
-    if (selectedMonth < currentMonth) {
+    /// 🔥 PAST
+    if (selectedYear < currentYear ||
+        (selectedYear == currentYear && selectedMonth < currentMonth)) {
       if (data.isEmpty) {
         return _centerMessage(
           context,
           "Belum ada diary 😢",
-          "Kamu belum menulis diary di bulan ${getMonthName(month)}",
+          "Kamu belum menulis diary di ${getMonthName(month)} $selectedYear",
         );
       }
       return _buildList(data);
     }
 
-    /// CURRENT
+    /// 🔥 CURRENT
     if (data.isEmpty) {
       return _emptyCurrentMonth(context);
     }
@@ -166,15 +178,19 @@ class DiaryPage extends StatelessWidget {
         children: [
           const Icon(Icons.edit_note, size: 60, color: Colors.grey),
           const SizedBox(height: 15),
+
           Text(
             "Belum ada diary",
             style: Theme.of(context).textTheme.titleMedium,
           ),
+
           const SizedBox(height: 5),
+
           Text(
             "Mulai tulis cerita harimu sekarang ✨",
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+
           const SizedBox(height: 20),
 
           ElevatedButton.icon(
@@ -200,8 +216,11 @@ class DiaryPage extends StatelessWidget {
         children: [
           const Icon(Icons.lock_outline, size: 60, color: Colors.grey),
           const SizedBox(height: 15),
+
           Text(title, style: Theme.of(context).textTheme.titleMedium),
+
           const SizedBox(height: 5),
+
           Text(
             subtitle,
             style: Theme.of(context).textTheme.bodyMedium,
