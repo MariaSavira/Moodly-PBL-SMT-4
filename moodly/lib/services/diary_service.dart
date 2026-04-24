@@ -7,32 +7,38 @@ class DiaryService {
       time: "01.17 pm",
       date: 17,
       month: "MAR",
+      year: 2025,
     ),
     DiaryModel(
       title: "Hari Ini Berarti",
       time: "09.27 pm",
       date: 17,
       month: "MAR",
+      year: 2025,
     ),
     DiaryModel(
       title: "Mencari Versi Baik",
       time: "08.00 am",
       date: 18,
       month: "MAR",
+      year: 2025,
     ),
     DiaryModel(
       title: "Belajar Ikhlas",
       time: "10.00 am",
       date: 19,
       month: "MAR",
+      year: 2025,
     ),
   ];
 
-  static List<DiaryModel> getByMonth(String month) {
-    return allData.where((e) => e.month == month).toList();
+  /// 🔥 FIX: sekarang pakai month + year
+  static List<DiaryModel> getByMonth(String month, int year) {
+    return allData.where((e) => e.month == month && e.year == year).toList();
   }
 
+  /// (dummy) minggu ini
   static List<DiaryModel> getByWeek() {
-    return allData; // dummy minggu ini
+    return allData;
   }
 }
