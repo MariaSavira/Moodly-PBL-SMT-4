@@ -57,33 +57,46 @@ class CaraMemasangWidgetPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
+
                     const _StepItem(
                       imagePath: 'assets/icon/images/tutorial_step1.png',
                       stepTitle: 'Step 1',
                       description:
                           'Tekan dan tahan layar utama\n(Home Screen)',
+                      imageWidth: 145,
+                      imageHeight: 95,
                     ),
                     const SizedBox(height: 49),
+
                     const _StepItem(
                       imagePath: 'assets/icon/images/tutorial_step2.png',
                       stepTitle: 'Step 2',
                       description: 'Pilih menu “Widget”.',
+                      imageWidth: 145,
+                      imageHeight: 119,
                     ),
                     const SizedBox(height: 49),
+
                     const _StepItem(
                       imagePath: 'assets/icon/images/tutorial_step3.png',
                       stepTitle: 'Step 3',
                       description:
                           'Cari dan pilih widget Moodly\nyang ingin digunakan.',
+                      imageWidth: 145,
+                      imageHeight: 118,
                     ),
                     const SizedBox(height: 49),
+
                     const _StepItem(
                       imagePath: 'assets/icon/images/tutorial_step4.png',
                       stepTitle: 'Step 4',
                       description:
                           'Geser widget ke layar utama,\nlalu lepaskan.',
+                      imageWidth: 145,
+                      imageHeight: 146,
                     ),
-                    const SizedBox(height: 120),
+
+                    const SizedBox(height: 420),
                   ],
                 ),
               ),
@@ -93,12 +106,14 @@ class CaraMemasangWidgetPage extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: IgnorePointer(
-                child: Image.asset(
-                  'assets/icon/images/tutorial_widget_bottom.png',
-                  width: double.infinity,
-                  height: 110,
-                  fit: BoxFit.fill,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                child: Center(
+                  child: Image.asset(
+                    'assets/icon/images/tutorial_widget_bottom.png',
+                    width: 226,
+                    height: 402,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),
@@ -113,11 +128,15 @@ class _StepItem extends StatelessWidget {
   final String imagePath;
   final String stepTitle;
   final String description;
+  final double imageWidth;
+  final double imageHeight;
 
   const _StepItem({
     required this.imagePath,
     required this.stepTitle,
     required this.description,
+    required this.imageWidth,
+    required this.imageHeight,
   });
 
   @override
@@ -125,12 +144,9 @@ class _StepItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 126,
-          height: 92,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-          ),
+        SizedBox(
+          width: imageWidth,
+          height: imageHeight,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.asset(
