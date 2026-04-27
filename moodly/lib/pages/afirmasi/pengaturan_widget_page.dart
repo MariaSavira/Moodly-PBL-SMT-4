@@ -20,6 +20,16 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
   Color warnaTeks = Colors.white;
   Color warnaOverlay = const Color(0x33000000);
 
+  final List<String> daftarWallpaper = [
+    'assets/icon/images/bg_afirmasi_1.jpg',
+    'assets/icon/images/bg_afirmasi_2.jpg',
+    'assets/icon/images/bg_afirmasi_3.jpg',
+    'assets/icon/images/bg_afirmasi_4.jpg',
+    'assets/icon/images/bg_afirmasi_5.jpg',
+  ];
+
+  String wallpaperTerpilih = 'assets/icon/images/bg_afirmasi_1.jpg';
+
   void _showCaraPasangWidget() {
     Navigator.push(
       context,
@@ -98,6 +108,45 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
           border: Border.all(
             color: selected ? Colors.black87 : Colors.transparent,
             width: 2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _wallpaperItem(String path) {
+    final bool isSelected = wallpaperTerpilih == path;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          wallpaperTerpilih = path;
+        });
+      },
+      child: Container(
+        width: 58,
+        height: 82,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6E9550) : Colors.transparent,
+            width: 3,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            path,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: const Color(0xFFE8E3EA),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.image_outlined,
+                color: Colors.grey,
+                size: 20,
+              ),
+            ),
           ),
         ),
       ),
@@ -194,8 +243,10 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 },
               ),
             ),
+
             const SizedBox(height: 8),
             _sectionTitle('Kustom tampilan'),
+
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
@@ -230,6 +281,46 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 ],
               ),
             ),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Wallpaper widget',
+                    style: GoogleFonts.openSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _wallpaperItem(daftarWallpaper[0]),
+                        const SizedBox(width: 10),
+                        _wallpaperItem(daftarWallpaper[1]),
+                        const SizedBox(width: 10),
+                        _wallpaperItem(daftarWallpaper[2]),
+                        const SizedBox(width: 10),
+                        _wallpaperItem(daftarWallpaper[3]),
+                        const SizedBox(width: 10),
+                        _wallpaperItem(daftarWallpaper[4]),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
@@ -249,20 +340,20 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       _colorDot(Colors.white, warnaTeks == Colors.white, () {
                         setState(() {
                           warnaTeks = Colors.white;
                         });
                       }),
-                      const SizedBox(width: 12),
                       _colorDot(Colors.black87, warnaTeks == Colors.black87, () {
                         setState(() {
                           warnaTeks = Colors.black87;
                         });
                       }),
-                      const SizedBox(width: 12),
                       _colorDot(
                         const Color(0xFFFFF1F1),
                         warnaTeks == const Color(0xFFFFF1F1),
@@ -272,11 +363,30 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                           });
                         },
                       ),
+                      _colorDot(
+                        const Color(0xFFFFE7B8),
+                        warnaTeks == const Color(0xFFFFE7B8),
+                        () {
+                          setState(() {
+                            warnaTeks = const Color(0xFFFFE7B8);
+                          });
+                        },
+                      ),
+                      _colorDot(
+                        const Color(0xFFDAF5FF),
+                        warnaTeks == const Color(0xFFDAF5FF),
+                        () {
+                          setState(() {
+                            warnaTeks = const Color(0xFFDAF5FF);
+                          });
+                        },
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
+
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
@@ -332,16 +442,21 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 8),
             _sectionTitle('Preview'),
+
             Container(
               height: 180,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                image: const DecorationImage(
-                  image: AssetImage('assets/icon/images/bg_afirmasi.jpg'),
-                  fit: BoxFit.cover,
-                ),
+                image: gunakanBackground
+                    ? DecorationImage(
+                        image: AssetImage(wallpaperTerpilih),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                color: gunakanBackground ? null : const Color(0xFF8C6A8E),
               ),
               child: Container(
                 decoration: BoxDecoration(

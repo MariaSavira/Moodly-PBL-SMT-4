@@ -9,115 +9,91 @@ class CaraMemasangWidgetPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F4DE),
       body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.black,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Cara Memasang\nwidget',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.fredoka(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                height: 1.0,
-                                color: const Color(0xFF2F2F2F),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Image.asset(
-                          'assets/icon/images/brain_mascot_tutorial.png',
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox(
-                            width: 56,
-                            height: 56,
-                          ),
-                        ),
-                      ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.black,
+                      size: 24,
                     ),
-                    const SizedBox(height: 24),
-
-                    const _StepItem(
-                      imagePath: 'assets/icon/images/tutorial_step1.png',
-                      stepTitle: 'Step 1',
-                      description:
-                          'Tekan dan tahan layar utama\n(Home Screen)',
-                      imageWidth: 145,
-                      imageHeight: 95,
-                    ),
-                    const SizedBox(height: 49),
-
-                    const _StepItem(
-                      imagePath: 'assets/icon/images/tutorial_step2.png',
-                      stepTitle: 'Step 2',
-                      description: 'Pilih menu “Widget”.',
-                      imageWidth: 145,
-                      imageHeight: 119,
-                    ),
-                    const SizedBox(height: 49),
-
-                    const _StepItem(
-                      imagePath: 'assets/icon/images/tutorial_step3.png',
-                      stepTitle: 'Step 3',
-                      description:
-                          'Cari dan pilih widget Moodly\nyang ingin digunakan.',
-                      imageWidth: 145,
-                      imageHeight: 118,
-                    ),
-                    const SizedBox(height: 49),
-
-                    const _StepItem(
-                      imagePath: 'assets/icon/images/tutorial_step4.png',
-                      stepTitle: 'Step 4',
-                      description:
-                          'Geser widget ke layar utama,\nlalu lepaskan.',
-                      imageWidth: 145,
-                      imageHeight: 146,
-                    ),
-
-                    const SizedBox(height: 420),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: IgnorePointer(
-                child: Center(
-                  child: Image.asset(
-                    'assets/icon/images/tutorial_widget_bottom.png',
-                    width: 226,
-                    height: 402,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Cara Memasang\nwidget',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.fredoka(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          height: 1.0,
+                          color: const Color(0xFF2F2F2F),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Image.asset(
+                    'assets/icon/images/brain_mascot_tutorial.png',
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      width: 56,
+                      height: 56,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+
+              const _StepItem(
+                imagePath: 'assets/icon/images/tutorial_step1.png',
+                stepTitle: 'Step 1',
+                description: 'Tekan dan tahan layar utama\n(Home Screen)',
+                imageWidth: 145,
+                imageHeight: 95,
+              ),
+              const SizedBox(height: 49),
+
+              const _StepItem(
+                imagePath: 'assets/icon/images/tutorial_step2.png',
+                stepTitle: 'Step 2',
+                description: 'Pilih menu “Widget”.',
+                imageWidth: 145,
+                imageHeight: 119,
+              ),
+              const SizedBox(height: 49),
+
+              const _StepItem(
+                imagePath: 'assets/icon/images/tutorial_step3.png',
+                stepTitle: 'Step 3',
+                description:
+                    'Cari dan pilih widget Moodly\nyang ingin digunakan.',
+                imageWidth: 145,
+                imageHeight: 118,
+              ),
+              const SizedBox(height: 49),
+
+              const _StepItem(
+                imagePath: 'assets/icon/images/tutorial_step4.png',
+                stepTitle: 'Step 4',
+                description: 'Geser widget ke layar utama,\nlalu lepaskan.',
+                imageWidth: 145,
+                imageHeight: 146,
+              ),
+
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
