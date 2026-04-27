@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:moodly/pages/chat_anonim/matching_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/auth_service.dart';
 import 'profil_anonim.dart';
@@ -44,9 +45,28 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     final user = await _authService.signInAnonymously();
     print('AUTH UID: ${user?.uid}');
 
+    if (user == null) return;
+
     await loadProfileData();
 
     if (!mounted) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final currentRoomId = userDoc.data()?['currentRoomId'];
+
+    if (currentRoomId != null && currentRoomId is String && currentRoomId.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatAnonimPage(roomId: currentRoomId),
+        ),
+      );
+      return;
+    }
 
     await syncUserProfileToFirestore();
     print('SYNC PROFILE TO FIRESTORE SUCCESS');
@@ -579,7 +599,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const ChatAnonimPage(),
+            builder: (_) => const MatchingPage(),
           ),
         );
       },
