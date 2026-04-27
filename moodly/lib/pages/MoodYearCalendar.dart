@@ -12,7 +12,7 @@ class MoodYearCalendar extends StatefulWidget {
 class _MoodYearCalendarState extends State<MoodYearCalendar> {
   int _selectedYear = 2026;
   bool _showYearDropdown = false;
-  final List<int> _availableYears = [2022, 2023, 2024, 2025, 2026];
+  final List<int> _availableYears = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
   final Map<String, Map<String, String>> _moodDatabase = {
     '2026': {
@@ -20,14 +20,6 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
       '2-1': 'Netral', '2-14': 'Senang', '2-17': 'Sedih', '2-18': 'Marah', '2-19': 'Sedih', '2-22': 'Netral',
       '3-5': 'Senang', '3-10': 'Sedih', '3-12': 'Marah', '3-15': 'Marah', '3-18': 'Senang', '3-20': 'Senang', '3-25': 'Netral', '3-30': 'Senang',
       '4-1': 'Senang', '4-5': 'Netral', '4-10': 'Sedih',
-      '5-5': 'Senang', '5-15': 'Netral', '5-20': 'Sedih',
-      '6-10': 'Marah', '6-20': 'Senang',
-      '7-4': 'Senang', '7-15': 'Netral',
-      '8-1': 'Sedih', '8-15': 'Senang',
-      '9-10': 'Netral', '9-20': 'Marah',
-      '10-5': 'Senang', '10-15': 'Sedih',
-      '11-1': 'Netral', '11-11': 'Senang',
-      '12-25': 'Senang', '12-31': 'Netral',
     },
     '2025': {
       '1-10': 'Senang', '1-20': 'Netral', '1-25': 'Sedih',

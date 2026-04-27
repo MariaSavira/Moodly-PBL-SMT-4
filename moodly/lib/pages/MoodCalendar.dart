@@ -17,7 +17,13 @@ class MoodCalendar extends StatefulWidget {
 }
 
 class _MoodCalendarState extends State<MoodCalendar> {
-  DateTime _focusedDate = DateTime.now();
+  late DateTime _focusedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusedDate = DateTime(widget.initialYear, widget.initialMonth, 1);
+  }
 
   final Map<String, String> _moodDatabase = {
     '2026-03-01': 'Senang',
@@ -54,6 +60,9 @@ class _MoodCalendarState extends State<MoodCalendar> {
     '2026-04-01': 'Senang',
     '2026-04-05': 'Netral',
     '2026-04-10': 'Sedih',
+    '2023-05-01': 'Senang',
+    '2023-05-10': 'Netral',
+    '2023-05-20': 'Sedih',
   };
 
   String _getDateKey(DateTime date) {
