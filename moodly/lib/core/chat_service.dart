@@ -305,6 +305,13 @@ class ChatService {
     if (user == null) return;
 
     final roomRef = _firestore.collection('chat_rooms').doc(roomId);
+    final roomSnap = await roomRef.get();
+
+    if (!roomSnap.exists) return;
+
+    final data = roomSnap.data();
+    final participants = data?['participants'];
+
     final messagesSnapshot = await roomRef.collection('messages').get();
 
     final batch = _firestore.batch();
@@ -313,15 +320,23 @@ class ChatService {
       batch.delete(doc.reference);
     }
 
+    if (participants is List) {
+      for (final uid in participants) {
+        batch.set(
+          _firestore.collection('users').doc(uid),
+          {
+            'status': 'idle',
+            'currentRoomId': null,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+    }
+
     batch.delete(roomRef);
 
     await batch.commit();
-
-    await _firestore.collection('users').doc(user.uid).set({
-      'status': 'idle',
-      'currentRoomId': null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
   }
 
   Future<String?> findMatch() async {
@@ -377,6 +392,62 @@ class ChatService {
     });
 
     return null;
+  }
+
+  Future<void> closeRoomIfIdle({
+    required String roomId,
+    required Duration idleLimit,
+  }) async {
+    final roomRef = _firestore.collection('chat_rooms').doc(roomId);
+
+    await _firestore.runTransaction((transaction) async {
+      final roomSnap = await transaction.get(roomRef);
+
+      if (!roomSnap.exists) return;
+
+      final data = roomSnap.data();
+      if (data == null) return;
+
+      final lastActivityAt = data['lastActivityAt'];
+      final participants = data['participants'];
+
+      if (lastActivityAt is! Timestamp) return;
+
+      final lastActivityTime = lastActivityAt.toDate();
+      final now = DateTime.now();
+
+      final idleDuration = now.difference(lastActivityTime);
+
+      if (idleDuration < idleLimit) return;
+
+      if (participants is List) {
+        for (final uid in participants) {
+          final userRef = _firestore.collection('users').doc(uid);
+
+          transaction.set(
+            userRef,
+            {
+              'status': 'idle',
+              'currentRoomId': null,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+      }
+
+      transaction.delete(roomRef);
+    });
+
+    final messagesSnapshot = await roomRef.collection('messages').get();
+
+    final batch = _firestore.batch();
+
+    for (final message in messagesSnapshot.docs) {
+      batch.delete(message.reference);
+    }
+
+    await batch.commit();
   }
 
   Future<void> cleanupExpiredIdleRooms() async {

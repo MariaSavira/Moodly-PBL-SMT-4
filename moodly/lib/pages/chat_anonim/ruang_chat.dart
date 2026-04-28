@@ -26,6 +26,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   String chatPartnerName = 'Teman Chat';
   String chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
 
+  Timer? _idleTimer;
+  bool _hasClosedByIdle = false;
+
   String? selectedActionMessageId;
   String? replyingMessageId;
   String? replyingText;
@@ -319,6 +322,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     await _loadChatPartner(id);
     await _checkWarningStatus();
+
+    _startIdleWatcher();
   }
 
   Future<void> _loadChatPartner(String roomId) async {
@@ -372,6 +377,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
   @override
   void dispose() {
+    _idleTimer?.cancel();
     _typingTimer?.cancel();
     _messageController.dispose();
     super.dispose();
@@ -526,6 +532,58 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         );
       },
     );
+  }
+
+  void _startIdleWatcher() {
+    _idleTimer?.cancel();
+
+    _idleTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      if (roomId == null) return;
+      if (_hasClosedByIdle) return;
+
+      final roomDoc = await FirebaseFirestore.instance
+          .collection('chat_rooms')
+          .doc(roomId)
+          .get();
+
+      if (!roomDoc.exists) {
+        _hasClosedByIdle = true;
+
+        if (!mounted) return;
+
+        Navigator.of(context).pop();
+        return;
+      }
+
+      final data = roomDoc.data();
+      final lastActivityAt = data?['lastActivityAt'];
+
+      if (lastActivityAt is! Timestamp) return;
+
+      final lastActivityTime = lastActivityAt.toDate();
+      final idleDuration = DateTime.now().difference(lastActivityTime);
+
+      if (idleDuration >= const Duration(minutes: 5)) {
+        _hasClosedByIdle = true;
+
+        await _chatService.closeRoomIfIdle(
+          roomId: roomId!,
+          idleLimit: const Duration(minutes: 5),
+        );
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Room ditutup otomatis karena tidak ada aktivitas selama 5 menit.',
+            ),
+          ),
+        );
+
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   Future<String?> _showImageModePicker() async {
@@ -857,6 +915,11 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                     },
                                   ),
 
+                                  buildSystemMessage(
+                                    prefix: '',
+                                    highlight: 'Jika sama-sama diam, room akan ditutup otomatis dalam 5 menit.',
+                                    suffix: '',
+                                  ),
                                   buildSystemMessage(
                                     prefix: 'Kamu terhubung dengan ',
                                     highlight: chatPartnerName,
