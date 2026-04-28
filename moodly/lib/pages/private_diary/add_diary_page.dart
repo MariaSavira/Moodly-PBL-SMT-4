@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 class AddDiaryPage extends StatefulWidget {
   const AddDiaryPage({super.key});
@@ -9,15 +12,66 @@ class AddDiaryPage extends StatefulWidget {
 
 class _AddDiaryPageState extends State<AddDiaryPage> {
   final TextEditingController titleController = TextEditingController();
-  final TextEditingController contentController = TextEditingController();
+  final quill.QuillController _controller = quill.QuillController.basic();
+
+  final ImagePicker _picker = ImagePicker();
+  File? _image;
 
   @override
-  void dipose() {
+  void dispose() {
     titleController.dispose();
-    contentController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
+  /// ================= PICK IMAGE =================
+  Future<void> pickImage(ImageSource source) async {
+    final picked = await _picker.pickImage(source: source);
+
+    if (picked != null) {
+      setState(() {
+        _image = File(picked.path);
+      });
+    }
+  }
+
+  /// ================= BOTTOM SHEET =================
+  void showImageOption() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo),
+                title: const Text("Galeri"),
+                onTap: () {
+                  Navigator.pop(context);
+                  pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text("Kamera"),
+                onTap: () {
+                  Navigator.pop(context);
+                  pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// ================= TOOLBAR BUTTON =================
+  Widget buildButton(IconData icon, VoidCallback onTap) {
+    return IconButton(icon: Icon(icon, size: 20), onPressed: onTap);
+  }
+
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,64 +101,51 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 20),
 
-              /// IMAGE PLACEHOLDER
-              Container(
-                width: double.infinity,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: const Icon(Icons.image, color: Colors.black),
+              /// IMAGE
+              GestureDetector(
+                onTap: showImageOption,
+                child: Container(
+                  width: double.infinity,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(20),
                   ),
+                  child: _image != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.file(_image!, fit: BoxFit.cover),
+                        )
+                      : const Center(child: Icon(Icons.image, size: 40)),
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              /// TITLE + CONTENT
+              /// EDITOR AREA
               Expanded(
                 child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      /// TITLE
                       TextField(
                         controller: titleController,
                         decoration: const InputDecoration(
                           hintText: "Judul",
                           border: InputBorder.none,
                         ),
-                        style: Theme.of(context).textTheme.titleMedium,
                       ),
 
-                      const SizedBox(height: 10),
+                      const Divider(),
 
-                      /// CONTENT INPUT
+                      /// EDITOR
                       Expanded(
-                        child: TextField(
-                          controller: contentController,
-                          maxLines: null,
-                          expands: true,
-                          decoration: const InputDecoration(
-                            hintText: "Apa yang kamu rasakan...",
-                            border: InputBorder.none,
-                          ),
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                        child: quill.QuillEditor.basic(controller: _controller),
                       ),
                     ],
                   ),
@@ -113,25 +154,83 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 10),
 
-              /// TOOLBAR (FAKE, UI ONLY)
+              /// 🔥 CUSTOM TOOLBAR (SCROLL)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                height: 55,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE9A7A7),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: const [
-                    Icon(Icons.format_underlined),
-                    Icon(Icons.format_strikethrough),
-                    Icon(Icons.format_bold),
-                    Icon(Icons.format_italic),
-                    Icon(Icons.format_align_left),
-                    Icon(Icons.format_list_numbered),
-                    Icon(Icons.format_align_right),
-                    Icon(Icons.arrow_forward),
-                  ],
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      /// BOLD
+                      buildButton(Icons.format_bold, () {
+                        _controller.formatSelection(quill.Attribute.bold);
+                      }),
+
+                      /// ITALIC
+                      buildButton(Icons.format_italic, () {
+                        _controller.formatSelection(quill.Attribute.italic);
+                      }),
+
+                      /// UNDERLINE
+                      buildButton(Icons.format_underline, () {
+                        _controller.formatSelection(quill.Attribute.underline);
+                      }),
+
+                      /// STRIKE
+                      buildButton(Icons.format_strikethrough, () {
+                        _controller.formatSelection(
+                          quill.Attribute.strikeThrough,
+                        );
+                      }),
+
+                      /// ALIGN LEFT
+                      buildButton(Icons.format_align_left, () {
+                        _controller.formatSelection(
+                          quill.Attribute.leftAlignment,
+                        );
+                      }),
+
+                      /// ALIGN CENTER
+                      buildButton(Icons.format_align_center, () {
+                        _controller.formatSelection(
+                          quill.Attribute.centerAlignment,
+                        );
+                      }),
+
+                      /// ALIGN RIGHT
+                      buildButton(Icons.format_align_right, () {
+                        _controller.formatSelection(
+                          quill.Attribute.rightAlignment,
+                        );
+                      }),
+
+                      /// BULLET LIST
+                      buildButton(Icons.format_list_bulleted, () {
+                        _controller.formatSelection(quill.Attribute.ul);
+                      }),
+
+                      /// NUMBER LIST
+                      buildButton(Icons.format_list_numbered, () {
+                        _controller.formatSelection(quill.Attribute.ol);
+                      }),
+
+                      /// INDENT +
+                      buildButton(Icons.format_indent_increase, () {
+                        _controller.formatSelection(quill.Attribute.indentL1);
+                      }),
+
+                      /// INDENT -
+                      buildButton(Icons.format_indent_decrease, () {
+                        _controller.formatSelection(
+                          quill.Attribute.clone(quill.Attribute.indent, 0),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
               ),
 

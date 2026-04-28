@@ -4,6 +4,8 @@ import 'firebase_options.dart';
 import 'package:moodly/pages/private_diary/month_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +23,16 @@ class MoodlyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Moodly',
+
+      localizationsDelegates: const [
+        quill.FlutterQuillLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      supportedLocales: const [Locale('en')],
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
