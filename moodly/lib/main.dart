@@ -87,7 +87,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodAnalysis(),
+      page: MoodCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
@@ -99,7 +99,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Statistik Mood',
       subtitle: 'Lihat perkembangan mood',
       icon: Icons.bar_chart_rounded,
-      page: StatisticPage(),
+      page: MoodAnalysis(),
     ),
     _FeatureItem(
       title: 'Afirmasi Harian',
