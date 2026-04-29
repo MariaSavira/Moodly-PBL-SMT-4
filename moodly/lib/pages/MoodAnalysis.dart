@@ -46,7 +46,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   @override
   void initState() {
     super.initState();
-    // ✅ SET REAL-TIME SAAT PERTAMA KALI BUKA
     final now = DateTime.now();
     _selectedMonth = DateTime(now.year, now.month, 1);
     _selectedWeek = _calculateWeekNumber(now);
@@ -72,53 +71,44 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     }
   }
 
-  // ✅ NILAI MOOD UNTUK TINGGI GRAFIK (0.0 - 1.0)
   double _getMoodValue(String mood) {
     switch (mood) {
-      case 'Senang': return 1.0;      // 100% tinggi
-      case 'Netral': return 0.6;      // 60% tinggi
-      case 'Sedih': return 0.4;       // 40% tinggi
-      case 'Marah': return 0.2;       // 20% tinggi
-      default: return 0.0; // Tidak ada mood = 0% tinggi (kosong)
+      case 'Senang': return 1.0;
+      case 'Netral': return 0.6;
+      case 'Sedih': return 0.4;
+      case 'Marah': return 0.2;
+      default: return 0.0;
     }
   }
 
-  // ✅ FUNGSI HITUNG MINGGU KE-BERAPA DARI TANGGAL TERTENTU
   int _calculateWeekNumber(DateTime date) {
     final firstDayOfMonth = DateTime(date.year, date.month, 1);
-    // Rumus: (Tanggal + Hari Pertama Bulan - 1) / 7, dibulatkan ke atas
     return ((date.day + firstDayOfMonth.weekday - 1) / 7).ceil();
   }
 
-  // ✅ MENGAMBIL DATA GRAFIK PEKAN - SELALU 7 HARI
   List<Map<String, dynamic>> _getWeeklyData() {
     List<Map<String, dynamic>> data = [];
 
     final firstDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
     final lastDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
 
-    // Hitung hari mulai dari minggu yang dipilih
     int daysBeforeWeek = (_selectedWeek - 1) * 7;
     int startDay = daysBeforeWeek + 1;
 
-    // Loop SELALU 7 hari (Senin-Minggu)
     for (int i = 0; i < 7; i++) {
       int day = startDay + i;
 
-      // Cek apakah hari ini masih dalam bulan yang dipilih
       if (day > lastDayOfMonth.day || day < 1) {
-        // Hari di luar bulan - tambahkan data kosong
         data.add({
           'day': _getDayName((firstDayOfMonth.weekday + i) % 7 == 0 ? 7 : (firstDayOfMonth.weekday + i) % 7),
           'date': day,
-          'mood': null, // Tidak ada mood
+          'mood': null,
           'emoji': '',
           'color': Colors.grey.shade100,
-          'value': 0.0, // Tinggi 0 (kosong)
+          'value': 0.0,
           'isEmpty': true,
         });
       } else {
-        // Hari dalam bulan - ambil data mood
         final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
         final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
         final mood = _moodDatabase[dateKey];
@@ -139,17 +129,55 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     return data;
   }
 
-  // ✅ MENGHITUNG STATISTIK BULAN SESUAI PILIHAN BULAN
   Map<String, int> _getMonthlyStats() {
     Map<String, int> stats = {'Senang': 0, 'Netral': 0, 'Sedih': 0, 'Marah': 0};
 
     _moodDatabase.forEach((key, mood) {
-      // Cek apakah key tanggal cocok dengan tahun dan bulan yang dipilih
       if (key.startsWith('${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}')) {
         stats[mood] = (stats[mood] ?? 0) + 1;
       }
     });
     return stats;
+  }
+
+  // ✅ FUNGSI BARU: Dapatkan insight berdasarkan mood
+  String _getInsightMessage() {
+    final stats = _getMonthlyStats();
+    final totalDays = stats.values.fold(0, (sum, count) => sum + count);
+
+    if (totalDays == 0) {
+      return "Yuk, mulai catat moodmu hari ini!";
+    }
+
+    final sedihMarah = stats['Sedih']! + stats['Marah']!;
+    final senang = stats['Senang']!;
+
+    if (sedihMarah > senang) {
+      return "Aku melihat kamu sedang merasa agak berat hari ini.";
+    } else if (senang > sedihMarah * 2) {
+      return "Wah, kamu sedang dalam kondisi sangat positif! Pertahankan ya!";
+    } else {
+      return "Hari-harimu cukup stabil, tapi masih ada ruang untuk lebih bahagia.";
+    }
+  }
+
+  // ✅ FUNGSI BARU: Hitung persentase heavy vs growth
+  Map<String, double> _getReflectionPercentages() {
+    final stats = _getMonthlyStats();
+    final totalDays = stats.values.fold(0, (sum, count) => sum + count);
+
+    if (totalDays == 0) {
+      return {'heavy': 0.0, 'growth': 1.0};
+    }
+
+    final heavy = stats['Sedih']! + stats['Marah']!;
+    final heavyPercent = heavy / totalDays;
+    final growthPercent = 1.0 - heavyPercent;
+
+    return {
+      'heavy': heavyPercent,
+      'growth': growthPercent,
+    };
   }
 
   String _getDayName(int weekday) {
@@ -167,26 +195,21 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     return (daysInMonth / 7).ceil();
   }
 
-  // ✅ LOGIKA GANTI BULAN: Reset Minggu ke 1
   void _changeMonth(int offset) {
     setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
-      _selectedWeek = 1; // Penting: Reset ke minggu 1 agar tidak error index
+      _selectedWeek = 1;
     });
   }
 
-  // ✅ LOGIKA GANTI MINGGU: Handle perpindahan bulan otomatis
   void _changeWeek(int offset) {
     setState(() {
       _selectedWeek += offset;
 
-      // Jika mundur melewati minggu 1, pindah ke bulan sebelumnya & ambil minggu terakhir
       if (_selectedWeek < 1) {
         _changeMonth(-1);
         _selectedWeek = _getTotalWeeksInMonth();
-      }
-      // Jika maju melewati total minggu, pindah ke bulan berikutnya & reset ke minggu 1
-      else if (_selectedWeek > _getTotalWeeksInMonth()) {
+      } else if (_selectedWeek > _getTotalWeeksInMonth()) {
         _changeMonth(1);
         _selectedWeek = 1;
       }
@@ -218,13 +241,16 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               _buildTabSelector(),
               const SizedBox(height: 10),
 
-              // Navigasi berubah sesuai Tab yang aktif
               if (_selectedIndex == 0) _buildWeekNavigation() else _buildMonthNavigation(),
 
               const SizedBox(height: 16),
 
-              // Konten berubah sesuai Tab yang aktif
               if (_selectedIndex == 0) _buildWeeklyChart() else _buildMonthlyStats(),
+
+              const SizedBox(height: 20),
+
+              // ✅ MOOD INSIGHT SECTION
+              _buildMoodInsight(),
             ],
           ),
         ),
@@ -308,7 +334,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       child: Column(
         children: [
           SizedBox(
-            height: 200,
+            height: 240, // ← UBAH dari 200 ke 240 (beri ruang lebih)
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -376,55 +402,276 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     );
   }
 
-  // ✅ BAR CHART DENGAN TINGGI VARIATIF - SELALU TAMPIL 7 HARI
   Widget _buildBar(Map<String, dynamic> item) {
-    final double barValue = item['value']; // 0.0 sampai 1.0
-    final double maxHeight = 160.0; // Tinggi maksimal bar
-    final double barHeight = maxHeight * barValue; // Tinggi aktual berdasarkan mood
+    final double barValue = item['value'];
+    final double maxHeight = 160.0;
+    final double barHeight = maxHeight * barValue;
     final bool isEmpty = item['isEmpty'] ?? false;
+    final double emojiSize = 24.0; // ← Ubah variabel ini juga jadi 24
+    final double barWidth = 32.0;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        // Stack untuk bar dan emoji
         SizedBox(
-          width: 40,
-          height: maxHeight + 40, // Tambah ruang untuk emoji di atas
+          width: barWidth + 10,
+          height: maxHeight + 20, // ← Kurangi height container jika emoji lebih kecil
           child: Stack(
             alignment: Alignment.bottomCenter,
             children: [
-              // Background bar (putih/abu muda) - selalu penuh
               Container(
-                width: 40,
+                width: barWidth,
                 height: maxHeight,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(barWidth / 2),
+                    bottom: Radius.circular(8),
+                  ),
                 ),
               ),
-              // Colored bar (tinggi sesuai mood) - hanya tampil jika ada mood
-              if (!isEmpty)
+              if (!isEmpty && barHeight > 0)
                 Container(
-                  width: 40,
+                  width: barWidth,
                   height: barHeight,
                   decoration: BoxDecoration(
                     color: item['color'],
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(barWidth / 2),
+                      bottom: barHeight < barWidth / 2
+                          ? Radius.circular(barHeight / 2)
+                          : Radius.zero,
+                    ),
                   ),
                 ),
-              // Emoji di ATAS bar yang berwarna - hanya tampil jika ada mood
-              if (!isEmpty)
+              if (!isEmpty && barHeight > 0)
                 Positioned(
-                  bottom: barHeight - 10, // Posisi emoji di atas bar
+                  bottom: barHeight - (emojiSize / 3), // ← Sesuaikan posisi
                   child: Text(
                     item['emoji'],
-                    style: const TextStyle(fontSize: 28), // Emoji lebih besar
+                    style: const TextStyle(fontSize: 24), // ← Emoji lebih kecil
                   ),
                 ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  // ✅ MOOD INSIGHT SECTION
+  Widget _buildMoodInsight() {
+    final reflection = _getReflectionPercentages();
+    final heavyPercent = reflection['heavy']!;
+    final growthPercent = reflection['growth']!;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.pink.shade50,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Text(
+            'Mood Insight',
+            style: GoogleFonts.fredoka(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Insight Message
+          Text(
+            _getInsightMessage(),
+            style: GoogleFonts.openSans(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Current Reflection
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current Reflection',
+                  style: GoogleFonts.fredoka(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildReflectionCircle(
+                      '${(heavyPercent * 100).toInt()}%',
+                      'Heavy',
+                      Colors.red.shade300,
+                    ),
+                    _buildReflectionCircle(
+                      '${(growthPercent * 100).toInt()}%',
+                      'Growth space',
+                      Colors.green.shade300,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Activities for You
+          Text(
+            'Activities for You',
+            style: GoogleFonts.fredoka(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.3,
+            children: [
+              _buildActivityCard(
+                Icons.nights_stay_rounded,
+                'Sleep',
+                '8h recommended',
+                Colors.purple,
+              ),
+              _buildActivityCard(
+                Icons.restaurant_rounded,
+                'Food',
+                'Nourish your body',
+                Colors.orange,
+              ),
+              _buildActivityCard(
+                Icons.fitness_center_rounded,
+                'Exercise',
+                'Release tension',
+                Colors.blue,
+              ),
+              _buildActivityCard(
+                Icons.music_note_rounded,
+                'Music',
+                'Healing frequencies',
+                Colors.pink,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReflectionCircle(String percentage, String label, Color color) {
+    return Column(
+      children: [
+        SizedBox(
+          width: 80,
+          height: 80,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                value: 1.0,
+                strokeWidth: 8,
+                backgroundColor: color.withOpacity(0.3),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    percentage,
+                    style: GoogleFonts.fredoka(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: GoogleFonts.openSans(
+            fontSize: 12,
+            color: Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivityCard(IconData icon, String title, String subtitle, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: GoogleFonts.fredoka(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: GoogleFonts.openSans(
+              fontSize: 10,
+              color: Colors.black54,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
