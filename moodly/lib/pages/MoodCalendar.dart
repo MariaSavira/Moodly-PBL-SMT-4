@@ -22,7 +22,8 @@ class _MoodCalendarState extends State<MoodCalendar> {
   @override
   void initState() {
     super.initState();
-    _focusedDate = DateTime(widget.initialYear, widget.initialMonth, 1);
+    final now = DateTime.now();
+    _focusedDate = DateTime(now.year, now.month, 1);
   }
 
   final Map<String, String> _moodDatabase = {
@@ -143,24 +144,21 @@ class _MoodCalendarState extends State<MoodCalendar> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // BAGIAN ATAS: Tanggal dengan Background Pink (Hanya untuk Hari Ini)
               SizedBox(
-                height: 24, // Tinggi area tanggal
+                height: 24,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // 1. Background Lingkaran Pink (Layer Belakang) - Hanya muncul jika isToday
                     if (isToday)
                       Container(
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: Colors.pink.shade100, // Pink muda
+                          color: Colors.pink.shade100,
                           shape: BoxShape.circle,
                         ),
                       ),
 
-                    // 2. Angka Tanggal (Layer Depan)
                     Text(
                       '$day',
                       style: GoogleFonts.fredoka(
@@ -173,9 +171,8 @@ class _MoodCalendarState extends State<MoodCalendar> {
                 ),
               ),
 
-              const SizedBox(height: 2), // Jarak antara tanggal dan emoji/tombol
+              const SizedBox(height: 2),
 
-              // BAGIAN BAWAH: Emoji atau Tombol + (Tanpa Background Pink)
               mood != null
                   ? SizedBox(
                 width: 28,
