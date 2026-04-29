@@ -17,6 +17,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   final ImagePicker _picker = ImagePicker();
   File? _image;
 
+  bool isPressed = false;
+
   @override
   void dispose() {
     titleController.dispose();
@@ -66,6 +68,92 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     );
   }
 
+  /// ================= POPUP SAVE =================
+  void showSaveOption() {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              /// PINK = PRIVATE
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  saveDiary(true);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8BBD0),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Private Diary",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+
+              /// GREEN = PUBLIC
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  saveDiary(false);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFC8E6C9),
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(20),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Public Diary",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// ================= SAVE =================
+  void saveDiary(bool isPrivate) {
+    final title = titleController.text;
+    final content = _controller.document.toPlainText();
+
+    debugPrint("TITLE: $title");
+    debugPrint("CONTENT: $content");
+    debugPrint("PRIVATE: $isPrivate");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isPrivate
+              ? "Disimpan sebagai Private Diary"
+              : "Disimpan sebagai Public Diary",
+        ),
+      ),
+    );
+  }
+
   /// ================= TOOLBAR BUTTON =================
   Widget buildButton(IconData icon, VoidCallback onTap) {
     return IconButton(icon: Icon(icon, size: 20), onPressed: onTap);
@@ -74,8 +162,47 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   /// ================= UI =================
   @override
   Widget build(BuildContext context) {
+    /// 🔥 DETEKSI KEYBOARD
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
       backgroundColor: const Color(0xFFDCE3C1),
+
+      /// 🔥 FAB (SMART)
+      floatingActionButton: isKeyboardOpen
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(
+                bottom: 70,
+              ), // biar ga nutup toolbar
+              child: GestureDetector(
+                onTapDown: (_) => setState(() => isPressed = true),
+                onTapUp: (_) {
+                  setState(() => isPressed = false);
+                  showSaveOption();
+                },
+                onTapCancel: () => setState(() => isPressed = false),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 55,
+                  height: 55,
+                  decoration: BoxDecoration(
+                    color: isPressed
+                        ? Colors.green.shade400
+                        : const Color(0xFFF8BBD0),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: const [
+                      BoxShadow(
+                        blurRadius: 6,
+                        color: Colors.black12,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.check, color: Colors.black),
+                ),
+              ),
+            ),
 
       body: SafeArea(
         child: Padding(
@@ -122,7 +249,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 20),
 
-              /// EDITOR AREA
+              /// EDITOR
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(15),
@@ -132,7 +259,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   ),
                   child: Column(
                     children: [
-                      /// TITLE
                       TextField(
                         controller: titleController,
                         decoration: const InputDecoration(
@@ -140,10 +266,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           border: InputBorder.none,
                         ),
                       ),
-
                       const Divider(),
-
-                      /// EDITOR
                       Expanded(
                         child: quill.QuillEditor.basic(controller: _controller),
                       ),
@@ -154,7 +277,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 10),
 
-              /// 🔥 CUSTOM TOOLBAR (SCROLL)
+              /// 🔥 TOOLBAR SCROLL
               Container(
                 height: 55,
                 decoration: BoxDecoration(
@@ -165,65 +288,44 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      /// BOLD
                       buildButton(Icons.format_bold, () {
                         _controller.formatSelection(quill.Attribute.bold);
                       }),
-
-                      /// ITALIC
                       buildButton(Icons.format_italic, () {
                         _controller.formatSelection(quill.Attribute.italic);
                       }),
-
-                      /// UNDERLINE
                       buildButton(Icons.format_underline, () {
                         _controller.formatSelection(quill.Attribute.underline);
                       }),
-
-                      /// STRIKE
                       buildButton(Icons.format_strikethrough, () {
                         _controller.formatSelection(
                           quill.Attribute.strikeThrough,
                         );
                       }),
-
-                      /// ALIGN LEFT
                       buildButton(Icons.format_align_left, () {
                         _controller.formatSelection(
                           quill.Attribute.leftAlignment,
                         );
                       }),
-
-                      /// ALIGN CENTER
                       buildButton(Icons.format_align_center, () {
                         _controller.formatSelection(
                           quill.Attribute.centerAlignment,
                         );
                       }),
-
-                      /// ALIGN RIGHT
                       buildButton(Icons.format_align_right, () {
                         _controller.formatSelection(
                           quill.Attribute.rightAlignment,
                         );
                       }),
-
-                      /// BULLET LIST
                       buildButton(Icons.format_list_bulleted, () {
                         _controller.formatSelection(quill.Attribute.ul);
                       }),
-
-                      /// NUMBER LIST
                       buildButton(Icons.format_list_numbered, () {
                         _controller.formatSelection(quill.Attribute.ol);
                       }),
-
-                      /// INDENT +
                       buildButton(Icons.format_indent_increase, () {
                         _controller.formatSelection(quill.Attribute.indentL1);
                       }),
-
-                      /// INDENT -
                       buildButton(Icons.format_indent_decrease, () {
                         _controller.formatSelection(
                           quill.Attribute.clone(quill.Attribute.indent, 0),
