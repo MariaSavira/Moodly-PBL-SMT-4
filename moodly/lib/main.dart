@@ -5,6 +5,7 @@ import 'pages/afirmasi/afirmasi_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
