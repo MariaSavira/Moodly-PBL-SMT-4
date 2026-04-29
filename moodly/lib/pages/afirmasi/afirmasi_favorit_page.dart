@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
 import 'package:moodly/services/afirmasi/afirmasi_service.dart';
 
 class AfirmasiFavoritPage extends StatefulWidget {
@@ -33,7 +34,9 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
   void _reloadItems() {
     _allItems = AfirmasiService.getFavoritItems();
     _filteredItems = List<Map<String, String>>.from(_allItems);
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _filterItems() {
@@ -60,6 +63,15 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
         _selectedIndexes.clear();
       }
     });
+
+    showCuteTopPopup(
+      context,
+      title: _isEditMode ? 'Mode edit aktif' : 'Mode edit dimatikan',
+      message: _isEditMode
+          ? 'Pilih afirmasi yang ingin dihapus'
+          : 'Pilihan afirmasi telah dibersihkan',
+      type: CutePopupType.info,
+    );
   }
 
   void _toggleSelected(int index) {
@@ -73,6 +85,16 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
   }
 
   void _selectAll() {
+    if (!_isEditMode) {
+      showCuteTopPopup(
+        context,
+        title: 'Aktifkan edit dulu',
+        message: 'Masuk ke mode edit untuk memilih afirmasi',
+        type: CutePopupType.warning,
+      );
+      return;
+    }
+
     setState(() {
       if (_filteredItems.isEmpty) return;
 
@@ -84,20 +106,57 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
           ..addAll(List.generate(_filteredItems.length, (i) => i));
       }
     });
+
+    showCuteTopPopup(
+      context,
+      title: _selectedIndexes.length == _filteredItems.length
+          ? 'Semua dipilih'
+          : 'Pilihan dibersihkan',
+      message: _selectedIndexes.length == _filteredItems.length
+          ? 'Semua afirmasi favorit berhasil dipilih'
+          : 'Semua pilihan dibatalkan',
+      type: CutePopupType.info,
+    );
   }
 
   void _deleteSelected() {
-    if (_selectedIndexes.isEmpty) return;
+    if (!_isEditMode) {
+      showCuteTopPopup(
+        context,
+        title: 'Aktifkan edit dulu',
+        message: 'Masuk ke mode edit untuk menghapus afirmasi',
+        type: CutePopupType.warning,
+      );
+      return;
+    }
+
+    if (_selectedIndexes.isEmpty) {
+      showCuteTopPopup(
+        context,
+        title: 'Belum ada pilihan',
+        message: 'Pilih minimal satu afirmasi untuk dihapus',
+        type: CutePopupType.warning,
+      );
+      return;
+    }
 
     final itemsToDelete =
         _selectedIndexes.map((i) => _filteredItems[i]).toList();
+
     AfirmasiService.removeManyFavorites(itemsToDelete);
 
     _reloadItems();
-    _selectedIndexes.clear();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Afirmasi favorit dihapus')),
+    setState(() {
+      _selectedIndexes.clear();
+      _isEditMode = false;
+    });
+
+    showCuteTopPopup(
+      context,
+      title: 'Berhasil dihapus',
+      message: 'Afirmasi favorit berhasil dihapus',
+      type: CutePopupType.success,
     );
   }
 
@@ -172,7 +231,7 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
             ),
             const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 height: 46,
                 decoration: BoxDecoration(
@@ -196,7 +255,7 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                 children: [
                   _ActionChip(
                     icon: Icons.edit_outlined,
-                    label: 'Edit',
+                    label: _isEditMode ? 'Selesai' : 'Edit',
                     onTap: _toggleEditMode,
                   ),
                   const SizedBox(width: 10),

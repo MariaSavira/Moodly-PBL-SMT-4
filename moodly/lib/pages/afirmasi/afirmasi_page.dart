@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
 import 'detail_afirmasi_page.dart';
 
 class AfirmasiPage extends StatefulWidget {
@@ -46,10 +47,11 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
         selectedCategories.remove(kategori);
       } else {
         if (selectedCategories.length >= 3) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Maksimal pilih 3 kategori afirmasi'),
-            ),
+          showCuteTopPopup(
+            context,
+            title: 'Maksimal 3 kategori',
+            message: 'Kamu hanya bisa memilih sampai 3 kategori afirmasi',
+            type: CutePopupType.warning,
           );
           return;
         }
@@ -60,10 +62,11 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
 
   void goToDetailPage() {
     if (selectedCategories.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pilih minimal 1 kategori afirmasi'),
-        ),
+      showCuteTopPopup(
+        context,
+        title: 'Pilih kategori dulu',
+        message: 'Pilih minimal 1 kategori afirmasi untuk melanjutkan',
+        type: CutePopupType.warning,
       );
       return;
     }
@@ -129,12 +132,12 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                         child: Text(
                           'Tentukan Afirmasi',
                           textAlign: TextAlign.center,
-                         style: GoogleFonts.fredoka(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          height: 22 / 24,
-                          color: Colors.black,
-                        ),
+                          style: GoogleFonts.fredoka(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            height: 22 / 24,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -144,11 +147,11 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                           'Apa yang paling anda butuhkan\nsaat ini?',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.fredoka(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          height: 22 / 14,
-                          color: Colors.black,
-                        ),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            height: 22 / 14,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 34),
