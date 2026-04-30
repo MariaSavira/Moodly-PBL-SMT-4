@@ -20,13 +20,23 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   bool isPressed = false;
 
   @override
+  void initState() {
+    super.initState();
+
+    /// update toolbar realtime
+    _controller.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     titleController.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  /// ================= PICK IMAGE =================
+  /// ================= IMAGE =================
   Future<void> pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(source: source);
 
@@ -37,103 +47,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     }
   }
 
-  /// ================= BOTTOM SHEET =================
-  void showImageOption() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo),
-                title: const Text("Galeri"),
-                onTap: () {
-                  Navigator.pop(context);
-                  pickImage(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text("Kamera"),
-                onTap: () {
-                  Navigator.pop(context);
-                  pickImage(ImageSource.camera);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// ================= POPUP SAVE =================
-  void showSaveOption() {
-    showDialog(
-      context: context,
-      builder: (_) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              /// PINK = PRIVATE
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  saveDiary(true);
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8BBD0),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      "Private Diary",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-
-              /// GREEN = PUBLIC
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  saveDiary(false);
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFC8E6C9),
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(20),
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      "Public Diary",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   /// ================= SAVE =================
   void saveDiary(bool isPrivate) {
     final title = titleController.text;
@@ -142,44 +55,87 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     debugPrint("TITLE: $title");
     debugPrint("CONTENT: $content");
     debugPrint("PRIVATE: $isPrivate");
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isPrivate
-              ? "Disimpan sebagai Private Diary"
-              : "Disimpan sebagai Public Diary",
+  /// ================= 🔥 TOOLBAR BUTTON =================
+  Widget buildButton(IconData icon, quill.Attribute attribute) {
+    final currentStyle = _controller.getSelectionStyle();
+
+    final isActive = currentStyle.attributes[attribute.key] == attribute.value;
+
+    return GestureDetector(
+      onTap: () {
+        final selection = _controller.selection;
+
+        final isCurrentlyActive =
+            _controller.getSelectionStyle().attributes[attribute.key] ==
+            attribute.value;
+
+        final newAttr = isCurrentlyActive
+            ? quill.Attribute.clone(attribute, null)
+            : attribute;
+
+        /// 🔥 FIX ALIGNMENT TANPA formatLine
+        if (attribute.key == quill.Attribute.align.key) {
+          final text = _controller.document.toPlainText();
+
+          /// cari batas baris sekarang
+          int start = selection.baseOffset;
+          int end = selection.baseOffset;
+
+          while (start > 0 && text[start - 1] != '\n') {
+            start--;
+          }
+
+          while (end < text.length && text[end] != '\n') {
+            end++;
+          }
+
+          _controller.formatText(start, end - start, newAttr);
+        } else {
+          /// INLINE STYLE
+          _controller.formatSelection(newAttr);
+
+          /// biar lanjut ngetik di mobile
+          if (selection.isCollapsed) {
+            _controller.formatText(selection.baseOffset, 0, newAttr);
+          }
+        }
+
+        setState(() {});
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.symmetric(horizontal: 5),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          /// 🔥 PINK MUDA (SESUAI FIGMA)
+          color: isActive
+              ? const Color(0xFFF8BBD0).withOpacity(0.6)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
+        child: Icon(icon, size: 20, color: Colors.black),
       ),
     );
   }
 
-  /// ================= TOOLBAR BUTTON =================
-  Widget buildButton(IconData icon, VoidCallback onTap) {
-    return IconButton(icon: Icon(icon, size: 20), onPressed: onTap);
-  }
-
-  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
-    /// 🔥 DETEKSI KEYBOARD
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFDCE3C1),
 
-      /// 🔥 FAB (SMART)
       floatingActionButton: isKeyboardOpen
           ? null
           : Padding(
-              padding: const EdgeInsets.only(
-                bottom: 70,
-              ), // biar ga nutup toolbar
+              padding: const EdgeInsets.only(bottom: 70),
               child: GestureDetector(
                 onTapDown: (_) => setState(() => isPressed = true),
                 onTapUp: (_) {
                   setState(() => isPressed = false);
-                  showSaveOption();
+                  saveDiary(true);
                 },
                 onTapCancel: () => setState(() => isPressed = false),
                 child: AnimatedContainer(
@@ -230,7 +186,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               /// IMAGE
               GestureDetector(
-                onTap: showImageOption,
+                onTap: () => pickImage(ImageSource.gallery),
                 child: Container(
                   width: double.infinity,
                   height: 120,
@@ -277,7 +233,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 10),
 
-              /// 🔥 TOOLBAR SCROLL
+              /// 🔥 TOOLBAR (TETAP)
               Container(
                 height: 55,
                 decoration: BoxDecoration(
@@ -288,49 +244,36 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      buildButton(Icons.format_bold, () {
-                        _controller.formatSelection(quill.Attribute.bold);
-                      }),
-                      buildButton(Icons.format_italic, () {
-                        _controller.formatSelection(quill.Attribute.italic);
-                      }),
-                      buildButton(Icons.format_underline, () {
-                        _controller.formatSelection(quill.Attribute.underline);
-                      }),
-                      buildButton(Icons.format_strikethrough, () {
-                        _controller.formatSelection(
-                          quill.Attribute.strikeThrough,
-                        );
-                      }),
-                      buildButton(Icons.format_align_left, () {
-                        _controller.formatSelection(
-                          quill.Attribute.leftAlignment,
-                        );
-                      }),
-                      buildButton(Icons.format_align_center, () {
-                        _controller.formatSelection(
-                          quill.Attribute.centerAlignment,
-                        );
-                      }),
-                      buildButton(Icons.format_align_right, () {
-                        _controller.formatSelection(
-                          quill.Attribute.rightAlignment,
-                        );
-                      }),
-                      buildButton(Icons.format_list_bulleted, () {
-                        _controller.formatSelection(quill.Attribute.ul);
-                      }),
-                      buildButton(Icons.format_list_numbered, () {
-                        _controller.formatSelection(quill.Attribute.ol);
-                      }),
-                      buildButton(Icons.format_indent_increase, () {
-                        _controller.formatSelection(quill.Attribute.indentL1);
-                      }),
-                      buildButton(Icons.format_indent_decrease, () {
-                        _controller.formatSelection(
-                          quill.Attribute.clone(quill.Attribute.indent, 0),
-                        );
-                      }),
+                      buildButton(Icons.format_bold, quill.Attribute.bold),
+                      buildButton(Icons.format_italic, quill.Attribute.italic),
+                      buildButton(
+                        Icons.format_underline,
+                        quill.Attribute.underline,
+                      ),
+                      buildButton(
+                        Icons.format_strikethrough,
+                        quill.Attribute.strikeThrough,
+                      ),
+                      buildButton(
+                        Icons.format_list_bulleted,
+                        quill.Attribute.ul,
+                      ),
+                      buildButton(
+                        Icons.format_list_numbered,
+                        quill.Attribute.ol,
+                      ),
+                      buildButton(
+                        Icons.format_align_left,
+                        quill.Attribute.leftAlignment,
+                      ),
+                      buildButton(
+                        Icons.format_align_center,
+                        quill.Attribute.centerAlignment,
+                      ),
+                      buildButton(
+                        Icons.format_align_right,
+                        quill.Attribute.rightAlignment,
+                      ),
                     ],
                   ),
                 ),
