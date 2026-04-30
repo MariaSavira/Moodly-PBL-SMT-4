@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/app_colors.dart';
 import '../core/app_text_styles.dart';
-import '../core/validators.dart';
-import '../services/Auth_sevice.dart';
 import '../widgets/moodly_text_field.dart';
 import '../widgets/moodly_primary_button.dart';
 import 'login_page.dart';
@@ -15,11 +14,11 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isSuccess = false;
+  bool _hasError = false;
+  String? _message;
 
   @override
   void dispose() {
@@ -28,29 +27,39 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Future<void> _handleResetPassword() async {
-    if (!_formKey.currentState!.validate()) return;
+    final email = _emailController.text.trim();
 
-    setState(() => _isLoading = true);
+    if (email.isEmpty) {
+      setState(() {
+        _hasError = true;
+        _message = 'Email tidak boleh kosong';
+      });
+      return;
+    }
 
-    final result = await AuthService.instance
-        .sendPasswordResetEmail(_emailController.text);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _message = null;
+    });
 
-    if (!mounted) return;
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-    if (result.isSuccess) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
-        _isSuccess = true;
+        _message = 'Tautan reset kata sandi sudah dikirim ke email.';
       });
-    } else {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Failed to send reset email.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _message = 'Email tidak ditemukan.';
+      });
     }
   }
 
@@ -60,155 +69,163 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
               const SizedBox(height: 16),
 
-              // ── AppBar Row ──
               Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back,
-                        color: AppColors.primary, size: 22),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     'Moodly',
-                    style: AppTextStyles.brandTitle.copyWith(fontSize: 22),
+                    style: AppTextStyles.brandTitle.copyWith(fontSize: 30),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 22),
+                ],
+              ),
+
+              const SizedBox(height: 90),
+
+              Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    top: -36,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFDDE3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Jangan khawatir,\nkami bantu!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Image.asset(
+                    'assets/icon/image3.png',
+                    width: 110,
                   ),
                 ],
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 42),
 
-              // ── Speech bubble ──
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Text(
-                  "Don't worry, we've got you!",
-                  style: AppTextStyles.bodySmall,
+              Text(
+                'Lupa Kata Sandi',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.heading1.copyWith(fontSize: 32),
+              ),
+
+              const SizedBox(height: 18),
+
+              Text(
+                'Masukkan alamat email yang terdaftar\npada akun Anda, lalu kami akan mengirimkan\ntautan untuk mengatur ulang kata sandi.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  height: 1.6,
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 56),
 
-              // ── Brain icon placeholder ──
-              const Icon(
-                Icons.psychology_outlined,
-                size: 80,
-                color: Color(0xFFE8B4A0),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Text(
+                    'Alamat Email',
+                    style: AppTextStyles.label,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: MoodlyTextField(
+                  controller: _emailController,
+                  label: '',
+                  hintText: 'hello@gmail.com',
+                  prefixIcon: const Icon(Icons.mail_outline),
+                  keyboardType: TextInputType.emailAddress,
+                  hasError: _hasError,
+                  onChanged: (_) {
+                    if (_hasError || _message != null) {
+                      setState(() {
+                        _hasError = false;
+                        _message = null;
+                      });
+                    }
+                  },
+                ),
               ),
 
               const SizedBox(height: 28),
 
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Forget Password', style: AppTextStyles.heading1),
+              MoodlyPrimaryButton(
+                label: 'Atur Ulang Kata Sandi',
+                onPressed: _handleResetPassword,
+                isLoading: _isLoading,
+                width: 275,
               ),
 
-              const SizedBox(height: 12),
-
-              Text(
-                "Enter the email address associated with your account and we'll send you a link to reset your password.",
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Success State ──
-              if (_isSuccess) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: AppColors.primary.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline,
-                          color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Reset link sent! Please check your email inbox.',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.primary),
-                        ),
-                      ),
-                    ],
+              if (_message != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  _message!,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: _hasError ? AppColors.error : AppColors.primary,
                   ),
                 ),
-                const SizedBox(height: 24),
               ],
 
-              // ── Form ──
-              Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    MoodlyTextField(
-                      controller: _emailController,
-                      label: 'Email Address',
-                      hintText: 'hello@gamil.com',
-                      prefixIcon: const Icon(Icons.mail_outline),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: Validators.validateEmail,
-                    ),
+              const SizedBox(height: 60),
 
-                    const SizedBox(height: 24),
-
-                    MoodlyPrimaryButton(
-                      label: 'Reset Password',
-                      onPressed: _isSuccess ? null : _handleResetPassword,
-                      isLoading: _isLoading,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Sign In Link ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Remembered it? ',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  const Text('Sudah ingat? '),
                   GestureDetector(
-                    onTap: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginPage(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Masuk',
+                      style: AppTextStyles.linkText,
                     ),
-                    child: Text('Sign in', style: AppTextStyles.linkText),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 30),
             ],
           ),
         ),

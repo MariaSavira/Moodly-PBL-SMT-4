@@ -4,22 +4,22 @@ import 'app_colors.dart';
 class AppTextStyles {
   AppTextStyles._();
 
+  // ── Brand ──
   static const TextStyle brandTitle = TextStyle(
-    fontSize: 36,
-    fontWeight: FontWeight.bold,
+    fontSize: 34,
+    fontWeight: FontWeight.w900,
     color: AppColors.brandTitle,
-    letterSpacing: 1.2,
   );
 
   static const TextStyle brandSubtitle = TextStyle(
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: FontWeight.w400,
-    color: AppColors.textSecondary,
-    letterSpacing: 0.3,
+    color: AppColors.textPrimary,
   );
 
+  // ── Heading ──
   static const TextStyle heading1 = TextStyle(
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: FontWeight.w900,
     color: AppColors.textPrimary,
   );
@@ -30,64 +30,70 @@ class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  // ── Body ──
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
   );
 
+  // 🔥 INI YANG TADI ERROR
   static const TextStyle bodySmall = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
   );
 
+  // ── Label ──
   static const TextStyle label = TextStyle(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
   );
 
+  // ── Button ──
   static const TextStyle buttonText = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontSize: 25,
+    fontWeight: FontWeight.w900,
     color: Colors.white,
-    letterSpacing: 0.5,
   );
 
+  // ── Link ──
   static const TextStyle linkText = TextStyle(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     color: AppColors.linkGreen,
   );
 
+  // ── Hint ──
   static const TextStyle hintText = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
+    fontSize: 12,
     color: AppColors.textHint,
   );
 
+  // ── Error ──
   static const TextStyle errorTitle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
     color: AppColors.error,
   );
 
   static const TextStyle errorBody = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    color: AppColors.textSecondary,
+    fontSize: 13,
+    color: AppColors.textPrimary,
   );
 
+  // ── Forgot Password ──
   static const TextStyle forgotPassword = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textSecondary,
+    fontSize: 12,
+    color: AppColors.textPrimary,
   );
 
+  // ── Divider ──
   static const TextStyle dividerText = TextStyle(
-    fontSize: 13,
+    fontSize: 15,
     fontStyle: FontStyle.italic,
-    color: AppColors.textSecondary,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
   );
 }

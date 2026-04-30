@@ -43,45 +43,35 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
       _hasError = false;
       _errorMessage = null;
+      _errorDescription = null;
     });
 
     final result = await AuthService.instance.signIn(
-      email: _emailController.text,
-      password: _passwordController.text,
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
     );
 
     if (!mounted) return;
 
     if (result.isSuccess) {
-      // TODO: Navigate to Home
-      // Navigator.pushReplacementNamed(context, '/home');
+      setState(() => _isLoading = false);
+
+      // TODO: arahkan ke halaman beranda nanti
     } else {
       setState(() {
         _isLoading = false;
         _hasError = true;
-        _errorMessage = 'Login Failed';
-        _errorDescription = result.errorMessage;
+        _errorMessage = 'Login Gagal';
+        _errorDescription =
+            result.errorMessage ?? 'Email atau kata sandi salah. Coba lagi dengan tenang.';
       });
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    final result = await AuthService.instance.signInWithGoogle();
-
-    if (!mounted) return;
-
-    if (result.isSuccess) {
-      // TODO: Navigate to Home
-    } else {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = 'Login Failed';
-        _errorDescription = result.errorMessage;
-      });
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login Google belum diaktifkan')),
+    );
   }
 
   @override
@@ -90,189 +80,241 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // ── Logo & Brand ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Replace with Image.asset('assets/images/mascot.png')
-                  const Icon(Icons.favorite, color: Colors.pinkAccent, size: 40),
-                  const SizedBox(width: 8),
-                  Text('Moodly', style: AppTextStyles.brandTitle),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('Your empathic sanctuary', style: AppTextStyles.brandSubtitle),
-
-              const SizedBox(height: 32),
-
-              // ── Card ──
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              SizedBox(
+                height: 100,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 0,
+                      top: 6,
+                      child: Image.asset(
+                        'assets/icon/image1.png',
+                        width: 95,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Moodly', style: AppTextStyles.brandTitle),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tempat aman untuk memahami diri',
+                            style: AppTextStyles.brandSubtitle,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Error Banner ──
-                      if (_hasError && _errorMessage != null) ...[
-                        MoodlyErrorBanner(
-                          title: _errorMessage!,
-                          description: _errorDescription,
-                          actionLabel: 'Forget Password?',
-                          onAction: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordPage(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      Text('Sign in', style: AppTextStyles.heading1),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Welcome back, you've been missed",
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Email ──
-                      MoodlyTextField(
-                        controller: _emailController,
-                        label: 'Email Address',
-                        hintText: 'hello@gamil.com',
-                        prefixIcon: const Icon(Icons.mail_outline),
-                        keyboardType: TextInputType.emailAddress,
-                        hasError: _hasError,
-                        validator: Validators.validateEmail,
-                        onChanged: (_) {
-                          if (_hasError) setState(() => _hasError = false);
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // ── Password label row ──
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Password', style: AppTextStyles.label),
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ForgotPasswordPage(),
-                              ),
-                            ),
-                            child: Text(
-                              'Forget your password?',
-                              style: AppTextStyles.forgotPassword,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      MoodlyTextField(
-                        controller: _passwordController,
-                        label: '',
-                        hintText: '••••••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        obscureText: _obscurePassword,
-                        hasError: _hasError,
-                        validator: Validators.validatePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: AppColors.textHint,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        onChanged: (_) {
-                          if (_hasError) setState(() => _hasError = false);
-                        },
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      MoodlyPrimaryButton(
-                        label: 'sign in',
-                        onPressed: _handleSignIn,
-                        isLoading: _isLoading,
-                      ),
-
-                      const SizedBox(height: 20),
-                      const OrDivider(),
-                      const SizedBox(height: 16),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SocialSignInButton(
-                            label: 'google',
-                            icon: Image.network(
-                              'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/512px-Google_%22G%22_logo.svg.png',
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.g_mobiledata, size: 22),
-                            ),
-                            onPressed: _handleGoogleSignIn,
-                          ),
-                          const SizedBox(width: 12),
-                          SocialSignInButton(
-                            label: 'facebook',
-                            icon: const Icon(Icons.facebook,
-                                color: Color(0xFF1877F2), size: 22),
-                            onPressed: () {
-                              // TODO: implement Facebook sign in
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
+
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 28, 18, 56),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.10),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_hasError && _errorMessage != null) ...[
+                            MoodlyErrorBanner(
+                              title: _errorMessage!,
+                              description: _errorDescription,
+                              actionLabel: 'Lupa Kata Sandi?',
+                              onAction: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ForgotPasswordPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          Text('Masuk', style: AppTextStyles.heading1),
+                          const SizedBox(height: 4),
+
+                          Text(
+                            'Selamat datang kembali',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+
+                          const SizedBox(height: 38),
+
+                          MoodlyTextField(
+                            controller: _emailController,
+                            label: 'Alamat Email',
+                            hintText: 'hello@gmail.com',
+                            prefixIcon: const Icon(Icons.mail_outline),
+                            keyboardType: TextInputType.emailAddress,
+                            hasError: _hasError,
+                            validator: Validators.validateEmail,
+                            onChanged: (_) {
+                              if (_hasError) {
+                                setState(() => _hasError = false);
+                              }
+                            },
+                          ),
+
+                          const SizedBox(height: 26),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Kata Sandi', style: AppTextStyles.label),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ForgotPasswordPage(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Lupa kata sandi?',
+                                  style: AppTextStyles.forgotPassword,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          MoodlyTextField(
+                            controller: _passwordController,
+                            label: '',
+                            hintText: '••••••••',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            obscureText: _obscurePassword,
+                            hasError: _hasError,
+                            validator: Validators.validatePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textHint,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                            onChanged: (_) {
+                              if (_hasError) {
+                                setState(() => _hasError = false);
+                              }
+                            },
+                          ),
+
+                          const SizedBox(height: 26),
+
+                          MoodlyPrimaryButton(
+                            label: 'Masuk',
+                            onPressed: _handleSignIn,
+                            isLoading: _isLoading,
+                          ),
+
+                          const SizedBox(height: 28),
+                          const OrDivider(),
+                          const SizedBox(height: 24),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SocialSignInButton(
+                                label: 'Google',
+                                icon: Image.asset(
+                                  'assets/icon/google.png',
+                                  fit: BoxFit.contain,
+                                ),
+                                onPressed: _handleGoogleSignIn,
+                              ),
+                              const SizedBox(width: 12),
+                              SocialSignInButton(
+                                label: 'Facebook',
+                                icon: Image.asset(
+                                  'assets/icon/facebook.png',
+                                  fit: BoxFit.contain,
+                                ),
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Login Facebook belum diaktifkan',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    right: -8,
+                    bottom: -28,
+                    child: Image.asset(
+                      'assets/icon/image1.png',
+                      width: 105,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 42),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "don't have an account? ",
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  const Text('Belum punya akun? '),
                   GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RegisterPage()),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterPage(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Daftar',
+                      style: AppTextStyles.linkText,
                     ),
-                    child: Text('Sign up', style: AppTextStyles.linkText),
                   ),
                 ],
               ),
