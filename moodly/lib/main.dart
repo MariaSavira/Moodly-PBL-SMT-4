@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:moodly/pages/Login_page.dart';
 import 'package:moodly/pages/register_page.dart';
 import 'package:moodly/pages/Register_success_page.dart';
+import 'package:moodly/pages/otp_verification_page.dart';
 import 'package:moodly/pages/setting/settings_page.dart';
 
 // firebase
@@ -34,6 +35,9 @@ class MoodlyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const MainMenuPage(),
+
+      // kalau mau langsung test OTP, ganti home di atas menjadi:
+      // home: const OtpVerificationPage(email: 'test@gmail.com'),
     );
   }
 }
@@ -55,20 +59,23 @@ class MainMenuPage extends StatelessWidget {
       page: RegisterPage(),
     ),
     _FeatureItem(
+      title: 'OTP Verification',
+      subtitle: 'Verifikasi kode OTP',
+      icon: Icons.lock_clock,
+      page: OtpVerificationPage(email: 'test@gmail.com'),
+    ),
+    _FeatureItem(
       title: 'Register Sukses',
       subtitle: 'Register Berhasil',
       icon: Icons.verified_rounded,
       page: RegisterSuccessPage(),
     ),
-
-    // ✅ INI YANG KAMU BUTUH (SETTINGS)
     _FeatureItem(
       title: 'Settings',
       subtitle: 'Pengaturan aplikasi',
       icon: Icons.settings,
       page: SettingsPage(),
     ),
-
     _FeatureItem(
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
@@ -127,7 +134,9 @@ class MainMenuPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 8),
+
             const Text(
               'Klik menu untuk membuka halaman.',
               style: TextStyle(
@@ -135,13 +144,13 @@ class MainMenuPage extends StatelessWidget {
                 color: Colors.black54,
               ),
             ),
+
             const SizedBox(height: 16),
 
             Expanded(
               child: GridView.builder(
                 itemCount: features.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
@@ -178,14 +187,16 @@ class MainMenuPage extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 24,
-                            backgroundColor: Colors.purple.shade50,
+                            backgroundColor: Colors.purpleAccent,
                             child: Icon(
                               item.icon,
-                              color: Colors.purple,
+                              color: Colors.white,
                               size: 28,
                             ),
                           ),
+
                           const SizedBox(height: 12),
+
                           Text(
                             item.title,
                             style: const TextStyle(
@@ -193,7 +204,9 @@ class MainMenuPage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+
                           const SizedBox(height: 6),
+
                           Expanded(
                             child: Text(
                               item.subtitle,
