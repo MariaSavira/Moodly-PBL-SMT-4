@@ -27,3 +27,11 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/icon/google.png
+    - assets/icon/facebook.png
+    - assets/icon/image1.png
+    - assets/icon/image2.png
+    - assets/icon/image3.png
+    - assets/icon/image4.png

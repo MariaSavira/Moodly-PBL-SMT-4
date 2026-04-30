@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+
+// pages
 import 'package:moodly/pages/Login_page.dart';
 import 'package:moodly/pages/register_page.dart';
 import 'package:moodly/pages/Register_success_page.dart';
+import 'package:moodly/pages/otp_verification_page.dart';
+import 'package:moodly/pages/setting/settings_page.dart';
+
+// firebase
 import 'firebase_options.dart';
 
 void main() async {
@@ -46,14 +52,26 @@ class MainMenuPage extends StatelessWidget {
     _FeatureItem(
       title: 'Register',
       subtitle: 'Demo autentikasi register',
-      icon: Icons.login_rounded,
+      icon: Icons.app_registration_rounded,
       page: RegisterPage(),
+    ),
+    _FeatureItem(
+      title: 'OTP Verification',
+      subtitle: 'Verifikasi kode OTP',
+      icon: Icons.lock_clock,
+      page: OtpVerificationPage(email: 'test@gmail.com'),
     ),
     _FeatureItem(
       title: 'Register Sukses',
       subtitle: 'Register Berhasil',
-      icon: Icons.login_rounded,
+      icon: Icons.verified_rounded,
       page: RegisterSuccessPage(),
+    ),
+    _FeatureItem(
+      title: 'Settings',
+      subtitle: 'Pengaturan aplikasi',
+      icon: Icons.settings,
+      page: SettingsPage(),
     ),
     _FeatureItem(
       title: 'Mood Harian',
@@ -133,6 +151,7 @@ class MainMenuPage extends StatelessWidget {
                 ),
                 itemBuilder: (context, index) {
                   final item = features[index];
+
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
@@ -159,14 +178,14 @@ class MainMenuPage extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 24,
-                            backgroundColor: Colors.purple.shade50,
+                            backgroundColor: Colors.purpleAccent,
                             child: Icon(
                               item.icon,
-                              color: Colors.purple,
+                              color: Colors.white,
                               size: 28,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Text(
                             item.title,
                             style: const TextStyle(
@@ -174,12 +193,16 @@ class MainMenuPage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            item.subtitle,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Text(
+                              item.subtitle,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -208,105 +231,6 @@ class _FeatureItem {
     required this.icon,
     required this.page,
   });
-}
-
-class DemoPageTemplate extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String description;
-  final List<String> progressItems;
-
-  const DemoPageTemplate({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.description,
-    required this.progressItems,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.purple.shade50,
-                    child: Icon(icon, size: 34, color: Colors.purple),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: progressItems.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      leading: const Icon(Icons.check_circle_outline_rounded),
-                      title: Text(progressItems[index]),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AuthPage extends StatelessWidget {
-  const AuthPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Login & Register',
-      icon: Icons.login_rounded,
-      description: 'Halaman demo untuk autentikasi pengguna Moodly.',
-      progressItems: [
-        'UI login sederhana',
-        'UI register sederhana',
-        'Navigasi antar halaman auth',
-        'Siap dihubungkan ke Firebase Auth',
-      ],
-    );
-  }
 }
 
 class MoodPage extends StatelessWidget {
@@ -419,6 +343,86 @@ class EmergencyPage extends StatelessWidget {
         'Daftar hotline bantuan',
         'Arahan ke layanan profesional',
       ],
+    );
+  }
+}
+
+class DemoPageTemplate extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final String description;
+  final List<String> progressItems;
+
+  const DemoPageTemplate({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.description,
+    required this.progressItems,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: Colors.transparent,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.purpleAccent,
+                    child: Icon(icon, size: 34, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: progressItems.length,
+                itemBuilder: (context, index) {
+                  return Card(
+                    elevation: 0,
+                    color: Colors.white,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      leading: const Icon(Icons.check_circle_outline_rounded),
+                      title: Text(progressItems[index]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
