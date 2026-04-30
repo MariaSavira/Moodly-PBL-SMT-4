@@ -11,13 +11,10 @@ class MoodAnalysis extends StatefulWidget {
 class _MoodAnalysisState extends State<MoodAnalysis> {
   int _selectedIndex = 0; // 0 = Pekan, 1 = Bulan
 
-  // Default akan di-override di initState agar real-time saat pertama buka
   DateTime _selectedMonth = DateTime.now();
   late int _selectedWeek;
 
-  // Database Mood (Dummy Data)
   final Map<String, String> _moodDatabase = {
-    // Maret 2026
     '2026-03-01': 'Senang', '2026-03-02': 'Netral', '2026-03-03': 'Senang',
     '2026-03-04': 'Senang', '2026-03-05': 'Netral', '2026-03-06': 'Netral',
     '2026-03-07': 'Sedih', '2026-03-08': 'Senang', '2026-03-09': 'Senang',
@@ -29,8 +26,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     '2026-03-25': 'Netral', '2026-03-26': 'Senang', '2026-03-27': 'Netral',
     '2026-03-28': 'Sedih', '2026-03-29': 'Senang', '2026-03-30': 'Senang',
     '2026-03-31': 'Senang',
-
-    // April 2026
     '2026-04-01': 'Senang', '2026-04-02': 'Netral', '2026-04-03': 'Sedih',
     '2026-04-04': 'Marah', '2026-04-05': 'Netral', '2026-04-06': 'Senang',
     '2026-04-07': 'Senang', '2026-04-08': 'Netral', '2026-04-09': 'Sedih',
@@ -140,7 +135,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     return stats;
   }
 
-  // ✅ FUNGSI BARU: Dapatkan insight berdasarkan mood
   String _getInsightMessage() {
     final stats = _getMonthlyStats();
     final totalDays = stats.values.fold(0, (sum, count) => sum + count);
@@ -161,7 +155,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     }
   }
 
-  // ✅ FUNGSI BARU: Hitung persentase heavy vs growth
   Map<String, double> _getReflectionPercentages() {
     final stats = _getMonthlyStats();
     final totalDays = stats.values.fold(0, (sum, count) => sum + count);
@@ -249,7 +242,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
 
               const SizedBox(height: 20),
 
-              // ✅ MOOD INSIGHT SECTION
               _buildMoodInsight(),
             ],
           ),
@@ -334,14 +326,14 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       child: Column(
         children: [
           SizedBox(
-            height: 240, // ← UBAH dari 200 ke 240 (beri ruang lebih)
+            height: 180,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: weeklyData.map((item) => _buildBar(item)).toList(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: weeklyData.map((item) => SizedBox(width: 30, child: Text(
@@ -404,10 +396,10 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
 
   Widget _buildBar(Map<String, dynamic> item) {
     final double barValue = item['value'];
-    final double maxHeight = 160.0;
+    final double maxHeight = 140.0;
     final double barHeight = maxHeight * barValue;
     final bool isEmpty = item['isEmpty'] ?? false;
-    final double emojiSize = 24.0; // ← Ubah variabel ini juga jadi 24
+    final double emojiSize = 28.0;
     final double barWidth = 32.0;
 
     return Column(
@@ -415,9 +407,10 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       children: [
         SizedBox(
           width: barWidth + 10,
-          height: maxHeight + 20, // ← Kurangi height container jika emoji lebih kecil
+          height: maxHeight + 35,
           child: Stack(
             alignment: Alignment.bottomCenter,
+            clipBehavior: Clip.none,
             children: [
               Container(
                 width: barWidth,
@@ -431,25 +424,28 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                 ),
               ),
               if (!isEmpty && barHeight > 0)
-                Container(
-                  width: barWidth,
-                  height: barHeight,
-                  decoration: BoxDecoration(
-                    color: item['color'],
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(barWidth / 2),
-                      bottom: barHeight < barWidth / 2
-                          ? Radius.circular(barHeight / 2)
-                          : Radius.zero,
+                Positioned(
+                  bottom: 0,
+                  child: Container(
+                    width: barWidth,
+                    height: barHeight,
+                    decoration: BoxDecoration(
+                      color: item['color'],
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(barWidth / 2),
+                        bottom: barHeight < barWidth / 2
+                            ? Radius.circular(barHeight / 2)
+                            : Radius.zero,
+                      ),
                     ),
                   ),
                 ),
               if (!isEmpty && barHeight > 0)
                 Positioned(
-                  bottom: barHeight - (emojiSize / 3), // ← Sesuaikan posisi
+                  bottom: barHeight - (emojiSize / 2.5),
                   child: Text(
                     item['emoji'],
-                    style: const TextStyle(fontSize: 24), // ← Emoji lebih kecil
+                    style: TextStyle(fontSize: emojiSize),
                   ),
                 ),
             ],
@@ -459,74 +455,155 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     );
   }
 
-  // ✅ MOOD INSIGHT SECTION
   Widget _buildMoodInsight() {
     final reflection = _getReflectionPercentages();
     final heavyPercent = reflection['heavy']!;
     final growthPercent = reflection['growth']!;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.pink.shade50,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           Text(
             'Mood Insight',
             style: GoogleFonts.fredoka(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
 
-          // Insight Message
           Text(
             _getInsightMessage(),
             style: GoogleFonts.openSans(
               fontSize: 14,
-              color: Colors.black87,
+              color: Colors.black54,
               height: 1.5,
             ),
           ),
           const SizedBox(height: 20),
 
-          // Current Reflection
           Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.green.shade200,
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Current Reflection',
+                  'Refleksi Saat Ini',
                   style: GoogleFonts.fredoka(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildReflectionCircle(
-                      '${(heavyPercent * 100).toInt()}%',
-                      'Heavy',
-                      Colors.red.shade300,
+                    Expanded(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CustomPaint(
+                              painter: _BottomFilledCirclePainter(
+                                color: Colors.green.shade600,
+                                progress: heavyPercent,
+                                backgroundColor: Colors.green.shade100,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${(heavyPercent * 100).toInt()}%',
+                                  style: GoogleFonts.fredoka(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Beban Emosi',
+                            style: GoogleFonts.openSans(
+                              fontSize: 12,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    _buildReflectionCircle(
-                      '${(growthPercent * 100).toInt()}%',
-                      'Growth space',
-                      Colors.green.shade300,
+                    Container(
+                      width: 2,
+                      height: 50,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CustomPaint(
+                              painter: _BottomFilledCirclePainter(
+                                color: Colors.green.shade600,
+                                progress: growthPercent,
+                                backgroundColor: Colors.green.shade100,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${(growthPercent * 100).toInt()}%',
+                                  style: GoogleFonts.fredoka(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ruang Pertumbuhan',
+                            style: GoogleFonts.openSans(
+                              fontSize: 12,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -535,9 +612,8 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           ),
           const SizedBox(height: 20),
 
-          // Activities for You
           Text(
-            'Activities for You',
+            'Aktivitas untuk Kamu',
             style: GoogleFonts.fredoka(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -551,79 +627,36 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
+            childAspectRatio: 1.1,
             children: [
               _buildActivityCard(
                 Icons.nights_stay_rounded,
-                'Sleep',
-                '8h recommended',
+                'Tidur',
+                '8 jam direkomendasikan',
                 Colors.purple,
               ),
               _buildActivityCard(
                 Icons.restaurant_rounded,
-                'Food',
-                'Nourish your body',
+                'Makanan',
+                'Nutrisi tubuhmu',
                 Colors.orange,
               ),
               _buildActivityCard(
                 Icons.fitness_center_rounded,
-                'Exercise',
-                'Release tension',
+                'Olahraga',
+                'Lepaskan ketegangan',
                 Colors.blue,
               ),
               _buildActivityCard(
                 Icons.music_note_rounded,
-                'Music',
-                'Healing frequencies',
+                'Musik',
+                'Frekuensi penyembuhan',
                 Colors.pink,
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildReflectionCircle(String percentage, String label, Color color) {
-    return Column(
-      children: [
-        SizedBox(
-          width: 80,
-          height: 80,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: 1.0,
-                strokeWidth: 8,
-                backgroundColor: color.withOpacity(0.3),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    percentage,
-                    style: GoogleFonts.fredoka(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.openSans(
-            fontSize: 12,
-            color: Colors.black54,
-          ),
-        ),
-      ],
     );
   }
 
@@ -674,4 +707,45 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       ),
     );
   }
+}
+
+class _BottomFilledCirclePainter extends CustomPainter {
+  final Color color;
+  final double progress;
+  final Color backgroundColor;
+
+  _BottomFilledCirclePainter({
+    required this.color,
+    required this.progress,
+    required this.backgroundColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double radius = size.width / 2;
+    final double centerX = size.width / 2;
+    final double centerY = size.height / 2;
+
+    final Paint bgPaint = Paint()..color = backgroundColor;
+    canvas.drawCircle(Offset(centerX, centerY), radius, bgPaint);
+
+    final double fillHeight = size.height * progress;
+    final double topY = size.height - fillHeight;
+
+    final Paint fillPaint = Paint()..color = color;
+
+    final Path circlePath = Path()
+      ..addOval(Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
+
+    canvas.save();
+    canvas.clipPath(circlePath);
+
+    final Rect fillRect = Rect.fromLTRB(0, topY, size.width, size.height);
+    canvas.drawRect(fillRect, fillPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
