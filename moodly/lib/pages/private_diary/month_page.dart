@@ -37,8 +37,10 @@ class _MonthPageState extends State<MonthPage> {
 
   /// ================= GENERATE YEAR =================
   List<int> getYears() {
-    int currentYear = DateTime.now().year;
-    return List.generate(6, (i) => currentYear - (5 - i));
+    final currentYear = DateTime.now().year;
+    const startYear = 2026;
+
+    return List.generate(currentYear - startYear + 1, (i) => startYear + i);
   }
 
   @override
@@ -46,7 +48,6 @@ class _MonthPageState extends State<MonthPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFDCE3C1),
 
-      /// FAB (ONLY WEEK)
       floatingActionButton: !isMonthMode
           ? FloatingActionButton(
               backgroundColor: const Color(0xFF7FB77E),
@@ -70,7 +71,6 @@ class _MonthPageState extends State<MonthPage> {
                 children: [
                   const SizedBox(height: 10),
 
-                  /// HEADER
                   Row(
                     children: [
                       const Icon(Icons.arrow_back),
@@ -84,7 +84,6 @@ class _MonthPageState extends State<MonthPage> {
 
                   const SizedBox(height: 20),
 
-                  /// TOGGLE + FILTER
                   Row(
                     children: [
                       _filterButton(),
@@ -97,7 +96,6 @@ class _MonthPageState extends State<MonthPage> {
 
                   const SizedBox(height: 25),
 
-                  /// TITLE
                   Text(
                     isMonthMode ? "$selectedYear" : "Pekan Ini",
                     style: Theme.of(context).textTheme.headlineLarge,
@@ -105,13 +103,11 @@ class _MonthPageState extends State<MonthPage> {
 
                   const SizedBox(height: 20),
 
-                  /// CONTENT
                   Expanded(child: isMonthMode ? _monthGrid() : _weekContent()),
                 ],
               ),
             ),
 
-            /// FILTER POPUP
             if (showYearFilter) _yearFilter(),
           ],
         ),
@@ -269,7 +265,7 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= FILTER UI =================
+  /// ================= FILTER UI (FIXED) =================
   Widget _yearFilter() {
     final years = getYears();
 
@@ -280,52 +276,66 @@ class _MonthPageState extends State<MonthPage> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFA8D5A2),
+          color: const Color(0xFFDCE3C1),
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.pink),
+          border: Border.all(color: Colors.green),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Text("Tahun", style: Theme.of(context).textTheme.titleMedium),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Tahun", style: Theme.of(context).textTheme.titleMedium),
 
-            const SizedBox(height: 20),
+                const SizedBox(height: 15),
 
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: years.map((year) {
-                final isSelected = year == selectedYear;
+                Wrap(
+                  alignment: WrapAlignment.start,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: years.map((year) {
+                    final isSelected = year == selectedYear;
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => selectedYear = year);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFFF4B6C2)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white),
-                    ),
-                    child: Text(
-                      "$year",
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                );
-              }).toList(),
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => selectedYear = year);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
+                        constraints: const BoxConstraints(minHeight: 20),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFA8D5A2)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFA8D5A2)),
+                        ),
+                        child: Text(
+                          "$year",
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontSize: 11,
+                                height: 1,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 35),
+              ],
             ),
 
-            const SizedBox(height: 20),
-
-            Align(
-              alignment: Alignment.bottomRight,
+            /// checklist (TIDAK DIUBAH)
+            Positioned(
+              bottom: 0,
+              right: 0,
               child: GestureDetector(
                 onTap: () {
                   setState(() => showYearFilter = false);
