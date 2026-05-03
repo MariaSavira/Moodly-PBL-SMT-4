@@ -18,49 +18,37 @@ class MoodlyErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.errorBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.errorBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.error, color: AppColors.error, size: 16),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(title, style: AppTextStyles.errorTitle),
-              ),
-            ],
-          ),
-          if (description != null) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: Text(description!, style: AppTextStyles.errorBody),
-            ),
-          ],
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: GestureDetector(
-                onTap: onAction,
-                child: Text(
-                  actionLabel!,
-                  style: AppTextStyles.errorTitle.copyWith(
-                    decoration: TextDecoration.none,
-                  ),
+    return Center(
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.errorBackground,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.error, color: AppColors.error, size: 18),
+            const SizedBox(width: 7),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: AppTextStyles.errorBody,
+                  children: [
+                    TextSpan(text: '$title\n', style: AppTextStyles.errorTitle),
+                    if (description != null) TextSpan(text: '$description\n'),
+                    if (actionLabel != null)
+                      TextSpan(
+                        text: actionLabel!,
+                        style: AppTextStyles.errorTitle.copyWith(fontSize: 20),
+                      ),
+                  ],
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
