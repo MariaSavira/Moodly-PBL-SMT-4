@@ -18,8 +18,16 @@ dependencies:
   shared_preferences: ^2.5.5
   google_sign_in: ^7.2.0
   flutter_facebook_auth: ^7.1.6
+  screenshot: ^3.0.0
+  share_plus: ^10.1.4
+  google_mobile_ads: ^5.0.0
+  gal: ^2.3.2
   flutter:
     sdk: flutter
+  cloud_firestore: ^6.3.0
+  shared_preferences: ^2.5.5
+  image_picker: ^1.1.2
+  home_widget: ^0.7.0+1
 
 dev_dependencies:
   flutter_test:
@@ -36,6 +44,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/icon/images/
     - assets/profile_pic/
     - assets/icons/
     - assets/icons/navbar/
