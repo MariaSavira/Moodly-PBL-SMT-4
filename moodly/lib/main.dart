@@ -133,7 +133,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Afirmasi Harian',
       subtitle: 'Pesan positif harian',
       icon: Icons.auto_awesome_rounded,
-      page: AffirmationPage(),
+      page: AfirmasiPage(),
     ),
     _FeatureItem(
       title: 'Curhat Anonim',
