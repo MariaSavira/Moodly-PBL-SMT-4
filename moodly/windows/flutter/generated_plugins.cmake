@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+<<<<<<< HEAD
   cloud_firestore
   file_selector_windows
   firebase_auth
@@ -11,6 +12,11 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_secure_storage_windows
   gal
   share_plus
+=======
+  file_selector_windows
+  firebase_core
+  permission_handler_windows
+>>>>>>> 599a4b6a435c1647246d1550b31b26f6aceb0bac
   url_launcher_windows
 )
 

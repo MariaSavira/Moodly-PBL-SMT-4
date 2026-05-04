@@ -8,6 +8,7 @@ import 'package:moodly/pages/setting/settings_page.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
 import 'pages/afirmasi/afirmasi_page.dart';
+import 'package:moodly/pages/private_diary/month_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 import 'pages/splash_screen.dart';
@@ -15,13 +16,13 @@ import 'pages/mood/mood_input.dart';
 import 'pages/mood/mood_calendar.dart';
 import 'pages/mood/mood_year_calendar.dart';
 import 'pages/mood/mood_analysis.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await MobileAds.instance.initialize();
 
@@ -36,6 +37,16 @@ class MoodlyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Moodly',
+
+      localizationsDelegates: const [
+        quill.FlutterQuillLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      supportedLocales: const [Locale('en')],
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
@@ -351,6 +362,7 @@ class DemoPageTemplate extends StatelessWidget {
   final IconData icon;
   final String description;
   final List<String> progressItems;
+  final void Function(int index, String title)? onProgressTap; // ✅ TAMBAH
 
   const DemoPageTemplate({
     super.key,
@@ -358,15 +370,13 @@ class DemoPageTemplate extends StatelessWidget {
     required this.icon,
     required this.description,
     required this.progressItems,
+    this.onProgressTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: Text(title), backgroundColor: Colors.transparent),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -414,6 +424,9 @@ class DemoPageTemplate extends StatelessWidget {
                     child: ListTile(
                       leading: const Icon(Icons.check_circle_outline_rounded),
                       title: Text(progressItems[index]),
+                      onTap: onProgressTap != null
+                          ? () => onProgressTap!(index, progressItems[index])
+                          : null,
                     ),
                   );
                 },
@@ -422,6 +435,139 @@ class DemoPageTemplate extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class AuthPage extends StatelessWidget {
+  const AuthPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Login & Register',
+      icon: Icons.login_rounded,
+      description: 'Halaman demo untuk autentikasi pengguna Moodly.',
+      progressItems: [
+        'UI login sederhana',
+        'UI register sederhana',
+        'Navigasi antar halaman auth',
+        'Siap dihubungkan ke Firebase Auth',
+      ],
+    );
+  }
+}
+
+class MoodPage extends StatelessWidget {
+  const MoodPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Mood Harian',
+      icon: Icons.emoji_emotions_rounded,
+      description: 'Fitur pencatatan mood harian pengguna.',
+      progressItems: [
+        'Pilih mood harian',
+        'Tambahkan catatan singkat',
+        'Simpan mood berdasarkan tanggal',
+        'Nantinya terhubung ke statistik mood',
+      ],
+    );
+  }
+}
+
+class DiaryPage extends StatelessWidget {
+  const DiaryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Diary Online',
+      icon: Icons.menu_book_rounded,
+      description: 'Fitur diary untuk refleksi diri pengguna.',
+      progressItems: [
+        'Tulis diary harian',
+        'Mode private/public',
+        'Edit dan hapus diary',
+        'Nantinya bisa tambah foto',
+      ],
+    );
+  }
+}
+
+class StatisticPage extends StatelessWidget {
+  const StatisticPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Statistik Mood',
+      icon: Icons.bar_chart_rounded,
+      description: 'Visualisasi perkembangan mood pengguna.',
+      progressItems: [
+        'Tampilan statistik mingguan/bulanan',
+        'Placeholder grafik mood',
+        'Ringkasan pola emosi',
+        'Siap dihubungkan ke data mood',
+      ],
+    );
+  }
+}
+
+class AffirmationPage extends StatelessWidget {
+  const AffirmationPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Afirmasi Harian',
+      icon: Icons.auto_awesome_rounded,
+      description: 'Pesan positif untuk dukungan emosional harian.',
+      progressItems: [
+        'Tampilkan afirmasi harian',
+        'Kategori afirmasi',
+        'Simpan afirmasi favorit',
+        'Bisa disesuaikan dengan mood pengguna',
+      ],
+    );
+  }
+}
+
+class AnonymousPage extends StatelessWidget {
+  const AnonymousPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Curhat Anonim',
+      icon: Icons.forum_rounded,
+      description: 'Ruang berbagi cerita tanpa identitas.',
+      progressItems: [
+        'Tulis curhatan anonim',
+        'Lihat curhatan pengguna lain',
+        'Fitur report konten',
+        'Moderasi admin di tahap berikutnya',
+      ],
+    );
+  }
+}
+
+class EmergencyPage extends StatelessWidget {
+  const EmergencyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DemoPageTemplate(
+      title: 'Bantuan Darurat',
+      icon: Icons.warning_amber_rounded,
+      description: 'Akses cepat ke dukungan awal dan hotline.',
+      progressItems: [
+        'Tombol darurat',
+        'Popup dukungan emosional',
+        'Daftar hotline bantuan',
+        'Arahan ke layanan profesional',
+      ],
     );
   }
 }
