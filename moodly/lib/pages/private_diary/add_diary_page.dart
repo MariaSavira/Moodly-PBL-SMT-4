@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 class AddDiaryPage extends StatefulWidget {
@@ -12,7 +13,11 @@ class AddDiaryPage extends StatefulWidget {
 
 class _AddDiaryPageState extends State<AddDiaryPage> {
   final TextEditingController titleController = TextEditingController();
+
   final quill.QuillController _controller = quill.QuillController.basic();
+
+  final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   final ImagePicker _picker = ImagePicker();
   File? _image;
@@ -20,53 +25,88 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   bool isPressed = false;
 
   @override
-  void initState() {
-    super.initState();
-
-    /// update toolbar realtime
-    _controller.addListener(() {
-      setState(() {});
-    });
-  }
-
-  @override
   void dispose() {
     titleController.dispose();
     _controller.dispose();
+    _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// ================= IMAGE =================
-  Future<void> pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(source: source);
+  /// ================= IMAGE PICK + CROP =================
+  Future<void> pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera),
+              title: const Text("Kamera"),
+              onTap: () async {
+                Navigator.pop(context);
+                final picked = await _picker.pickImage(
+                  source: ImageSource.camera,
+                );
+                _cropImage(picked);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo),
+              title: const Text("Galeri"),
+              onTap: () async {
+                Navigator.pop(context);
+                final picked = await _picker.pickImage(
+                  source: ImageSource.gallery,
+                );
+                _cropImage(picked);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    if (picked != null) {
+  Future<void> _cropImage(XFile? picked) async {
+    if (picked == null) return;
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Atur Gambar',
+          toolbarColor: Colors.pink,
+          toolbarWidgetColor: Colors.white,
+        ),
+        IOSUiSettings(title: 'Atur Gambar'),
+      ],
+    );
+
+    if (cropped != null) {
       setState(() {
-        _image = File(picked.path);
+        _image = File(cropped.path);
       });
     }
   }
 
   /// ================= SAVE =================
-  void saveDiary(bool isPrivate) {
+  void saveDiary() {
     final title = titleController.text;
     final content = _controller.document.toPlainText();
 
     debugPrint("TITLE: $title");
     debugPrint("CONTENT: $content");
-    debugPrint("PRIVATE: $isPrivate");
   }
 
-  /// ================= 🔥 TOOLBAR BUTTON =================
+  /// ================= TOOLBAR =================
   Widget buildButton(IconData icon, quill.Attribute attribute) {
-    final currentStyle = _controller.getSelectionStyle();
-
-    final isActive = currentStyle.attributes[attribute.key] == attribute.value;
+    final isActive =
+        _controller.getSelectionStyle().attributes[attribute.key] ==
+        attribute.value;
 
     return GestureDetector(
       onTap: () {
-        final selection = _controller.selection;
-
         final isCurrentlyActive =
             _controller.getSelectionStyle().attributes[attribute.key] ==
             attribute.value;
@@ -75,33 +115,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
             ? quill.Attribute.clone(attribute, null)
             : attribute;
 
-        /// 🔥 FIX ALIGNMENT TANPA formatLine
-        if (attribute.key == quill.Attribute.align.key) {
-          final text = _controller.document.toPlainText();
-
-          /// cari batas baris sekarang
-          int start = selection.baseOffset;
-          int end = selection.baseOffset;
-
-          while (start > 0 && text[start - 1] != '\n') {
-            start--;
-          }
-
-          while (end < text.length && text[end] != '\n') {
-            end++;
-          }
-
-          _controller.formatText(start, end - start, newAttr);
-        } else {
-          /// INLINE STYLE
-          _controller.formatSelection(newAttr);
-
-          /// biar lanjut ngetik di mobile
-          if (selection.isCollapsed) {
-            _controller.formatText(selection.baseOffset, 0, newAttr);
-          }
-        }
-
+        _controller.formatSelection(newAttr);
         setState(() {});
       },
       child: AnimatedContainer(
@@ -109,13 +123,12 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
         margin: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          /// 🔥 PINK MUDA (SESUAI FIGMA)
           color: isActive
               ? const Color(0xFFF8BBD0).withOpacity(0.6)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, size: 20, color: Colors.black),
+        child: Icon(icon, size: 20),
       ),
     );
   }
@@ -135,7 +148,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 onTapDown: (_) => setState(() => isPressed = true),
                 onTapUp: (_) {
                   setState(() => isPressed = false);
-                  saveDiary(true);
+                  saveDiary();
                 },
                 onTapCancel: () => setState(() => isPressed = false),
                 child: AnimatedContainer(
@@ -143,19 +156,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   width: 55,
                   height: 55,
                   decoration: BoxDecoration(
-                    color: isPressed
-                        ? Colors.green.shade400
-                        : const Color(0xFFF8BBD0),
+                    color: isPressed ? Colors.green : const Color(0xFFF8BBD0),
                     borderRadius: BorderRadius.circular(18),
-                    boxShadow: const [
-                      BoxShadow(
-                        blurRadius: 6,
-                        color: Colors.black12,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
                   ),
-                  child: const Icon(Icons.check, color: Colors.black),
+                  child: const Icon(Icons.check),
                 ),
               ),
             ),
@@ -186,9 +190,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               /// IMAGE
               GestureDetector(
-                onTap: () => pickImage(ImageSource.gallery),
+                onTap: pickImage,
                 child: Container(
-                  width: double.infinity,
                   height: 120,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
@@ -223,8 +226,13 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                         ),
                       ),
                       const Divider(),
+
                       Expanded(
-                        child: quill.QuillEditor.basic(controller: _controller),
+                        child: quill.QuillEditor.basic(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          scrollController: _scrollController,
+                        ),
                       ),
                     ],
                   ),
@@ -233,7 +241,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
               const SizedBox(height: 10),
 
-              /// 🔥 TOOLBAR (TETAP)
+              /// TOOLBAR
               Container(
                 height: 55,
                 decoration: BoxDecoration(
@@ -253,26 +261,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                       buildButton(
                         Icons.format_strikethrough,
                         quill.Attribute.strikeThrough,
-                      ),
-                      buildButton(
-                        Icons.format_list_bulleted,
-                        quill.Attribute.ul,
-                      ),
-                      buildButton(
-                        Icons.format_list_numbered,
-                        quill.Attribute.ol,
-                      ),
-                      buildButton(
-                        Icons.format_align_left,
-                        quill.Attribute.leftAlignment,
-                      ),
-                      buildButton(
-                        Icons.format_align_center,
-                        quill.Attribute.centerAlignment,
-                      ),
-                      buildButton(
-                        Icons.format_align_right,
-                        quill.Attribute.rightAlignment,
                       ),
                     ],
                   ),

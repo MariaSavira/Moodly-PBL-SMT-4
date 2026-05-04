@@ -15,7 +15,9 @@ class MonthPage extends StatefulWidget {
 
 class _MonthPageState extends State<MonthPage> {
   bool isMonthMode = true;
-  int selectedIndex = 2;
+
+  /// 🔥 TIDAK ADA YANG TERPILIH DI AWAL
+  int selectedIndex = -1;
 
   int selectedYear = DateTime.now().year;
   bool showYearFilter = false;
@@ -35,11 +37,17 @@ class _MonthPageState extends State<MonthPage> {
     "DES",
   ];
 
-  /// ================= GENERATE YEAR =================
+  @override
+  void initState() {
+    super.initState();
+
+    /// 🔥 PAKSA KOSONG SAAT AWAL
+    selectedIndex = -1;
+  }
+
   List<int> getYears() {
     final currentYear = DateTime.now().year;
     const startYear = 2026;
-
     return List.generate(currentYear - startYear + 1, (i) => startYear + i);
   }
 
@@ -127,7 +135,10 @@ class _MonthPageState extends State<MonthPage> {
       itemBuilder: (_, i) {
         return MonthItem(
           label: months[i],
-          isSelected: selectedIndex == i,
+
+          /// 🔥 INI KUNCI UTAMA
+          isSelected: selectedIndex >= 0 && selectedIndex == i,
+
           onTap: () {
             setState(() => selectedIndex = i);
 
@@ -218,12 +229,7 @@ class _MonthPageState extends State<MonthPage> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Center(
-                  child: Text(
-                    "Bulan",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
+                child: const Center(child: Text("Bulan")),
               ),
             ),
           ),
@@ -237,12 +243,7 @@ class _MonthPageState extends State<MonthPage> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Center(
-                  child: Text(
-                    "Pekan",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
+                child: const Center(child: Text("Pekan")),
               ),
             ),
           ),
@@ -254,18 +255,16 @@ class _MonthPageState extends State<MonthPage> {
   /// ================= FILTER BUTTON =================
   Widget _filterButton() {
     return GestureDetector(
-      onTap: () {
-        setState(() => showYearFilter = true);
-      },
-      child: CircleAvatar(
+      onTap: () => setState(() => showYearFilter = true),
+      child: const CircleAvatar(
         radius: 20,
-        backgroundColor: const Color(0xFFF4B6C2),
-        child: const Icon(Icons.tune, color: Colors.black),
+        backgroundColor: Color(0xFFF4B6C2),
+        child: Icon(Icons.tune, color: Colors.black),
       ),
     );
   }
 
-  /// ================= FILTER UI (FIXED) =================
+  /// ================= FILTER UI =================
   Widget _yearFilter() {
     final years = getYears();
 
@@ -278,7 +277,7 @@ class _MonthPageState extends State<MonthPage> {
         decoration: BoxDecoration(
           color: const Color(0xFFDCE3C1),
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.green),
+          border: Border.all(color: const Color(0xFF7FB77E)),
         ),
         child: Stack(
           children: [
@@ -290,38 +289,28 @@ class _MonthPageState extends State<MonthPage> {
                 const SizedBox(height: 15),
 
                 Wrap(
-                  alignment: WrapAlignment.start,
                   spacing: 8,
                   runSpacing: 8,
                   children: years.map((year) {
                     final isSelected = year == selectedYear;
 
                     return GestureDetector(
-                      onTap: () {
-                        setState(() => selectedYear = year);
-                      },
+                      onTap: () => setState(() => selectedYear = year),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 2,
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                        constraints: const BoxConstraints(minHeight: 20),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFFA8D5A2)
+                              ? const Color(0xFF7FB77E)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFA8D5A2)),
+                          border: Border.all(color: const Color(0xFF7FB77E)),
                         ),
                         child: Text(
                           "$year",
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                fontSize: 11,
-                                height: 1,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                              ),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     );
@@ -332,14 +321,11 @@ class _MonthPageState extends State<MonthPage> {
               ],
             ),
 
-            /// checklist (TIDAK DIUBAH)
             Positioned(
               bottom: 0,
               right: 0,
               child: GestureDetector(
-                onTap: () {
-                  setState(() => showYearFilter = false);
-                },
+                onTap: () => setState(() => showYearFilter = false),
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(

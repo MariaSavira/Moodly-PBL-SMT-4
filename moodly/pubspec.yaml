@@ -12,8 +12,10 @@ dependencies:
   flutter_svg: ^2.2.4
   flutter:
     sdk: flutter
-  image_picker: ^1.0.4
+  image_picker: ^1.0.7
+  image_cropper: ^8.0.2
   flutter_quill: ^11.5.0
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:
