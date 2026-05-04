@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../core/chat_service.dart';
+import '../../core/services/chat_service.dart';
 import 'ruang_chat.dart';
 
 class MatchingPage extends StatefulWidget {

@@ -3,11 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moodly/pages/chat_anonim/matching_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/auth_service.dart';
 import 'profil_anonim.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ruang_chat.dart';
+import '../auth/auth.dart';
+import 'dart:math';
 
 // App entry point.
 void main() {
@@ -33,7 +34,6 @@ class AnonymousChatHomePage extends StatefulWidget {
 }
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
-  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -42,12 +42,23 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   Future<void> initApp() async {
-    final user = await _authService.signInAnonymously();
-    print('AUTH UID: ${user?.uid}');
+    final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) return;
+    if (user == null) {
+      if (!mounted) return;
 
-    await loadProfileData();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LoginPage(),
+        ),
+      );
+      return;
+    }
+
+    print('AUTH UID LOGIN: ${user.uid}');
+
+    await loadProfileFromFirestoreOrLocal();
 
     if (!mounted) return;
 
@@ -58,7 +69,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
     final currentRoomId = userDoc.data()?['currentRoomId'];
 
-    if (currentRoomId != null && currentRoomId is String && currentRoomId.isNotEmpty) {
+    if (currentRoomId != null &&
+        currentRoomId is String &&
+        currentRoomId.isNotEmpty) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -85,7 +98,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
     await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
       'uid': user.uid,
-      'nickname': profileName,
+      'nickname': profileName.isNotEmpty ? profileName : generateRandomNickname(),
       'avatarId': selectedProfileImage,
       'status': 'idle',
       'updatedAt': FieldValue.serverTimestamp(),
@@ -103,7 +116,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
   bool showProfileOverlay = false;
 
-  String profileName = 'Spaghetti Unyu';
+  String profileName = '';
   String selectedProfileImage = 'assets/profile_pic/PP.png';
 
   final List<String> profileAvatars = const [
@@ -178,23 +191,156 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     ),
   ];
 
-  Future<void> loadProfileData() async {
+  String generateRandomNickname() {
+    final random = Random();
+
+    final foods = [
+      'Spaghetti',
+      'Bakso',
+      'Seblak',
+      'Dimsum',
+      'Mochi',
+      'Donat',
+      'Sushi',
+      'Ramen',
+      'Pempek',
+      'Cireng',
+      'Matcha',
+      'Puding',
+      'Brownies',
+      'Nugget',
+      'Martabak',
+      'Klepon',
+      'Waffle',
+      'Pancake',
+      'Boba',
+      'Kebab',
+      'Risoles',
+      'Cilok',
+      'Tteokbokki',
+      'Onigiri',
+      'Lasagna',
+      'Sate',
+      'Siomay',
+      'Batagor',
+      'Croissant',
+      'Macaron',
+    ];
+
+    final adjectives = [
+      'Unyu',
+      'Kalem',
+      'Ceria',
+      'Mellow',
+      'Santuy',
+      'Manis',
+      'Lucu',
+      'Lembut',
+      'Gemoy',
+      'Penyabar',
+      'Pemalu',
+      'Heboh',
+      'Tenang',
+      'Hangat',
+      'Kocak',
+      'Lugu',
+      'Riang',
+      'Ajaib',
+      'Imut',
+      'Bijak',
+      'Lincah',
+      'Damai',
+      'Puitis',
+      'Mini',
+      'Berani',
+      'Teduh',
+      'Receh',
+      'Jujur',
+      'Canggung',
+      'Sopan',
+    ];
+
+    final food = foods[random.nextInt(foods.length)];
+    final adjective = adjectives[random.nextInt(adjectives.length)];
+
+    return '$food $adjective';
+  }
+
+  Future<void> loadProfileFromFirestoreOrLocal() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
     final prefs = await SharedPreferences.getInstance();
+
+    final nameKey = 'profileName_${user.uid}';
+    final avatarKey = 'selectedProfileImage_${user.uid}';
+
+    final localName = prefs.getString(nameKey);
+    final localAvatar = prefs.getString(avatarKey);
+
+    if (localName != null &&
+        localName.isNotEmpty &&
+        localAvatar != null &&
+        localAvatar.isNotEmpty) {
+      if (!mounted) return;
+
+      setState(() {
+        profileName = localName;
+        selectedProfileImage = localAvatar;
+      });
+
+      return;
+    }
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final data = userDoc.data();
+
+    final firestoreName = data?['nickname'] as String?;
+    final firestoreAvatar = data?['avatarId'] as String?;
+
+    final resolvedName =
+        firestoreName != null && firestoreName.isNotEmpty
+            ? firestoreName
+            : generateRandomNickname();
+
+    final resolvedAvatar =
+        firestoreAvatar != null && firestoreAvatar.isNotEmpty
+            ? firestoreAvatar
+            : 'assets/profile_pic/PP.png';
+
+    await prefs.setString(nameKey, resolvedName);
+    await prefs.setString(avatarKey, resolvedAvatar);
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'nickname': resolvedName,
+      'avatarId': resolvedAvatar,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     if (!mounted) return;
 
     setState(() {
-      profileName = prefs.getString('profileName') ?? 'Spaghetti Unyu';
-      selectedProfileImage =
-          prefs.getString('selectedProfileImage') ??
-          'assets/profile_pic/PP.png';
+      profileName = resolvedName;
+      selectedProfileImage = resolvedAvatar;
     });
   }
 
   Future<void> saveProfileData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('profileName', profileName);
-    await prefs.setString('selectedProfileImage', selectedProfileImage);
+
+    final nameKey = 'profileName_${user.uid}';
+    final avatarKey = 'selectedProfileImage_${user.uid}';
+
+    await prefs.setString(nameKey, profileName);
+    await prefs.setString(avatarKey, selectedProfileImage);
   }
 
   @override

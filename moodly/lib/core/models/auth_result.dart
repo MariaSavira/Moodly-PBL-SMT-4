@@ -14,7 +14,10 @@ class AuthResult {
   });
 
   factory AuthResult.success(UserModel user) {
-    return AuthResult._(isSuccess: true, user: user);
+    return AuthResult._(
+      isSuccess: true,
+      user: user,
+    );
   }
 
   factory AuthResult.failure({
@@ -36,5 +39,6 @@ enum AuthErrorType {
   networkError,
   userNotFound,
   tooManyRequests,
+  emailNotVerified,
   unknown,
 }

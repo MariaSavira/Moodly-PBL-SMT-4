@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // core
-import '../../core/moodly_colors.dart';
+import '../../core/styles/moodly_colors.dart';
 
 // widgets
 import '../../widgets/setting/profile_card.dart';

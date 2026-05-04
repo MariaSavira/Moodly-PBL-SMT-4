@@ -5,6 +5,7 @@ class UserModel {
   final String? phoneNumber;
   final String? photoUrl;
   final DateTime? createdAt;
+  final bool isEmailVerified;
 
   const UserModel({
     required this.uid,
@@ -13,6 +14,7 @@ class UserModel {
     this.phoneNumber,
     this.photoUrl,
     this.createdAt,
+    this.isEmailVerified = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -25,6 +27,7 @@ class UserModel {
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'].toString())
           : null,
+      isEmailVerified: map['isEmailVerified'] as bool? ?? false,
     );
   }
 
@@ -36,6 +39,7 @@ class UserModel {
       'phoneNumber': phoneNumber,
       'photoUrl': photoUrl,
       'createdAt': createdAt?.toIso8601String(),
+      'isEmailVerified': isEmailVerified,
     };
   }
 
@@ -46,6 +50,7 @@ class UserModel {
     String? phoneNumber,
     String? photoUrl,
     DateTime? createdAt,
+    bool? isEmailVerified,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -54,11 +59,12 @@ class UserModel {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt ?? this.createdAt,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, fullName: $fullName, email: $email)';
+    return 'UserModel(uid: $uid, fullName: $fullName, email: $email, isEmailVerified: $isEmailVerified)';
   }
 }
