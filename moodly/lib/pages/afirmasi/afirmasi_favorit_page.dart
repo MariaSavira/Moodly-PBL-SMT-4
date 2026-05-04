@@ -21,8 +21,13 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
   @override
   void initState() {
     super.initState();
-    _reloadItems();
+    _initializePage();
     _searchController.addListener(_filterItems);
+  }
+
+  Future<void> _initializePage() async {
+    await AfirmasiService.loadFavoritesFromLocal();
+    _reloadItems();
   }
 
   @override
@@ -34,9 +39,9 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
   void _reloadItems() {
     _allItems = AfirmasiService.getFavoritItems();
     _filteredItems = List<Map<String, String>>.from(_allItems);
-    if (mounted) {
-      setState(() {});
-    }
+
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _filterItems() {
@@ -119,7 +124,7 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
     );
   }
 
-  void _deleteSelected() {
+  Future<void> _deleteSelected() async {
     if (!_isEditMode) {
       showCuteTopPopup(
         context,
@@ -143,8 +148,9 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
     final itemsToDelete =
         _selectedIndexes.map((i) => _filteredItems[i]).toList();
 
-    AfirmasiService.removeManyFavorites(itemsToDelete);
+    await AfirmasiService.removeManyFavorites(itemsToDelete);
 
+    await AfirmasiService.loadFavoritesFromLocal();
     _reloadItems();
 
     setState(() {

@@ -1,79 +1,56 @@
-import 'dart:math';
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AfirmasiService {
-  static final Random _random = Random();
-
-  static final List<Map<String, String>> _afirmasiData = [
-    {
-      'kategori': 'Rasa Syukur',
-      'teks': 'Aku bersyukur atas setiap hal kecil yang hadir dalam hidupku hari ini.',
-    },
-    {
-      'kategori': 'Rasa Syukur',
-      'teks': 'Aku menghargai hidupku dan segala kebaikan yang datang hari ini.',
-    },
-    {
-      'kategori': 'Rasa Syukur',
-      'teks': 'Aku bersyukur atas kesempatan untuk tumbuh dan berkembang.',
-    },
-    {
-      'kategori': 'Meredakan Kecemasan',
-      'teks': 'Aku memilih untuk tenang di saat ini.',
-    },
-    {
-      'kategori': 'Meredakan Kecemasan',
-      'teks': 'Aku mengatur napasku dan menenangkan pikiranku.',
-    },
-    {
-      'kategori': 'Meredakan Kecemasan',
-      'teks': 'Perasaan ini hanya sementara, aku akan melewatinya.',
-    },
-    {
-      'kategori': 'Motivasi',
-      'teks': 'Keberhasilan dimulai dengan keyakinan bahwa kamu bisa.',
-    },
-    {
-      'kategori': 'Motivasi',
-      'teks': 'Kesulitan bukan akhir dari perjalanan, tetapi awal dari sebuah kemenangan.',
-    },
-    {
-      'kategori': 'Motivasi',
-      'teks': 'Aku mampu melangkah maju satu langkah kecil setiap hari.',
-    },
-    {
-      'kategori': 'Kesehatan Mental',
-      'teks': 'Aku menerima semua perasaanku tanpa menghakimi.',
-    },
-    {
-      'kategori': 'Kesehatan Mental',
-      'teks': 'Aku merawat pikiranku dengan penuh kasih.',
-    },
-    {
-      'kategori': 'Kesehatan Mental',
-      'teks': 'Aku boleh beristirahat tanpa merasa bersalah.',
-    },
-    {
-      'kategori': 'Cinta Diri',
-      'teks': 'Aku berhak bahagia dalam hidupku.',
-    },
-    {
-      'kategori': 'Cinta Diri',
-      'teks': 'Aku menerima semua kekuatan dan kelemahan dalam diriku.',
-    },
-    {
-      'kategori': 'Cinta Diri',
-      'teks': 'Aku layak dicintai, terutama oleh diriku sendiri.',
-    },
-  ];
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static final List<Map<String, String>> _favoritItems = [];
+  static const String _favoriteItemsKey = 'favorite_afirmasi_items';
 
-  static List<Map<String, String>> getAfirmasiByCategories(
+  static Future<List<Map<String, String>>> getAfirmasiByCategories(
     List<String> categories,
-  ) {
-    return _afirmasiData
-        .where((item) => categories.contains(item['kategori']))
-        .toList();
+  ) async {
+    if (categories.isEmpty) return [];
+
+    try {
+      final snapshot = await _firestore
+          .collection('afirmasi')
+          .where('kategori', whereIn: categories)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'kategori': (data['kategori'] ?? '').toString(),
+          'teks': (data['teks'] ?? '').toString(),
+        };
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> loadFavoritesFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedItems = prefs.getStringList(_favoriteItemsKey) ?? [];
+
+    _favoritItems.clear();
+
+    for (final item in savedItems) {
+      final decoded = jsonDecode(item);
+      _favoritItems.add(Map<String, String>.from(decoded));
+    }
+  }
+
+  static Future<void> _saveFavoritesToLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final encodedItems = _favoritItems.map((item) => jsonEncode(item)).toList();
+
+    await prefs.setStringList(_favoriteItemsKey, encodedItems);
   }
 
   static List<Map<String, String>> getFavoritItems() {
@@ -81,18 +58,14 @@ class AfirmasiService {
   }
 
   static bool isFavorite(Map<String, String> item) {
-    return _favoritItems.any(
-      (fav) =>
-          fav['kategori'] == item['kategori'] &&
-          fav['teks'] == item['teks'],
-    );
+    final itemId = item['id'] ?? '';
+    return _favoritItems.any((fav) => (fav['id'] ?? '') == itemId);
   }
 
-  static void toggleFavorite(Map<String, String> item) {
+  static Future<void> toggleFavorite(Map<String, String> item) async {
+    final itemId = item['id'] ?? '';
     final index = _favoritItems.indexWhere(
-      (fav) =>
-          fav['kategori'] == item['kategori'] &&
-          fav['teks'] == item['teks'],
+      (fav) => (fav['id'] ?? '') == itemId,
     );
 
     if (index >= 0) {
@@ -100,53 +73,21 @@ class AfirmasiService {
     } else {
       _favoritItems.add(Map<String, String>.from(item));
     }
+
+    await _saveFavoritesToLocal();
   }
 
-  static void removeFavorite(Map<String, String> item) {
-    _favoritItems.removeWhere(
-      (fav) =>
-          fav['kategori'] == item['kategori'] &&
-          fav['teks'] == item['teks'],
-    );
+  static Future<void> removeFavorite(Map<String, String> item) async {
+    final itemId = item['id'] ?? '';
+    _favoritItems.removeWhere((fav) => (fav['id'] ?? '') == itemId);
+    await _saveFavoritesToLocal();
   }
 
-  static void removeManyFavorites(List<Map<String, String>> items) {
-    for (final item in items) {
-      removeFavorite(item);
-    }
-  }
-
-  static Map<String, String> getRandomWeightedAfirmasi(
-    List<String> categories, {
-    Map<String, String>? exclude,
-  }) {
-    final source = getAfirmasiByCategories(categories);
-
-    if (source.isEmpty) {
-      return {
-        'kategori': 'Afirmasi',
-        'teks': 'Belum ada afirmasi yang tersedia.',
-      };
-    }
-
-    final List<Map<String, String>> weightedPool = [];
-
-    for (final item in source) {
-      final isExcluded = exclude != null &&
-          item['kategori'] == exclude['kategori'] &&
-          item['teks'] == exclude['teks'];
-
-      if (isExcluded && source.length > 1) continue;
-
-      weightedPool.add(item);
-
-      if (isFavorite(item)) {
-        weightedPool.add(item);
-        weightedPool.add(item);
-        weightedPool.add(item);
-      }
-    }
-
-    return weightedPool[_random.nextInt(weightedPool.length)];
+  static Future<void> removeManyFavorites(
+    List<Map<String, String>> items,
+  ) async {
+    final idsToRemove = items.map((item) => item['id'] ?? '').toSet();
+    _favoritItems.removeWhere((fav) => idsToRemove.contains(fav['id'] ?? ''));
+    await _saveFavoritesToLocal();
   }
 }

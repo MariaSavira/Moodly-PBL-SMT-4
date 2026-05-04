@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
 import 'package:moodly/pages/afirmasi/pengaturan_widget_page.dart';
 import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
@@ -31,8 +33,14 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   static const int adsNeededPerBlock = 2;
 
   bool isPremiumUser = false;
+  bool _isLoading = true;
   int _rewardedBlocksUnlocked = 0;
   int _watchedAdsCount = 0;
+
+  RewardedAd? _rewardedAd;
+  bool _isRewardedAdReady = false;
+
+  final String rewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
 
   final List<String> _backgroundImages = [
     'assets/icon/images/bg_afirmasi_1.jpg',
@@ -48,25 +56,101 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   @override
   void initState() {
     super.initState();
-    _loadAfirmasi();
+    _initializePage();
+    _loadRewardedAd();
   }
 
-  void _loadAfirmasi() {
-    final data =
-        AfirmasiService.getAfirmasiByCategories(widget.selectedCategories);
+  Future<void> _initializePage() async {
+    await AfirmasiService.loadFavoritesFromLocal();
+    await _loadAfirmasi();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _rewardedAd?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAfirmasi() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final data = await AfirmasiService.getAfirmasiByCategories(
+      widget.selectedCategories,
+    );
 
     data.shuffle(Random());
+
+    if (!mounted) return;
 
     setState(() {
       _afirmasiList = data.isNotEmpty
           ? List<Map<String, String>>.from(data)
           : [
               {
+                'id': '',
                 'kategori': 'Afirmasi',
                 'teks': 'Belum ada afirmasi yang tersedia.',
               }
             ];
+      _currentIndex = 0;
+      _isLoading = false;
     });
+
+    await _sendCurrentAfirmasiToWidget();
+  }
+
+  Future<void> _sendCurrentAfirmasiToWidget() async {
+    final currentItem = _currentItem;
+
+    await HomeWidget.saveWidgetData<String>(
+      'previewCategory',
+      currentItem['kategori'] ?? 'Afirmasi',
+    );
+
+    await HomeWidget.saveWidgetData<String>(
+      'previewQuote',
+      currentItem['teks'] ?? '',
+    );
+
+    await HomeWidget.updateWidget(
+      androidName: 'MoodlyWidgetProvider',
+    );
+  }
+
+  void _loadRewardedAd() {
+    RewardedAd.load(
+      adUnitId: rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isRewardedAdReady = true;
+        },
+        onAdFailedToLoad: (error) {
+          _rewardedAd = null;
+          _isRewardedAdReady = false;
+        },
+      ),
+    );
+  }
+
+  Map<String, String> get _currentItem {
+    if (_afirmasiList.isEmpty) {
+      return {
+        'id': '',
+        'kategori': 'Afirmasi',
+        'teks': 'Belum ada afirmasi yang tersedia.',
+      };
+    }
+
+    if (_currentIndex < 0 || _currentIndex >= _afirmasiList.length) {
+      return _afirmasiList.first;
+    }
+
+    return _afirmasiList[_currentIndex];
   }
 
   String get _currentBackground {
@@ -89,7 +173,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
 
   bool get _isCurrentFavorite =>
       !_isLockedSlide(_currentIndex) &&
-      AfirmasiService.isFavorite(_afirmasiList[_currentIndex]);
+      _afirmasiList.isNotEmpty &&
+      AfirmasiService.isFavorite(_currentItem);
 
   bool _isLockedSlide(int index) {
     if (isPremiumUser) return false;
@@ -117,7 +202,7 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     );
   }
 
-  void _simulateWatchAd() {
+  void _watchRewardedAd() {
     if (_remainingLockedSlides <= 0) {
       showCuteTopPopup(
         context,
@@ -128,44 +213,92 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       return;
     }
 
-    setState(() {
-      _watchedAdsCount += 1;
-
-      if (_watchedAdsCount >= adsNeededPerBlock) {
-        _watchedAdsCount = 0;
-        _rewardedBlocksUnlocked += 1;
-      }
-    });
-
-    if (_watchedAdsCount == 0) {
+    if (!_isRewardedAdReady || _rewardedAd == null) {
       showCuteTopPopup(
         context,
-        title: 'Slide terbuka',
-        message: '5 slide berikutnya berhasil dibuka',
-        type: CutePopupType.success,
-      );
-    } else {
-      showCuteTopPopup(
-        context,
-        title: 'Progress iklan',
-        message: '1 dari 2 iklan selesai ditonton',
+        title: 'Iklan belum siap',
+        message: 'Coba lagi sebentar ya',
         type: CutePopupType.info,
       );
+
+      _loadRewardedAd();
+      return;
     }
+
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isRewardedAdReady = false;
+        _loadRewardedAd();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isRewardedAdReady = false;
+        _loadRewardedAd();
+
+        if (!mounted) return;
+        showCuteTopPopup(
+          context,
+          title: 'Iklan gagal',
+          message: 'Iklan gagal ditampilkan, coba lagi ya',
+          type: CutePopupType.error,
+        );
+      },
+    );
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (ad, reward) {
+        if (!mounted) return;
+
+        setState(() {
+          _watchedAdsCount += 1;
+
+          if (_watchedAdsCount >= adsNeededPerBlock) {
+            _watchedAdsCount = 0;
+            _rewardedBlocksUnlocked += 1;
+          }
+        });
+
+        if (_watchedAdsCount == 0) {
+          showCuteTopPopup(
+            context,
+            title: 'Slide terbuka',
+            message: '5 slide berikutnya berhasil dibuka',
+            type: CutePopupType.success,
+          );
+        } else {
+          showCuteTopPopup(
+            context,
+            title: 'Progress iklan',
+            message: '1 dari 2 iklan selesai ditonton',
+            type: CutePopupType.info,
+          );
+        }
+      },
+    );
+
+    _rewardedAd = null;
+    _isRewardedAdReady = false;
   }
 
-  void _toggleFavorite() {
+  Future<void> _toggleFavorite() async {
+    if (_afirmasiList.isEmpty) return;
+
     if (_isLockedSlide(_currentIndex)) {
       _showLockedFeaturePopup();
       return;
     }
 
-    final currentItem = _afirmasiList[_currentIndex];
+    final currentItem = _currentItem;
     final wasFavorite = AfirmasiService.isFavorite(currentItem);
 
-    setState(() {
-      AfirmasiService.toggleFavorite(currentItem);
-    });
+    await AfirmasiService.toggleFavorite(currentItem);
+
+    if (!mounted) return;
+
+    setState(() {});
 
     showCuteTopPopup(
       context,
@@ -178,6 +311,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Future<void> _downloadAfirmasi() async {
+    if (_afirmasiList.isEmpty) return;
+
     if (_isLockedSlide(_currentIndex)) {
       _showLockedFeaturePopup();
       return;
@@ -246,6 +381,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Future<void> _shareAfirmasi() async {
+    if (_afirmasiList.isEmpty) return;
+
     if (_isLockedSlide(_currentIndex)) {
       _showLockedFeaturePopup();
       return;
@@ -264,7 +401,7 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       return;
     }
 
-    final currentItem = _afirmasiList[_currentIndex];
+    final currentItem = _currentItem;
     final shareText =
         '${currentItem['teks'] ?? ''}\n\nKategori: ${currentItem['kategori'] ?? '-'}';
 
@@ -307,6 +444,7 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       ),
     );
 
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -489,7 +627,7 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
                 width: 170,
                 height: 36,
                 child: ElevatedButton(
-                  onPressed: _simulateWatchAd,
+                  onPressed: _watchRewardedAd,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEDEDED),
                     foregroundColor: Colors.black87,
@@ -580,7 +718,7 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentItem = _afirmasiList[_currentIndex];
+    final currentItem = _currentItem;
     final currentCategory = currentItem['kategori'] ?? 'Afirmasi';
 
     return Scaffold(
@@ -607,45 +745,55 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
                       color: Colors.black.withOpacity(0.10),
                     ),
                   ),
-                  PageView.builder(
-                    controller: _pageController,
-                    itemCount: _afirmasiList.length,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentIndex = index;
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      final item = _afirmasiList[index];
-                      final isLocked = _isLockedSlide(index);
+                  if (_isLoading)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    )
+                  else
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: _afirmasiList.length,
+                      onPageChanged: (index) async {
+                        setState(() {
+                          _currentIndex = index;
+                        });
 
-                      return Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Center(
-                              child: Opacity(
-                                opacity: isLocked ? 0.35 : 1,
-                                child: Text(
-                                  item['teks'] ?? '',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineLarge
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.35,
-                                      ),
+                        await _sendCurrentAfirmasiToWidget();
+                      },
+                      itemBuilder: (context, index) {
+                        final item = _afirmasiList[index];
+                        final isLocked = _isLockedSlide(index);
+
+                        return Stack(
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 32),
+                              child: Center(
+                                child: Opacity(
+                                  opacity: isLocked ? 0.35 : 1,
+                                  child: Text(
+                                    item['teks'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.35,
+                                        ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          if (isLocked) _buildLockedOverlay(),
-                        ],
-                      );
-                    },
-                  ),
+                            if (isLocked) _buildLockedOverlay(),
+                          ],
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -714,10 +862,11 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
                   ),
                 ),
                 const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 28),
-                  child: _buildDots(),
-                ),
+                if (!_isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 28),
+                    child: _buildDots(),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(32, 0, 32, 28),
                   child: Row(
