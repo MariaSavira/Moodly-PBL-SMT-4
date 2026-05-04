@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+
+// firebase
+import 'package:moodly/pages/setting/settings_page.dart';
+
+// firebase
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
+import 'pages/afirmasi/afirmasi_page.dart';
+import 'package:moodly/pages/private_diary/month_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
+import 'pages/splash_screen.dart';
+import 'pages/mood/mood_year_calendar.dart';
+import 'pages/mood/mood_analysis.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await MobileAds.instance.initialize();
 
   runApp(const MoodlyApp());
 }
@@ -22,86 +35,118 @@ class MoodlyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Moodly',
+
+      localizationsDelegates: [
+        quill.FlutterQuillLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      supportedLocales: const [Locale('en')],
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
         useMaterial3: true,
-
         textTheme: GoogleFonts.fredokaTextTheme().copyWith(
-          // TITLE
           headlineLarge: GoogleFonts.fredoka(
             fontSize: 24,
-            fontWeight: FontWeight.w600, // semi-bold
+            fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
-
-          // SUB TITLE
           titleMedium: GoogleFonts.fredoka(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
-
-          // NORMAL TEXT (Open Sans)
           bodyMedium: GoogleFonts.openSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
-
-          // NORMAL TEXT 2 (Fredoka)
           bodySmall: GoogleFonts.fredoka(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
-
-          // BUTTON TEXT 1 (Open Sans)
           labelLarge: GoogleFonts.openSans(
             fontSize: 14,
-            fontWeight: FontWeight.w600, // semi-bold
-            color: const Color.fromARGB(255, 255, 255, 255),
+            fontWeight: FontWeight.w600,
+            color: Color.fromARGB(255, 255, 255, 255),
           ),
         ),
       ),
-      home: const MainMenuPage(),
+      home: const SplashScreenMoodly(),
     );
   }
 }
 
 class MainMenuPage extends StatelessWidget {
-  const MainMenuPage({super.key});
+   MainMenuPage({super.key});
 
-  final List<_FeatureItem> features = const [
+  final List<_FeatureItem> features = [
     _FeatureItem(
-      title: 'Login & Register',
-      subtitle: 'Demo autentikasi pengguna',
+      title: 'Login',
+      subtitle: 'Demo autentikasi login',
       icon: Icons.login_rounded,
-      page: AuthPage(),
+      page: LoginPage(),
     ),
+    _FeatureItem(
+      title: 'Register',
+      subtitle: 'Demo autentikasi register',
+      icon: Icons.app_registration_rounded,
+      page: RegisterPage(),
+    ),
+    _FeatureItem(
+      title: 'OTP Verification',
+      subtitle: 'Verifikasi kode OTP',
+      icon: Icons.lock_clock,
+      page: OtpVerificationPage(
+        fullName: 'Test User',
+        email: 'test@gmail.com',
+        phoneNumber: '+6281234567890',
+        password: '123456',
+      ),
+    ),
+    _FeatureItem(
+      title: 'Register Sukses',
+      subtitle: 'Register Berhasil',
+      icon: Icons.verified_rounded,
+      page: RegisterSuccessPage(),
+    ),
+
+    // ✅ INI YANG KAMU BUTUH (SETTINGS)
+    _FeatureItem(
+      title: 'Settings',
+      subtitle: 'Pengaturan aplikasi',
+      icon: Icons.settings,
+      page: SettingsPage(),
+    ),
+
     _FeatureItem(
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodPage(),
+      page: MoodYearCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
       subtitle: 'Catatan pribadi pengguna',
       icon: Icons.menu_book_rounded,
-      page: DiaryPage(),
+      page: MonthPage(),
     ),
     _FeatureItem(
       title: 'Statistik Mood',
       subtitle: 'Lihat perkembangan mood',
       icon: Icons.bar_chart_rounded,
-      page: StatisticPage(),
+      page: MoodAnalysis(),
     ),
     _FeatureItem(
       title: 'Afirmasi Harian',
       subtitle: 'Pesan positif harian',
       icon: Icons.auto_awesome_rounded,
-      page: AffirmationPage(),
+      page: AfirmasiPage(),
     ),
     _FeatureItem(
       title: 'Curhat Anonim',
@@ -131,7 +176,7 @@ class MainMenuPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Fitur yang sudah/disediakan untuk demo',
+              'Fitur yang tersedia',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -139,17 +184,19 @@ class MainMenuPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Klik salah satu menu untuk melihat progres tiap fitur.',
+              'Klik menu untuk membuka halaman.',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.black54,
               ),
             ),
             const SizedBox(height: 16),
+
             Expanded(
               child: GridView.builder(
                 itemCount: features.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
@@ -157,12 +204,16 @@ class MainMenuPage extends StatelessWidget {
                 ),
                 itemBuilder: (context, index) {
                   final item = features[index];
+
+
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => item.page),
+                        MaterialPageRoute(
+                          builder: (_) => item.page,
+                        ),
                       );
                     },
                     child: Container(
@@ -183,14 +234,14 @@ class MainMenuPage extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 24,
-                            backgroundColor: Colors.purple.shade50,
+                            backgroundColor: Colors.purpleAccent,
                             child: Icon(
                               item.icon,
-                              color: Colors.purple,
+                              color: Colors.white,
                               size: 28,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Text(
                             item.title,
                             style: const TextStyle(
@@ -198,12 +249,16 @@ class MainMenuPage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            item.subtitle,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Text(
+                              item.subtitle,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -234,11 +289,78 @@ class _FeatureItem {
   });
 }
 
+class MoodPage extends StatelessWidget {
+  const MoodPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Mood Page')),
+    );
+  }
+}
+
+class DiaryPage extends StatelessWidget {
+  const DiaryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Diary Page')),
+    );
+  }
+}
+
+class StatisticPage extends StatelessWidget {
+  const StatisticPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Statistic Page')),
+    );
+  }
+}
+
+class AffirmationPage extends StatelessWidget {
+  const AffirmationPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Affirmation Page')),
+    );
+  }
+}
+
+class AnonymousPage extends StatelessWidget {
+  const AnonymousPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Anonymous Page')),
+    );
+  }
+}
+
+class EmergencyPage extends StatelessWidget {
+  const EmergencyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Emergency Page')),
+    );
+  }
+}
+
 class DemoPageTemplate extends StatelessWidget {
   final String title;
   final IconData icon;
   final String description;
   final List<String> progressItems;
+  final void Function(int index, String title)? onProgressTap; // ✅ TAMBAH
 
   const DemoPageTemplate({
     super.key,
@@ -246,15 +368,13 @@ class DemoPageTemplate extends StatelessWidget {
     required this.icon,
     required this.description,
     required this.progressItems,
+    this.onProgressTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: Text(title), backgroundColor: Colors.transparent),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -270,8 +390,8 @@ class DemoPageTemplate extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: Colors.purple.shade50,
-                    child: Icon(icon, size: 34, color: Colors.purple),
+                    backgroundColor: Colors.purpleAccent,
+                    child: Icon(icon, size: 34, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -302,6 +422,9 @@ class DemoPageTemplate extends StatelessWidget {
                     child: ListTile(
                       leading: const Icon(Icons.check_circle_outline_rounded),
                       title: Text(progressItems[index]),
+                      onTap: onProgressTap != null
+                          ? () => onProgressTap!(index, progressItems[index])
+                          : null,
                     ),
                   );
                 },
@@ -328,120 +451,6 @@ class AuthPage extends StatelessWidget {
         'UI register sederhana',
         'Navigasi antar halaman auth',
         'Siap dihubungkan ke Firebase Auth',
-      ],
-    );
-  }
-}
-
-class MoodPage extends StatelessWidget {
-  const MoodPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Mood Harian',
-      icon: Icons.emoji_emotions_rounded,
-      description: 'Fitur pencatatan mood harian pengguna.',
-      progressItems: [
-        'Pilih mood harian',
-        'Tambahkan catatan singkat',
-        'Simpan mood berdasarkan tanggal',
-        'Nantinya terhubung ke statistik mood',
-      ],
-    );
-  }
-}
-
-class DiaryPage extends StatelessWidget {
-  const DiaryPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Diary Online',
-      icon: Icons.menu_book_rounded,
-      description: 'Fitur diary untuk refleksi diri pengguna.',
-      progressItems: [
-        'Tulis diary harian',
-        'Mode private/public',
-        'Edit dan hapus diary',
-        'Nantinya bisa tambah foto',
-      ],
-    );
-  }
-}
-
-class StatisticPage extends StatelessWidget {
-  const StatisticPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Statistik Mood',
-      icon: Icons.bar_chart_rounded,
-      description: 'Visualisasi perkembangan mood pengguna.',
-      progressItems: [
-        'Tampilan statistik mingguan/bulanan',
-        'Placeholder grafik mood',
-        'Ringkasan pola emosi',
-        'Siap dihubungkan ke data mood',
-      ],
-    );
-  }
-}
-
-class AffirmationPage extends StatelessWidget {
-  const AffirmationPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Afirmasi Harian',
-      icon: Icons.auto_awesome_rounded,
-      description: 'Pesan positif untuk dukungan emosional harian.',
-      progressItems: [
-        'Tampilkan afirmasi harian',
-        'Kategori afirmasi',
-        'Simpan afirmasi favorit',
-        'Bisa disesuaikan dengan mood pengguna',
-      ],
-    );
-  }
-}
-
-class AnonymousPage extends StatelessWidget {
-  const AnonymousPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Curhat Anonim',
-      icon: Icons.forum_rounded,
-      description: 'Ruang berbagi cerita tanpa identitas.',
-      progressItems: [
-        'Tulis curhatan anonim',
-        'Lihat curhatan pengguna lain',
-        'Fitur report konten',
-        'Moderasi admin di tahap berikutnya',
-      ],
-    );
-  }
-}
-
-class EmergencyPage extends StatelessWidget {
-  const EmergencyPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Bantuan Darurat',
-      icon: Icons.warning_amber_rounded,
-      description: 'Akses cepat ke dukungan awal dan hotline.',
-      progressItems: [
-        'Tombol darurat',
-        'Popup dukungan emosional',
-        'Daftar hotline bantuan',
-        'Arahan ke layanan profesional',
       ],
     );
   }
