@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
-import '../services/Auth_sevice.dart';
-import '../widgets/moodly_text_field.dart';
-import '../widgets/moodly_primary_button.dart';
-import '../widgets/moodly_error_banner.dart';
-import '../widgets/or_divider.dart';
-import '../widgets/social_sign_in_button.dart';
-import 'login_page.dart';
-import 'otp_verification_page.dart';
+
+import '../../core/styles/app_colors.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/otp_service.dart';
+import '../../core/styles/app_text_styles.dart';
+import '../../widgets/moodly_text_field.dart';
+import '../../widgets/moodly_primary_button.dart';
+import '../../widgets/moodly_error_banner.dart';
+import '../../widgets/or_divider.dart';
+import '../../widgets/social_sign_in_button.dart';
+import '../chat_anonim/homepage_chat_anonim.dart';
+import 'auth.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -27,6 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   bool _hasError = false;
   bool _passwordError = false;
@@ -57,6 +60,14 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  void _goToHomeChat() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeChatAnonim()),
+      (route) => false,
+    );
+  }
+
   Future<void> _handleSignUp() async {
     if (_fullNameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
@@ -69,6 +80,28 @@ class _RegisterPageState extends State<RegisterPage> {
         _passwordError = false;
         _errorMessage = 'Pendaftaran mengalami kendala.';
         _errorDescription = 'Semua data harus diisi.';
+      });
+      return;
+    }
+
+    if (!_emailController.text.trim().contains('@')) {
+      setState(() {
+        _hasError = true;
+        _contactError = true;
+        _passwordError = false;
+        _errorMessage = 'Pendaftaran mengalami kendala.';
+        _errorDescription = 'Format email tidak valid.';
+      });
+      return;
+    }
+
+    if (_passwordController.text.trim().length < 6) {
+      setState(() {
+        _hasError = true;
+        _passwordError = true;
+        _contactError = false;
+        _errorMessage = 'Pendaftaran mengalami kendala.';
+        _errorDescription = 'Kata sandi minimal 6 karakter.';
       });
       return;
     }
@@ -92,44 +125,95 @@ class _RegisterPageState extends State<RegisterPage> {
       _contactError = false;
     });
 
-    // sementara masih create akun dulu.
-    // nanti kalau OTP real sudah siap, bagian ini diganti menjadi sendOtp().
-    final result = await AuthService.instance.signUp(
-      fullName: _fullNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
-    );
+    try {
+      await OtpService.instance.sendRegisterOtp(
+        fullName: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
 
-    if (result.isSuccess) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => OtpVerificationPage(
+            fullName: _fullNameController.text.trim(),
             email: _emailController.text.trim(),
+            phoneNumber: _phoneController.text.trim(),
+            password: _passwordController.text.trim(),
           ),
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _contactError = true;
+        _passwordError = false;
+        _errorMessage = 'Pendaftaran mengalami kendala.';
+        _errorDescription = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+      _errorDescription = null;
+    });
+
+    final result = await AuthService.instance.signInWithFacebook();
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      setState(() => _isLoading = false);
+      _goToHomeChat();
     } else {
       setState(() {
+        _isLoading = false;
         _hasError = true;
         _contactError = true;
         _passwordError = false;
         _errorMessage = 'Pendaftaran mengalami kendala.';
         _errorDescription =
-            result.errorMessage ?? 'Email atau nomor telepon mungkin sudah digunakan.';
+            result.errorMessage ?? 'Daftar dengan Facebook belum berhasil.';
       });
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Daftar dengan Google belum diaktifkan')),
-    );
+    setState(() {
+      _isGoogleLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+      _errorDescription = null;
+    });
+
+    final result = await AuthService.instance.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      setState(() => _isGoogleLoading = false);
+      _goToHomeChat();
+    } else {
+      setState(() {
+        _isGoogleLoading = false;
+        _hasError = true;
+        _contactError = true;
+        _passwordError = false;
+        _errorMessage = 'Pendaftaran mengalami kendala.';
+        _errorDescription =
+            result.errorMessage ?? 'Daftar dengan Google belum berhasil.';
+      });
+    }
   }
 
   @override
@@ -316,29 +400,23 @@ class _RegisterPageState extends State<RegisterPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SocialSignInButton(
-                              label: 'Google',
+                              label: _isGoogleLoading ? 'Loading' : 'Google',
                               icon: Image.asset(
-                                'assets/icon/google.png',
+                                'assets/icons/login/google.png',
                                 fit: BoxFit.contain,
                               ),
-                              onPressed: _handleGoogleSignIn,
+                              onPressed: _isGoogleLoading
+                                  ? () {}
+                                  : _handleGoogleSignIn,
                             ),
                             const SizedBox(width: 12),
                             SocialSignInButton(
                               label: 'Facebook',
                               icon: Image.asset(
-                                'assets/icon/facebook.png',
+                                'assets/icons/login/facebook.png',
                                 fit: BoxFit.contain,
                               ),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Daftar dengan Facebook belum diaktifkan',
-                                    ),
-                                  ),
-                                );
-                              },
+                              onPressed: _handleFacebookSignIn,
                             ),
                           ],
                         ),
@@ -350,7 +428,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     right: -10,
                     bottom: -28,
                     child: Image.asset(
-                      'assets/icon/image1.png',
+                      'assets/icons/login/image1.png',
                       width: 100,
                     ),
                   ),
@@ -367,15 +445,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
                       );
                     },
-                    child: Text(
-                      'Masuk',
-                      style: AppTextStyles.linkText,
-                    ),
+                    child: Text('Masuk', style: AppTextStyles.linkText),
                   ),
                 ],
               ),

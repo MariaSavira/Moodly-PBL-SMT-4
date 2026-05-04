@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../core/chat_service.dart';
+import '../../core/services/chat_service.dart';
 
 class ImagePreviewPage extends StatefulWidget {
   final File imageFile;

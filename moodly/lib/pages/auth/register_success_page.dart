@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
-import '../widgets/moodly_primary_button.dart';
-import 'login_page.dart';
+
+import '../../core/styles/app_colors.dart';
+import '../../core/styles/app_text_styles.dart';
+import '../../widgets/moodly_primary_button.dart';
+import 'auth.dart';
 
 class RegisterSuccessPage extends StatelessWidget {
   const RegisterSuccessPage({super.key});

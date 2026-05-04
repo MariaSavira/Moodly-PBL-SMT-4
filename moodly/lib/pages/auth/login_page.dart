@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
-import '../core/validators.dart';
-import '../services/Auth_sevice.dart';
-import '../widgets/moodly_text_field.dart';
-import '../widgets/moodly_error_banner.dart';
-import '../widgets/moodly_primary_button.dart';
-import '../widgets/or_divider.dart';
-import '../widgets/social_sign_in_button.dart';
-import 'register_page.dart';
-import 'Forget_password_page.dart';
+
+import '../../core/styles/app_colors.dart';
+import '../../core/styles/app_text_styles.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/validators.dart';
+import '../../widgets/moodly_text_field.dart';
+import '../../widgets/moodly_error_banner.dart';
+import '../../widgets/moodly_primary_button.dart';
+import '../../widgets/or_divider.dart';
+import '../../widgets/social_sign_in_button.dart';
+import '../chat_anonim/homepage_chat_anonim.dart';
+import 'auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _hasError = false;
   String? _errorMessage;
   String? _errorDescription;
@@ -34,6 +36,16 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _goToHomeChat() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HomeChatAnonim(),
+      ),
+      (route) => false,
+    );
   }
 
   Future<void> _handleSignIn() async {
@@ -55,23 +67,82 @@ class _LoginPageState extends State<LoginPage> {
 
     if (result.isSuccess) {
       setState(() => _isLoading = false);
-
-      // TODO: arahkan ke halaman beranda nanti
+      _goToHomeChat();
     } else {
       setState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = 'Login Gagal';
         _errorDescription =
-            result.errorMessage ?? 'Email atau kata sandi salah. Coba lagi dengan tenang.';
+            result.errorMessage ?? 'Email atau kata sandi salah. Coba lagi.';
+      });
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+      _errorDescription = null;
+    });
+
+    final result = await AuthService.instance.signInWithFacebook();
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      setState(() => _isLoading = false);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomeChatAnonim(),
+        ),
+        (route) => false,
+      );
+    } else {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = 'Login Facebook Gagal';
+        _errorDescription =
+            result.errorMessage ?? 'Login Facebook belum berhasil.';
       });
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login Google belum diaktifkan')),
-    );
+    setState(() {
+      _isGoogleLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+      _errorDescription = null;
+    });
+
+    final result = await AuthService.instance.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      setState(() => _isGoogleLoading = false);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomeChatAnonim(),
+        ),
+        (route) => false,
+      );
+    } else {
+      setState(() {
+        _isGoogleLoading = false;
+        _hasError = true;
+        _errorMessage = 'Login Google Gagal';
+        _errorDescription =
+            result.errorMessage ?? 'Login Google belum berhasil.';
+      });
+    }
   }
 
   @override
@@ -93,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                       left: 0,
                       top: 6,
                       child: Image.asset(
-                        'assets/icon/image1.png',
+                        'assets/icons/login/image1.png',
                         width: 95,
                         fit: BoxFit.contain,
                       ),
@@ -148,7 +219,8 @@ class _LoginPageState extends State<LoginPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const ForgotPasswordPage(),
+                                    builder: (_) =>
+                                        const ForgotPasswordPage(),
                                   ),
                                 );
                               },
@@ -253,29 +325,23 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               SocialSignInButton(
-                                label: 'Google',
+                                label: _isGoogleLoading ? 'Loading' : 'Google',
                                 icon: Image.asset(
-                                  'assets/icon/google.png',
+                                  'assets/icons/login/google.png',
                                   fit: BoxFit.contain,
                                 ),
-                                onPressed: _handleGoogleSignIn,
+                                onPressed: _isGoogleLoading
+                                    ? () {}
+                                    : _handleGoogleSignIn,
                               ),
                               const SizedBox(width: 12),
                               SocialSignInButton(
                                 label: 'Facebook',
                                 icon: Image.asset(
-                                  'assets/icon/facebook.png',
+                                  'assets/icons/login/facebook.png',
                                   fit: BoxFit.contain,
                                 ),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Login Facebook belum diaktifkan',
-                                      ),
-                                    ),
-                                  );
-                                },
+                                onPressed: _handleFacebookSignIn,
                               ),
                             ],
                           ),
@@ -288,7 +354,7 @@ class _LoginPageState extends State<LoginPage> {
                     right: -8,
                     bottom: -28,
                     child: Image.asset(
-                      'assets/icon/image1.png',
+                      'assets/icons/login/image1.png',
                       width: 105,
                       fit: BoxFit.contain,
                     ),

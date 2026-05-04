@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
-import '../widgets/moodly_text_field.dart';
-import '../widgets/moodly_primary_button.dart';
-import 'login_page.dart';
+import '../../core/styles/app_colors.dart';
+import '../../core/styles/app_text_styles.dart';
+import '../../widgets/moodly_text_field.dart';
+import '../../widgets/moodly_primary_button.dart';
+import 'auth.dart';
+// import 'Login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -123,7 +124,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ),
                   Image.asset(
-                    'assets/icon/image3.png',
+                    'assets/icons/login/image3.png',
                     width: 110,
                   ),
                 ],

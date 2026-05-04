@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
-import '../widgets/moodly_primary_button.dart';
-import 'register_success_page.dart';
+
+import '../../core/services/otp_service.dart';
+import '../../core/styles/app_colors.dart';
+import '../../core/styles/app_text_styles.dart';
+import '../../widgets/moodly_primary_button.dart';
+import 'auth.dart';
 
 class OtpVerificationPage extends StatefulWidget {
+  final String fullName;
   final String email;
+  final String phoneNumber;
+  final String password;
 
   const OtpVerificationPage({
     super.key,
+    required this.fullName,
     required this.email,
+    required this.phoneNumber,
+    required this.password,
   });
 
   @override
@@ -20,6 +28,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   final List<TextEditingController> _otpControllers =
       List.generate(4, (_) => TextEditingController());
 
+  bool _isLoading = false;
+  bool _isResending = false;
+
   @override
   void dispose() {
     for (final controller in _otpControllers) {
@@ -28,7 +39,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     super.dispose();
   }
 
-  void _verifyOtp() {
+  Future<void> _verifyOtp() async {
     final otp = _otpControllers.map((controller) => controller.text).join();
 
     if (otp.length != 4) {
@@ -40,14 +51,73 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       return;
     }
 
-    // sementara untuk UI flow.
-    // nanti bagian ini diganti validasi OTP real ke backend.
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const RegisterSuccessPage(),
-      ),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      await OtpService.instance.verifyRegisterOtpAndCreateUser(
+        fullName: widget.fullName,
+        email: widget.email,
+        phoneNumber: widget.phoneNumber,
+        password: widget.password,
+        otp: otp,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const RegisterSuccessPage(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _resendCode() async {
+    setState(() => _isResending = true);
+
+    try {
+      await OtpService.instance.sendRegisterOtp(
+        fullName: widget.fullName,
+        email: widget.email,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isResending = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kode OTP dikirim ulang ke email.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isResending = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _otpBox(int index) {
@@ -91,15 +161,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       ),
     );
   }
-
-  void _resendCode() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Kode OTP dikirim ulang'),
-      ),
-    );
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,7 +204,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 ),
                 child: Center(
                   child: Image.asset(
-                    'assets/icon/image3.png',
+                    'assets/icons/login/image3.png',
                     width: 72,
                     fit: BoxFit.contain,
                   ),
@@ -183,8 +245,8 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
               const SizedBox(height: 58),
 
               MoodlyPrimaryButton(
-                label: 'Verifikasi',
-                onPressed: _verifyOtp,
+                label: _isLoading ? 'Memeriksa...' : 'Verifikasi',
+                onPressed: _isLoading ? () {} : _verifyOtp,
                 width: 250,
               ),
 
@@ -201,7 +263,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
               const SizedBox(height: 14),
 
               GestureDetector(
-                onTap: _resendCode,
+                onTap: _isResending ? null : _resendCode,
                 child: Container(
                   width: 170,
                   height: 42,
@@ -209,10 +271,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                     color: const Color(0xFFF8B7BF),
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'Kirim Ulang Kode',
-                      style: TextStyle(
+                      _isResending ? 'Mengirim...' : 'Kirim Ulang Kode',
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                         color: Colors.black,

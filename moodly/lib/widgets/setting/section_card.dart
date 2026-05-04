@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/moodly_colors.dart';
+import '../../core/styles/moodly_colors.dart';
 
 class SectionCard extends StatelessWidget {
   final String title;

@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-// pages
-import 'package:moodly/pages/Login_page.dart';
-import 'package:moodly/pages/register_page.dart';
-import 'package:moodly/pages/Register_success_page.dart';
-import 'package:moodly/pages/otp_verification_page.dart';
-
 // firebase
 import 'package:moodly/pages/setting/settings_page.dart';
 
@@ -101,7 +95,12 @@ class MainMenuPage extends StatelessWidget {
       title: 'OTP Verification',
       subtitle: 'Verifikasi kode OTP',
       icon: Icons.lock_clock,
-      page: OtpVerificationPage(email: 'test@gmail.com'),
+      page: OtpVerificationPage(
+        fullName: 'Test User',
+        email: 'test@gmail.com',
+        phoneNumber: '+6281234567890',
+        password: '123456',
+      ),
     ),
     _FeatureItem(
       title: 'Register Sukses',
@@ -253,16 +252,6 @@ class MainMenuPage extends StatelessWidget {
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: Text(
-                              item.subtitle,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -355,86 +344,6 @@ class EmergencyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(child: Text('Emergency Page')),
-    );
-  }
-}
-
-class DemoPageTemplate extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String description;
-  final List<String> progressItems;
-
-  const DemoPageTemplate({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.description,
-    required this.progressItems,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.purpleAccent,
-                    child: Icon(icon, size: 34, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: progressItems.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      leading: const Icon(Icons.check_circle_outline_rounded),
-                      title: Text(progressItems[index]),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
