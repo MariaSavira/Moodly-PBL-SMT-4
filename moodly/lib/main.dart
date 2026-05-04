@@ -87,7 +87,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodCalendar(),
+      page: MoodYearCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
