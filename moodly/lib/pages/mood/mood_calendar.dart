@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'MoodInput.dart';
+import 'mood_input.dart';
 
 class MoodCalendar extends StatefulWidget {
   final int initialYear;

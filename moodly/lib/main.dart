@@ -11,10 +11,10 @@ import 'pages/afirmasi/afirmasi_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 import 'pages/splash_screen.dart';
-import 'pages/MoodInput.dart';
-import 'pages/MoodCalendar.dart';
-import 'pages/MoodYearCalendar.dart';
-import 'pages/MoodAnalysis.dart';
+import 'pages/mood/mood_input.dart';
+import 'pages/mood/mood_calendar.dart';
+import 'pages/mood/mood_year_calendar.dart';
+import 'pages/mood/mood_analysis.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

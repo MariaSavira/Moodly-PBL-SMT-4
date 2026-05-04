@@ -92,7 +92,7 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, __, ___) => const MainMenuPage(),
+          pageBuilder: (_, __, ___) => MainMenuPage(),
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(
               opacity: animation,
