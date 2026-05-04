@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class MoodAnalysis extends StatefulWidget {
   const MoodAnalysis({super.key});
@@ -9,11 +11,14 @@ class MoodAnalysis extends StatefulWidget {
 }
 
 class _MoodAnalysisState extends State<MoodAnalysis> {
-  int _selectedIndex = 0; // 0 = Pekan, 1 = Bulan
+  int _selectedIndex = 1; // Default ke Bulan (index 1)
+  bool _isPremium = false;
+  bool _isLoading = true;
 
   DateTime _selectedMonth = DateTime.now();
   late int _selectedWeek;
 
+  // Database Mood (Dummy Data)
   final Map<String, String> _moodDatabase = {
     '2026-03-01': 'Senang', '2026-03-02': 'Netral', '2026-03-03': 'Senang',
     '2026-03-04': 'Senang', '2026-03-05': 'Netral', '2026-03-06': 'Netral',
@@ -41,9 +46,179 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   @override
   void initState() {
     super.initState();
+    _checkPremiumStatus();
     final now = DateTime.now();
     _selectedMonth = DateTime(now.year, now.month, 1);
     _selectedWeek = _calculateWeekNumber(now);
+  }
+
+  // ✅ CEK STATUS PREMIUM DARI SHARED PREFERENCES
+  Future<void> _checkPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isPremium = prefs.getBool('isPremium') ?? false;
+
+    setState(() {
+      _isPremium = isPremium;
+      _isLoading = false;
+    });
+  }
+
+  // ✅ UPGRADE KE PREMIUM
+  Future<void> _upgradeToPremium() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isPremium', true);
+
+    setState(() {
+      _isPremium = true;
+      _selectedIndex = 0; // Auto switch ke tab Pekan
+    });
+  }
+
+  // ✅ RESET PREMIUM (untuk testing)
+  Future<void> _resetPremium() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isPremium', false);
+
+    setState(() {
+      _isPremium = false;
+      _selectedIndex = 1;
+    });
+  }
+
+  // ✅ DIALOG UPGRADE
+  void _showUpgradeDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.diamond, color: Colors.amber.shade700, size: 32),
+            const SizedBox(width: 8),
+            Text(
+              'Upgrade Premium',
+              style: GoogleFonts.fredoka(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Dapatkan akses ke fitur eksklusif:',
+              style: GoogleFonts.openSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildFeatureItem(Icons.bar_chart, 'Analisis mood mingguan'),
+            _buildFeatureItem(Icons.insights, 'Insight mendalam & tren'),
+            _buildFeatureItem(Icons.notifications_active, 'Notifikasi personal'),
+            _buildFeatureItem(Icons.cloud_download, 'Export data ke PDF'),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.local_offer, color: Colors.amber.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Gratis untuk demo PBL!',
+                      style: GoogleFonts.fredoka(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Nanti',
+              style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _upgradeToPremium();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        '🎉 Premium activated!',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(
+              'Aktifkan Sekarang',
+              style: GoogleFonts.fredoka(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.green.shade700),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: GoogleFonts.openSans(
+              fontSize: 13,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getEmoji(String mood) {
@@ -211,6 +386,17 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FBE7),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FBE7),
       appBar: AppBar(
@@ -224,6 +410,45 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           'Mood Analysis',
           style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
         ),
+        actions: [
+          // ✅ TOMBOL PREMIUM DI APPBAR
+          if (!_isPremium)
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              child: ElevatedButton.icon(
+                onPressed: _showUpgradeDialog,
+                icon: Icon(Icons.diamond, size: 16, color: Colors.black),
+                label: Text(
+                  'Premium',
+                  style: GoogleFonts.fredoka(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ),
+          // ✅ TOMBOL DEBUG RESET (hanya untuk testing)
+          if (!kReleaseMode)
+            IconButton(
+              icon: Icon(Icons.refresh, color: Colors.purple),
+              onPressed: () async {
+                await _resetPremium();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Premium status direset ke FREE')),
+                );
+              },
+              tooltip: 'Reset Premium (Debug)',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -256,29 +481,68 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(30)),
       child: Row(
         children: [
+          // TAB PEKAN (PREMIUM)
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedIndex = 0),
+              onTap: () {
+                if (_isPremium) {
+                  setState(() => _selectedIndex = 0);
+                } else {
+                  _showUpgradeDialog();
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedIndex == 0 ? Colors.pink.shade200 : Colors.transparent,
+                  color: _selectedIndex == 0 && _isPremium
+                      ? Colors.pink.shade200
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: Center(child: Text('Pekan', style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.w600, color: _selectedIndex == 0 ? Colors.black : Colors.grey))),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Pekan',
+                      style: GoogleFonts.fredoka(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: (_selectedIndex == 0 && _isPremium)
+                            ? Colors.black
+                            : Colors.grey,
+                      ),
+                    ),
+                    if (!_isPremium) ...[
+                      const SizedBox(width: 4),
+                      Icon(Icons.lock, size: 12, color: Colors.amber.shade700),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
+          // TAB BULAN (FREE)
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedIndex = 1),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedIndex == 1 ? Colors.pink.shade200 : Colors.transparent,
+                  color: _selectedIndex == 1
+                      ? Colors.pink.shade200
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: Center(child: Text('Bulan', style: GoogleFonts.fredoka(fontSize: 14, fontWeight: FontWeight.w600, color: _selectedIndex == 1 ? Colors.black : Colors.grey))),
+                child: Center(
+                  child: Text(
+                    'Bulan',
+                    style: GoogleFonts.fredoka(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedIndex == 1 ? Colors.black : Colors.grey,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -294,9 +558,22 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20), onPressed: () => _changeWeek(-1), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 32, minHeight: 32)),
-          Text('Minggu $_selectedWeek, ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}', style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-          IconButton(icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20), onPressed: () => _changeWeek(1), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 32, minHeight: 32)),
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20),
+            onPressed: () => _changeWeek(-1),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          Text(
+            'Minggu $_selectedWeek, ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+            style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20),
+            onPressed: () => _changeWeek(1),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
         ],
       ),
     );
@@ -309,9 +586,22 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20), onPressed: () => _changeMonth(-1), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 32, minHeight: 32)),
-          Text('${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}', style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-          IconButton(icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20), onPressed: () => _changeMonth(1), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 32, minHeight: 32)),
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20),
+            onPressed: () => _changeMonth(-1),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          Text(
+            '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+            style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20),
+            onPressed: () => _changeMonth(1),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
         ],
       ),
     );
@@ -336,13 +626,16 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: weeklyData.map((item) => SizedBox(width: 30, child: Text(
+            children: weeklyData.map((item) => SizedBox(
+              width: 30,
+              child: Text(
                 item['isEmpty'] && item['date'] < 1 || item['date'] > DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day
                     ? ''
                     : item['day'],
                 textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54)
-            ))).toList(),
+                style: GoogleFonts.fredoka(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54),
+              ),
+            )).toList(),
           ),
         ],
       ),
@@ -513,7 +806,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Refleksi Saat Ini',
+                  'Current Reflection',
                   style: GoogleFonts.fredoka(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -709,6 +1002,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   }
 }
 
+// ✅ CUSTOM PAINTER UNTUK LINGKARAN
 class _BottomFilledCirclePainter extends CustomPainter {
   final Color color;
   final double progress;
