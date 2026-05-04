@@ -7,12 +7,15 @@ environment:
   sdk: ^3.11.1
 
 dependencies:
+  flutter:
+    sdk: flutter
+
   firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
   cloud_firestore: ^6.3.0
   google_sign_in: ^5.4.0
-  flutter:
-    sdk: flutter
+  emailjs: ^4.0.0
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

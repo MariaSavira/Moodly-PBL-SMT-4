@@ -13,7 +13,7 @@ class MoodlyPrimaryButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.isLoading = false,
-    this.width = 230, // 🔥 default lebar
+    this.width = 230,
   });
 
   @override
@@ -41,23 +41,12 @@ class MoodlyPrimaryButton extends StatelessWidget {
                     strokeWidth: 2.5,
                   ),
                 )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: AppTextStyles.buttonText,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ],
+              : Text(
+                  label,
+                  style: AppTextStyles.buttonText.copyWith(
+                    color: Colors.white, // ✅ pastiin putih
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
         ),
       ),

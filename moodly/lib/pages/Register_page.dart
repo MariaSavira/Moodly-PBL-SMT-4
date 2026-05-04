@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/app_text_styles.dart';
 import '../services/Auth_sevice.dart';
+import '../services/otp_service.dart';
 import '../widgets/moodly_text_field.dart';
 import '../widgets/moodly_primary_button.dart';
 import '../widgets/moodly_error_banner.dart';
@@ -58,11 +59,17 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _handleSignUp() async {
-    if (_fullNameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty ||
-        _confirmPasswordController.text.trim().isEmpty) {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (fullName.isEmpty ||
+        email.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       setState(() {
         _hasError = true;
         _contactError = false;
@@ -73,8 +80,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    if (_passwordController.text.trim() !=
-        _confirmPasswordController.text.trim()) {
+    if (password != confirmPassword) {
       setState(() {
         _hasError = true;
         _passwordError = true;
@@ -92,30 +98,44 @@ class _RegisterPageState extends State<RegisterPage> {
       _contactError = false;
     });
 
-    // sementara masih create akun dulu.
-    // nanti kalau OTP real sudah siap, bagian ini diganti menjadi sendOtp().
     final result = await AuthService.instance.signUp(
-      fullName: _fullNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
+      fullName: fullName,
+      email: email,
+      password: password,
+      phoneNumber: phone,
     );
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
-
     if (result.isSuccess) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationPage(
-            email: _emailController.text.trim(),
+      try {
+        await OtpService.sendOtp(email);
+
+        if (!mounted) return;
+
+        setState(() => _isLoading = false);
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationPage(email: email),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        if (!mounted) return;
+
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _contactError = true;
+          _passwordError = false;
+          _errorMessage = 'Pendaftaran berhasil, tetapi OTP gagal dikirim.';
+          _errorDescription = 'Coba periksa koneksi internet atau email tujuan.';
+        });
+      }
     } else {
       setState(() {
+        _isLoading = false;
         _hasError = true;
         _contactError = true;
         _passwordError = false;

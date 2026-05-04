@@ -14,12 +14,10 @@ class AuthService {
     scopes: ['email'],
   );
 
-  // ---------- Stream ----------
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
 
-  // ---------- Sign In ----------
   Future<AuthResult> signIn({
     required String email,
     required String password,
@@ -45,7 +43,6 @@ class AuthService {
     }
   }
 
-  // ---------- Sign Up ----------
   Future<AuthResult> signUp({
     required String fullName,
     required String email,
@@ -53,7 +50,6 @@ class AuthService {
     required String phoneNumber,
   }) async {
     try {
-      // Check if phone number already exists
       final phoneQuery = await _firestore
           .collection('users')
           .where('phoneNumber', isEqualTo: phoneNumber.trim())
@@ -89,19 +85,22 @@ class AuthService {
 
       return AuthResult.success(newUser);
     } on FirebaseAuthException catch (e) {
+      print('FIREBASE AUTH SIGN UP ERROR: ${e.code} - ${e.message}');
+
       return AuthResult.failure(
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
     } catch (e) {
+      print('SIGN UP ERROR: $e');
+
       return AuthResult.failure(
-        message: 'Something went wrong. Please try again.',
+        message: 'Error asli: $e',
         errorType: AuthErrorType.unknown,
       );
     }
   }
 
-  // ---------- Google Sign In ----------
   Future<AuthResult> signInWithGoogle() async {
     try {
       final googleUser = await _googleSignIn.signIn();
@@ -121,14 +120,9 @@ class AuthService {
       final userCredential = await _auth.signInWithCredential(credential);
       final firebaseUser = userCredential.user!;
 
-      // Check if user already exists in Firestore
-      final docSnapshot = await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .get();
+      final docSnapshot = await _firestore.collection('users').doc(firebaseUser.uid).get();
 
       if (!docSnapshot.exists) {
-        // New user → save to Firestore
         final newUser = UserModel(
           uid: firebaseUser.uid,
           fullName: firebaseUser.displayName ?? '',
@@ -136,10 +130,9 @@ class AuthService {
           photoUrl: firebaseUser.photoURL,
           createdAt: DateTime.now(),
         );
-        await _firestore
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .set(newUser.toMap());
+
+        await _firestore.collection('users').doc(firebaseUser.uid).set(newUser.toMap());
+
         return AuthResult.success(newUser);
       }
 
@@ -158,7 +151,6 @@ class AuthService {
     }
   }
 
-  // ---------- Forgot Password ----------
   Future<AuthResult> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
@@ -178,7 +170,6 @@ class AuthService {
     }
   }
 
-  // ---------- Sign Out ----------
   Future<void> signOut() async {
     await Future.wait([
       _auth.signOut(),
@@ -186,14 +177,15 @@ class AuthService {
     ]);
   }
 
-  // ---------- Helpers ----------
   Future<UserModel> _getUserFromFirestore(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
+
     if (doc.exists && doc.data() != null) {
       return UserModel.fromMap(doc.data()!, uid);
     }
-    // Fallback from Firebase Auth
+
     final firebaseUser = _auth.currentUser!;
+
     return UserModel(
       uid: uid,
       fullName: firebaseUser.displayName ?? '',
@@ -235,8 +227,6 @@ class AuthService {
         return AuthErrorType.networkError;
       case 'too-many-requests':
         return AuthErrorType.tooManyRequests;
-      case 'user-not-found':
-        return AuthErrorType.userNotFound;
       default:
         return AuthErrorType.unknown;
     }

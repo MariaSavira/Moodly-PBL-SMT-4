@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../core/app_colors.dart';
 import '../core/app_text_styles.dart';
 import '../widgets/moodly_text_field.dart';
 import '../widgets/moodly_primary_button.dart';
+import '../services/otp_service.dart'; // 🔥 tambah ini
+import 'otp_verification_page.dart';   // 🔥 tambah ini
 import 'login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
-  Future<void> _handleResetPassword() async {
+  Future<void> _handleSendOtp() async {
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
@@ -44,21 +45,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await OtpService.sendOtp(email);
 
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
-        _message = 'Tautan reset kata sandi sudah dikirim ke email.';
       });
-    } catch (_) {
+
+      // 🔥 pindah ke halaman OTP
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationPage(email: email),
+        ),
+      );
+    } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
         _hasError = true;
-        _message = 'Email tidak ditemukan.';
+        _message = 'Gagal mengirim OTP';
       });
     }
   }
@@ -140,7 +148,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               const SizedBox(height: 18),
 
               Text(
-                'Masukkan alamat email yang terdaftar\npada akun Anda, lalu kami akan mengirimkan\ntautan untuk mengatur ulang kata sandi.',
+                'Masukkan email untuk menerima kode OTP.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodyMedium.copyWith(
                   height: 1.6,
@@ -184,9 +192,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
               const SizedBox(height: 28),
 
+              // 🔥 tombol kirim OTP
               MoodlyPrimaryButton(
-                label: 'Atur Ulang Kata Sandi',
-                onPressed: _handleResetPassword,
+                label: 'Kirim OTP',
+                onPressed: _handleSendOtp,
                 isLoading: _isLoading,
                 width: 275,
               ),
