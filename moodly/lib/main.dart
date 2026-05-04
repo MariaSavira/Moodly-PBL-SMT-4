@@ -11,6 +11,10 @@ import 'pages/afirmasi/afirmasi_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 import 'pages/splash_screen.dart';
+import 'pages/MoodInput.dart';
+import 'pages/MoodCalendar.dart';
+import 'pages/MoodYearCalendar.dart';
+import 'pages/MoodAnalysis.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,9 +74,9 @@ class MoodlyApp extends StatelessWidget {
 }
 
 class MainMenuPage extends StatelessWidget {
-  const MainMenuPage({super.key});
+   MainMenuPage({super.key});
 
-  final List<_FeatureItem> features = const [
+  final List<_FeatureItem> features = [
     _FeatureItem(
       title: 'Login',
       subtitle: 'Demo autentikasi login',
@@ -115,7 +119,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Mood Harian',
       subtitle: 'Input mood harian pengguna',
       icon: Icons.emoji_emotions_rounded,
-      page: MoodPage(),
+      page: MoodYearCalendar(),
     ),
     _FeatureItem(
       title: 'Diary Online',
@@ -127,7 +131,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Statistik Mood',
       subtitle: 'Lihat perkembangan mood',
       icon: Icons.bar_chart_rounded,
-      page: StatisticPage(),
+      page: MoodAnalysis(),
     ),
     _FeatureItem(
       title: 'Afirmasi Harian',
