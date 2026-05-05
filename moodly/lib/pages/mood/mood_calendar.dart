@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'mood_input.dart';
 
 class MoodCalendar extends StatefulWidget {
@@ -18,53 +20,101 @@ class MoodCalendar extends StatefulWidget {
 
 class _MoodCalendarState extends State<MoodCalendar> {
   late DateTime _focusedDate;
+  bool _isLoading = true;
+
+  Map<String, String> _moodDatabase = {};
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
     _focusedDate = DateTime(now.year, now.month, 1);
+    _loadMoodsFromFirestore();
   }
 
-  final Map<String, String> _moodDatabase = {
-    '2026-03-01': 'Senang',
-    '2026-03-02': 'Netral',
-    '2026-03-03': 'Senang',
-    '2026-03-04': 'Senang',
-    '2026-03-05': 'Netral',
-    '2026-03-06': 'Netral',
-    '2026-03-07': 'Sedih',
-    '2026-03-08': 'Senang',
-    '2026-03-09': 'Senang',
-    '2026-03-10': 'Sedih',
-    '2026-03-11': 'Sedih',
-    '2026-03-12': 'Marah',
-    '2026-03-13': 'Sedih',
-    '2026-03-14': 'Marah',
-    '2026-03-15': 'Marah',
-    '2026-03-16': 'Sedih',
-    '2026-03-17': 'Marah',
-    '2026-03-18': 'Senang',
-    '2026-03-19': 'Senang',
-    '2026-03-20': 'Senang',
-    '2026-03-21': 'Senang',
-    '2026-03-22': 'Netral',
-    '2026-03-23': 'Senang',
-    '2026-03-24': 'Netral',
-    '2026-03-25': 'Netral',
-    '2026-03-26': 'Senang',
-    '2026-03-27': 'Netral',
-    '2026-03-28': 'Sedih',
-    '2026-03-29': 'Senang',
-    '2026-03-30': 'Senang',
-    '2026-03-31': 'Senang',
-    '2026-04-01': 'Senang',
-    '2026-04-05': 'Netral',
-    '2026-04-10': 'Sedih',
-    '2023-05-01': 'Senang',
-    '2023-05-10': 'Netral',
-    '2023-05-20': 'Sedih',
-  };
+  Future<void> _loadMoodsFromFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      setState(() {
+        _moodDatabase = {};
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+
+        setState(() {
+          _moodDatabase = entries.map((key, value) =>
+              MapEntry(key, value.toString())
+          );
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _moodDatabase = {};
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("❌ Error loading moods: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveMoodToFirestore(DateTime date, String mood) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(user.uid)
+          .set({
+        'entries.$dateKey': mood,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await _loadMoodsFromFirestore();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Mood berhasil disimpan!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      print("❌ Error saving mood: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan mood: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -95,14 +145,24 @@ class _MoodCalendarState extends State<MoodCalendar> {
     if (isTodayOrFuture) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const MoodInput()),
+        MaterialPageRoute(
+          builder: (_) => MoodInput(selectedDate: date),
+        ),
       ).then((_) {
+        _loadMoodsFromFirestore();
       });
     } else {
+      final dateKey = _getDateKey(date);
+      final mood = _moodDatabase[dateKey];
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Riwayat mood pada ${date.day}/${date.month}/${date.year}'),
-          duration: const Duration(seconds: 1),
+          content: Text(
+            mood != null
+                ? 'Mood pada ${date.day}/${date.month}/${date.year}: ${_getEmoji(mood)} $mood'
+                : 'Belum ada catatan mood pada ${date.day}/${date.month}/${date.year}',
+          ),
+          duration: const Duration(seconds: 2),
           backgroundColor: Colors.black54,
         ),
       );
@@ -111,6 +171,29 @@ class _MoodCalendarState extends State<MoodCalendar> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FBE7),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Mood Calendar',
+            style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+          ),
+        ),
+      );
+    }
+
     const List<String> monthNames = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -191,7 +274,6 @@ class _MoodCalendarState extends State<MoodCalendar> {
                 decoration: BoxDecoration(
                   color: Colors.lightGreen,
                   borderRadius: BorderRadius.circular(6),
-                  // Tidak ada border bold lagi
                 ),
                 child: const Icon(
                   Icons.add,
@@ -223,6 +305,13 @@ class _MoodCalendarState extends State<MoodCalendar> {
             color: Colors.black,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            onPressed: _loadMoodsFromFirestore,
+            tooltip: 'Refresh data',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MoodInput extends StatefulWidget {
-  const MoodInput({super.key});
+  final DateTime? selectedDate;
+
+  const MoodInput({super.key, this.selectedDate});
 
   @override
   State<MoodInput> createState() => _MoodInputState();
@@ -11,6 +15,7 @@ class MoodInput extends StatefulWidget {
 class _MoodInputState extends State<MoodInput> {
   String? selectedMood;
   final TextEditingController _noteController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -44,35 +49,78 @@ class _MoodInputState extends State<MoodInput> {
     }
   }
 
-  Future<void> _saveMood({bool withNote = false}) async {
+  Future<void> _saveMoodToFirestore({String? note}) async {
     if (selectedMood == null) return;
 
-    await Future.delayed(const Duration(milliseconds: 300));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Silakan login terlebih dahulu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Text(_getEmojiForMood(selectedMood!), style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Mood "$selectedMood" berhasil disimpan! ${withNote ? "+ Catatan" : ""}',
-                  style: GoogleFonts.openSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+    final dateToSave = widget.selectedDate ?? DateTime.now();
+    final dateKey = '${dateToSave.year}-${dateToSave.month.toString().padLeft(2, '0')}-${dateToSave.day.toString().padLeft(2, '0')}';
+
+    setState(() => _isSaving = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(user.uid)
+          .set({
+        'entries.$dateKey': selectedMood,
+        if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Text(_getEmojiForMood(selectedMood!), style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Mood "$selectedMood" berhasil disimpan! ${note != null ? "+ Catatan" : ""}',
+                    style: GoogleFonts.openSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
           ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print("❌ Error saving mood: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -122,7 +170,7 @@ class _MoodInputState extends State<MoodInput> {
             onPressed: () {
               _noteController.clear();
               Navigator.pop(context);
-              _saveMood(withNote: false);
+              _saveMoodToFirestore();
             },
             child: Text(
               'Lewati',
@@ -135,8 +183,9 @@ class _MoodInputState extends State<MoodInput> {
           ),
           ElevatedButton(
             onPressed: () {
+              final note = _noteController.text.trim();
               Navigator.pop(context);
-              _saveMood(withNote: true);
+              _saveMoodToFirestore(note: note);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.purple,
@@ -176,22 +225,56 @@ class _MoodInputState extends State<MoodInput> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          if (_isSaving)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+              ),
+            ),
+        ],
       ),
-      body: SingleChildScrollView(
+      body: _isSaving
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Menyimpan...',
+              style: GoogleFonts.fredoka(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      )
+          : SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
+              // ✅ KARTU PERTANYAAN MOOD - Dengan Gambar Emoji Hati Bergandengan
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDDDE3),
+                  color: const Color(0xFFFDDDE3), // Pink muda
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Stack(
+                  clipBehavior: Clip.none, // Agar gambar bisa keluar dari container
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,16 +300,15 @@ class _MoodInputState extends State<MoodInput> {
                         ),
                       ],
                     ),
+                    // ✅ GAMBAR EMOJI HATI BERGANDENGAN - Pojok Kanan Atas (Ukuran Lebih Besar)
                     Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.pink.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.favorite_rounded, color: Colors.pink, size: 24),
+                      top: -10, // Naik sedikit ke atas (keluar dari container)
+                      right: -10, // Keluar sedikit ke kanan
+                      child: Image.asset(
+                        'assets/icons/login/image1.png', // Path ke gambar kamu
+                        width: 80, // Ukuran lebih besar (dari 40 jadi 80)
+                        height: 80,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ],
@@ -310,7 +392,7 @@ class _MoodInputState extends State<MoodInput> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: selectedMood == null ? null : () => _saveMood(withNote: false),
+                          onPressed: selectedMood == null ? null : () => _saveMoodToFirestore(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF7CB342),
                             foregroundColor: Colors.white,

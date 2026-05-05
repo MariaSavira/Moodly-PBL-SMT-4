@@ -11,14 +11,13 @@ class MoodAnalysis extends StatefulWidget {
 }
 
 class _MoodAnalysisState extends State<MoodAnalysis> {
-  int _selectedIndex = 1; // Default ke Bulan (index 1)
+  int _selectedIndex = 1;
   bool _isPremium = false;
   bool _isLoading = true;
 
   DateTime _selectedMonth = DateTime.now();
   late int _selectedWeek;
 
-  // Database Mood (Dummy Data)
   final Map<String, String> _moodDatabase = {
     '2026-03-01': 'Senang', '2026-03-02': 'Netral', '2026-03-03': 'Senang',
     '2026-03-04': 'Senang', '2026-03-05': 'Netral', '2026-03-06': 'Netral',
@@ -52,7 +51,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     _selectedWeek = _calculateWeekNumber(now);
   }
 
-  // ✅ CEK STATUS PREMIUM DARI SHARED PREFERENCES
   Future<void> _checkPremiumStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool isPremium = prefs.getBool('isPremium') ?? false;
@@ -63,18 +61,16 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     });
   }
 
-  // ✅ UPGRADE KE PREMIUM
   Future<void> _upgradeToPremium() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isPremium', true);
 
     setState(() {
       _isPremium = true;
-      _selectedIndex = 0; // Auto switch ke tab Pekan
+      _selectedIndex = 0;
     });
   }
 
-  // ✅ RESET PREMIUM (untuk testing)
   Future<void> _resetPremium() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isPremium', false);
@@ -85,7 +81,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     });
   }
 
-  // ✅ DIALOG UPGRADE
   void _showUpgradeDialog() {
     showDialog(
       context: context,
@@ -120,21 +115,21 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
             ),
             const SizedBox(height: 12),
             _buildFeatureItem(Icons.bar_chart, 'Analisis mood mingguan'),
-            _buildFeatureItem(Icons.insights, 'Insight mendalam & tren'),
+            _buildFeatureItem(Icons.insights, 'Insight mendalam'),
             _buildFeatureItem(Icons.notifications_active, 'Notifikasi personal'),
-            _buildFeatureItem(Icons.cloud_download, 'Export data ke PDF'),
+
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: Colors.pink.shade100,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber, width: 1),
+                border: Border.all(color: Colors.pink.shade400, width: 1),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.local_offer, color: Colors.amber.shade700),
+                  Icon(Icons.local_offer, color: Colors.pinkAccent.shade200),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -142,7 +137,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                       style: GoogleFonts.fredoka(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.amber.shade900,
+                        color: Colors.pinkAccent.shade200,
                       ),
                     ),
                   ),
@@ -176,13 +171,13 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                       ),
                     ],
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.pink.shade100,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
+              backgroundColor: Colors.pink.shade100,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -193,7 +188,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               'Aktifkan Sekarang',
               style: GoogleFonts.fredoka(
                 fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.normal,
               ),
             ),
           ),
@@ -207,7 +202,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.green.shade700),
+          Icon(icon, size: 18, color: Colors.pinkAccent.shade200),
           const SizedBox(width: 8),
           Text(
             text,
@@ -411,7 +406,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
         ),
         actions: [
-          // ✅ TOMBOL PREMIUM DI APPBAR
+
           if (!_isPremium)
             Container(
               margin: const EdgeInsets.only(right: 12),
@@ -436,7 +431,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                 ),
               ),
             ),
-          // ✅ TOMBOL DEBUG RESET (hanya untuk testing)
+
           if (!kReleaseMode)
             IconButton(
               icon: Icon(Icons.refresh, color: Colors.purple),
@@ -481,7 +476,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(30)),
       child: Row(
         children: [
-          // TAB PEKAN (PREMIUM)
+
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -1002,7 +997,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   }
 }
 
-// ✅ CUSTOM PAINTER UNTUK LINGKARAN
 class _BottomFilledCirclePainter extends CustomPainter {
   final Color color;
   final double progress;
