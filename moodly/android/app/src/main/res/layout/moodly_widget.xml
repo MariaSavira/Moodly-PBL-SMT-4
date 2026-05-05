@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#9A7B9C">
+    android:layout_height="match_parent">
 
     <ImageView
         android:id="@+id/widget_background"
@@ -10,12 +9,6 @@
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_bg_1" />
-
-    <View
-        android:id="@+id/widget_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#33000000" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -29,10 +22,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="#80FFFFFF"
-            android:paddingLeft="14dp"
-            android:paddingTop="6dp"
-            android:paddingRight="14dp"
-            android:paddingBottom="6dp"
+            android:paddingLeft="10dp"
+            android:paddingTop="4dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="4dp"
             android:text="Kesehatan Mental"
             android:textColor="#222222"
             android:textSize="11sp"
@@ -42,11 +35,11 @@
             android:id="@+id/widget_quote"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="14dp"
             android:gravity="center"
             android:text="Aku boleh beristirahat tanpa merasa bersalah."
             android:textColor="#FFFFFF"
-            android:textSize="17sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:maxLines="4" />
     </LinearLayout>

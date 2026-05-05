@@ -25,17 +25,16 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
   bool tampilkanKategori = true;
   bool tampilkanQuote = true;
   bool gunakanBackground = true;
-  bool autoRefresh = false;
-
-  double ukuranWidget = 1.0;
 
   Color warnaTeks = Colors.white;
-  Color warnaOverlay = const Color(0x33000000);
 
   bool isPremiumUser = true;
 
   String? customWallpaperPath;
   bool useCustomWallpaper = false;
+
+  String previewCategory = 'Afirmasi';
+  String previewQuote = '';
 
   final List<String> daftarWallpaper = [
     'assets/icon/images/bg_afirmasi_1.jpg',
@@ -63,17 +62,8 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     final savedUseBackground = await WidgetSettingsService.getBool(
       WidgetSettingsService.useBackgroundKey,
     );
-    final savedAutoRefresh = await WidgetSettingsService.getBool(
-      WidgetSettingsService.autoRefreshKey,
-    );
-    final savedScale = await WidgetSettingsService.getDouble(
-      WidgetSettingsService.widgetScaleKey,
-    );
     final savedTextColor = await WidgetSettingsService.getInt(
       WidgetSettingsService.textColorKey,
-    );
-    final savedOverlayColor = await WidgetSettingsService.getInt(
-      WidgetSettingsService.overlayColorKey,
     );
     final savedWallpaper = await WidgetSettingsService.getString(
       WidgetSettingsService.selectedWallpaperKey,
@@ -85,21 +75,30 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
       WidgetSettingsService.useCustomWallpaperKey,
     );
 
+    final category = await HomeWidget.getWidgetData<String>(
+      'previewCategory',
+      defaultValue: 'Afirmasi',
+    );
+
+    final quote = await HomeWidget.getWidgetData<String>(
+      'previewQuote',
+      defaultValue: '',
+    );
+
     if (!mounted) return;
 
     setState(() {
       tampilkanKategori = savedShowCategory ?? tampilkanKategori;
       tampilkanQuote = savedShowQuote ?? tampilkanQuote;
       gunakanBackground = savedUseBackground ?? gunakanBackground;
-      autoRefresh = savedAutoRefresh ?? autoRefresh;
-      ukuranWidget = savedScale ?? ukuranWidget;
       warnaTeks = savedTextColor != null ? Color(savedTextColor) : warnaTeks;
-      warnaOverlay =
-          savedOverlayColor != null ? Color(savedOverlayColor) : warnaOverlay;
       wallpaperTerpilih = savedWallpaper ?? wallpaperTerpilih;
       customWallpaperPath = savedCustomWallpaperPath;
-      useCustomWallpaper = savedCustomWallpaperPath != null &&
-          (savedUseCustomWallpaper ?? false);
+      useCustomWallpaper =
+          savedCustomWallpaperPath != null && (savedUseCustomWallpaper ?? false);
+
+      previewCategory = category ?? 'Afirmasi';
+      previewQuote = quote ?? '';
     });
 
     await _updateHomeWidget();
@@ -109,11 +108,8 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     await HomeWidget.saveWidgetData<bool>('showCategory', tampilkanKategori);
     await HomeWidget.saveWidgetData<bool>('showQuote', tampilkanQuote);
     await HomeWidget.saveWidgetData<bool>('useBackground', gunakanBackground);
-    await HomeWidget.saveWidgetData<bool>('autoRefresh', autoRefresh);
 
-    await HomeWidget.saveWidgetData<double>('widgetScale', ukuranWidget);
     await HomeWidget.saveWidgetData<int>('textColor', warnaTeks.value);
-    await HomeWidget.saveWidgetData<int>('overlayColor', warnaOverlay.value);
 
     await HomeWidget.saveWidgetData<String>(
       'selectedWallpaper',
@@ -130,16 +126,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     await HomeWidget.saveWidgetData<bool>(
       'useCustomWallpaper',
       useCustomWallpaper,
-    );
-
-    await HomeWidget.saveWidgetData<String>(
-      'previewCategory',
-      'Kesehatan Mental',
-    );
-
-    await HomeWidget.saveWidgetData<String>(
-      'previewQuote',
-      'Aku boleh beristirahat tanpa merasa bersalah.',
     );
 
     await HomeWidget.updateWidget(
@@ -283,7 +269,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                   'Fitur tambah foto sendiri untuk wallpaper widget hanya tersedia untuk pengguna premium.',
                   style: GoogleFonts.openSans(
                     fontSize: 14,
-                    fontWeight: FontWeight.w400,
                     height: 1.5,
                     color: Colors.black87,
                   ),
@@ -294,9 +279,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF9B9B9B),
-                      ),
                       child: Text(
                         'Nanti',
                         style: GoogleFonts.openSans(
@@ -322,8 +304,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF99D28F),
                           foregroundColor: Colors.white,
-                          elevation: 2,
-                          shadowColor: Colors.black26,
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -397,7 +377,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 subtitle,
                 style: GoogleFonts.openSans(
                   fontSize: 12,
-                  fontWeight: FontWeight.w400,
                   color: Colors.black54,
                 ),
               ),
@@ -587,21 +566,11 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     await _updateHomeWidget();
   }
 
-  Future<void> _saveOverlayColor(Color color) async {
-    setState(() {
-      warnaOverlay = color;
-    });
-
-    await WidgetSettingsService.saveInt(
-      WidgetSettingsService.overlayColorKey,
-      color.value,
-    );
-
-    await _updateHomeWidget();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final shownPreviewQuote =
+        previewQuote.trim().isNotEmpty ? previewQuote : 'Belum ada afirmasi';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F4DE),
       appBar: AppBar(
@@ -698,69 +667,8 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 },
               ),
             ),
-            _settingTile(
-              title: 'Refresh otomatis',
-              subtitle: 'Widget mengganti afirmasi secara berkala',
-              trailing: Switch(
-                value: autoRefresh,
-                activeColor: const Color(0xFF99D28F),
-                onChanged: (value) async {
-                  setState(() {
-                    autoRefresh = value;
-                  });
-
-                  await WidgetSettingsService.saveBool(
-                    WidgetSettingsService.autoRefreshKey,
-                    value,
-                  );
-
-                  await _updateHomeWidget();
-                },
-              ),
-            ),
             const SizedBox(height: 8),
-            _sectionTitle('Kustom tampilan'),
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ukuran widget',
-                    style: GoogleFonts.openSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Slider(
-                    value: ukuranWidget,
-                    min: 0.8,
-                    max: 1.3,
-                    divisions: 5,
-                    activeColor: const Color(0xFF99D28F),
-                    onChanged: (value) async {
-                      setState(() {
-                        ukuranWidget = value;
-                      });
-
-                      await WidgetSettingsService.saveDouble(
-                        WidgetSettingsService.widgetScaleKey,
-                        value,
-                      );
-
-                      await _updateHomeWidget();
-                    },
-                  ),
-                ],
-              ),
-            ),
+            _sectionTitle('Wallpaper'),
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
@@ -854,49 +762,6 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Overlay background',
-                    style: GoogleFonts.openSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _colorDot(
-                        const Color(0x1A000000),
-                        warnaOverlay == const Color(0x1A000000),
-                        () => _saveOverlayColor(const Color(0x1A000000)),
-                      ),
-                      const SizedBox(width: 12),
-                      _colorDot(
-                        const Color(0x33000000),
-                        warnaOverlay == const Color(0x33000000),
-                        () => _saveOverlayColor(const Color(0x33000000)),
-                      ),
-                      const SizedBox(width: 12),
-                      _colorDot(
-                        const Color(0x4D000000),
-                        warnaOverlay == const Color(0x4D000000),
-                        () => _saveOverlayColor(const Color(0x4D000000)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 8),
             _sectionTitle('Preview'),
             Container(
@@ -913,47 +778,44 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: warnaOverlay,
+                  color: const Color(0x33000000),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 padding: const EdgeInsets.all(16),
-                child: Transform.scale(
-                  scale: ukuranWidget,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (tampilkanKategori)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0x80FFFFFF),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            'Kesehatan Mental',
-                            style: GoogleFonts.openSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                            ),
-                          ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (tampilkanKategori)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
                         ),
-                      if (tampilkanKategori) const SizedBox(height: 16),
-                      if (tampilkanQuote)
-                        Text(
-                          'Aku boleh beristirahat tanpa merasa bersalah.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.fredoka(
-                            fontSize: 18,
+                        decoration: BoxDecoration(
+                          color: const Color(0x80FFFFFF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          previewCategory,
+                          style: GoogleFonts.openSans(
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: warnaTeks,
+                            color: Colors.black87,
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                    if (tampilkanKategori) const SizedBox(height: 16),
+                    if (tampilkanQuote)
+                      Text(
+                        shownPreviewQuote,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.fredoka(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: warnaTeks,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

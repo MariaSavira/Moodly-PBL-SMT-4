@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
@@ -34,8 +35,10 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
 
   bool isPremiumUser = false;
   bool _isLoading = true;
+
   int _rewardedBlocksUnlocked = 0;
   int _watchedAdsCount = 0;
+  int _currentIndex = 0;
 
   RewardedAd? _rewardedAd;
   bool _isRewardedAdReady = false;
@@ -51,7 +54,6 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   ];
 
   List<Map<String, String>> _afirmasiList = [];
-  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -103,6 +105,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Future<void> _sendCurrentAfirmasiToWidget() async {
+    if (_isLockPage(_currentIndex)) return;
+
     final currentItem = _currentItem;
 
     await HomeWidget.saveWidgetData<String>(
@@ -153,16 +157,20 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     return _afirmasiList[_currentIndex];
   }
 
-  String get _currentBackground {
+  String _backgroundForIndex(int index) {
     if (_backgroundImages.isEmpty) {
       return 'assets/icon/images/bg_afirmasi.jpg';
     }
-    return _backgroundImages[_currentIndex % _backgroundImages.length];
+
+    return _backgroundImages[index % _backgroundImages.length];
   }
 
   int get _unlockedSlidesCount {
+    if (isPremiumUser) return _afirmasiList.length;
+
     final unlocked =
         freeSlideLimit + (_rewardedBlocksUnlocked * slidesPerRewardBlock);
+
     return unlocked > _afirmasiList.length ? _afirmasiList.length : unlocked;
   }
 
@@ -171,16 +179,28 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     return remaining < 0 ? 0 : remaining;
   }
 
+  int get _pageViewItemCount {
+    if (_afirmasiList.isEmpty) return 0;
+    if (isPremiumUser) return _afirmasiList.length;
+
+    final hasLockPage = _remainingLockedSlides > 0;
+    return hasLockPage ? _unlockedSlidesCount + 1 : _unlockedSlidesCount;
+  }
+
+  bool _isLockPage(int index) {
+    if (isPremiumUser) return false;
+    return _remainingLockedSlides > 0 && index == _unlockedSlidesCount;
+  }
+
+  bool _isLockedSlide(int index) {
+    if (isPremiumUser) return false;
+    return _isLockPage(index);
+  }
+
   bool get _isCurrentFavorite =>
       !_isLockedSlide(_currentIndex) &&
       _afirmasiList.isNotEmpty &&
       AfirmasiService.isFavorite(_currentItem);
-
-  bool _isLockedSlide(int index) {
-    if (isPremiumUser) return false;
-    if (index < freeSlideLimit) return false;
-    return index >= _unlockedSlidesCount;
-  }
 
   Future<Uint8List?> _captureAfirmasiImage() async {
     try {
@@ -199,6 +219,34 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       title: 'Slide terkunci',
       message: 'Tonton 2 iklan untuk membuka 5 slide berikutnya',
       type: CutePopupType.warning,
+    );
+  }
+
+  Widget _buildLockButton({
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: 180,
+      height: 40,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFEDEDED),
+          foregroundColor: Colors.black87,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(
+          title,
+          style: GoogleFonts.openSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 
@@ -268,6 +316,10 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
             message: '5 slide berikutnya berhasil dibuka',
             type: CutePopupType.success,
           );
+
+          if (!_isLockPage(_currentIndex)) {
+            _sendCurrentAfirmasiToWidget();
+          }
         } else {
           showCuteTopPopup(
             context,
@@ -579,10 +631,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Widget _buildLockedOverlay() {
-    final remainingAds = adsNeededPerBlock - _watchedAdsCount;
-
     return Container(
-      color: Colors.black.withOpacity(0.35),
+      color: Colors.black.withOpacity(0.45),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -590,80 +640,55 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8B34B),
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6B84E).withOpacity(0.95),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.lock_outline_rounded,
+                  Icons.lock_rounded,
                   color: Colors.white,
-                  size: 24,
+                  size: 26,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Text(
                 'Tonton 2 iklan untuk membuka 5 slide berikutnya.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      height: 1.4,
-                    ),
+                style: GoogleFonts.fredoka(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.35,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
                 'Progress: $_watchedAdsCount / $adsNeededPerBlock iklan',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
+                style: GoogleFonts.openSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.9),
+                ),
               ),
               const SizedBox(height: 22),
-              SizedBox(
-                width: 170,
-                height: 36,
-                child: ElevatedButton(
-                  onPressed: _watchRewardedAd,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEDEDED),
-                    foregroundColor: Colors.black87,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    remainingAds == 2 ? 'tonton iklan' : 'tonton iklan lagi',
-                  ),
-                ),
+              _buildLockButton(
+                title: 'tonton iklan',
+                onTap: _watchRewardedAd,
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: 170,
-                height: 36,
-                child: ElevatedButton(
-                  onPressed: () {
-                    showCuteTopPopup(
-                      context,
-                      title: 'Premium',
-                      message: 'Halaman premium akan ditambahkan',
-                      type: CutePopupType.warning,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEDEDED),
-                    foregroundColor: Colors.black87,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Dapatkan Premium'),
-                ),
+              _buildLockButton(
+                title: 'Dapatkan Premium',
+                onTap: () {
+                  showCuteTopPopup(
+                    context,
+                    title: 'Premium',
+                    message: 'Halaman premium akan ditambahkan',
+                    type: CutePopupType.warning,
+                  );
+                },
               ),
             ],
           ),
@@ -673,9 +698,9 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Widget _buildDots() {
-    final totalVisible = _afirmasiList.length > freeSlideLimit
+    final totalVisible = _pageViewItemCount > freeSlideLimit
         ? freeSlideLimit
-        : _afirmasiList.length;
+        : _pageViewItemCount;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -719,82 +744,130 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   @override
   Widget build(BuildContext context) {
     final currentItem = _currentItem;
-    final currentCategory = currentItem['kategori'] ?? 'Afirmasi';
+    final isCurrentLockPage = _isLockPage(_currentIndex);
+    final currentCategory =
+        isCurrentLockPage ? 'Slide terkunci' : currentItem['kategori'] ?? 'Afirmasi';
 
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
           Positioned.fill(
             child: Screenshot(
               controller: _screenshotController,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Image.asset(
-                      _currentBackground,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: const Color(0xFF8C6A8E),
-                        );
-                      },
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black.withOpacity(0.10),
-                    ),
-                  ),
-                  if (_isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                      ),
-                    )
-                  else
-                    PageView.builder(
-                      controller: _pageController,
-                      itemCount: _afirmasiList.length,
-                      onPageChanged: (index) async {
-                        setState(() {
-                          _currentIndex = index;
-                        });
+              child: Container(
+                color: Colors.black,
+                child: Stack(
+  fit: StackFit.expand,
+  children: [
+    // ✅ BACKGROUND GLOBAL
+    Image.asset(
+      _backgroundForIndex(_currentIndex),
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+    ),
 
-                        await _sendCurrentAfirmasiToWidget();
-                      },
-                      itemBuilder: (context, index) {
-                        final item = _afirmasiList[index];
-                        final isLocked = _isLockedSlide(index);
+    // ✅ overlay tipis
+    Container(
+      color: Colors.black.withOpacity(0.10),
+    ),
 
-                        return Stack(
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 32),
-                              child: Center(
-                                child: Opacity(
-                                  opacity: isLocked ? 0.35 : 1,
-                                  child: Text(
-                                    item['teks'] ?? '',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineLarge
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.35,
-                                        ),
+    // ✅ konten utama
+    if (_isLoading)
+      const SizedBox.shrink()
+    else
+      PageView.builder(
+        controller: _pageController,
+        itemCount: _pageViewItemCount,
+        onPageChanged: (index) async {
+          setState(() {
+            _currentIndex = index;
+          });
+
+          if (!_isLockPage(index)) {
+            await _sendCurrentAfirmasiToWidget();
+          }
+        },
+                        itemBuilder: (context, index) {
+                          final isLockPage = _isLockPage(index);
+                          final backgroundPath = _backgroundForIndex(index);
+
+                          if (isLockPage) {
+                            return Container(
+                              color: Colors.black,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Positioned.fill(
+                                    child: Image.asset(
+                                      backgroundPath,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          color: const Color(0xFF8C6A8E),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: _buildLockedOverlay(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final item = _afirmasiList[index];
+
+                          return Container(
+                            color: Colors.black,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Positioned.fill(
+                                  child: Image.asset(
+                                    backgroundPath,
+                                    fit: BoxFit.cover,
+                                    gaplessPlayback: true,
+                                    errorBuilder:
+                                        (context, error, stackTrace) {
+                                      return Container(
+                                        color: const Color(0xFF8C6A8E),
+                                      );
+                                    },
                                   ),
                                 ),
-                              ),
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.10),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      item['teks'] ?? '',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.fredoka(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 28,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            if (isLocked) _buildLockedOverlay(),
-                          ],
-                        );
-                      },
-                    ),
-                ],
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
