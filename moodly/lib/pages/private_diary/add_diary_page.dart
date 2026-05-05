@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:permission_handler/permission_handler.dart';
 
 class AddDiaryPage extends StatefulWidget {
   const AddDiaryPage({super.key});
@@ -13,7 +14,6 @@ class AddDiaryPage extends StatefulWidget {
 
 class _AddDiaryPageState extends State<AddDiaryPage> {
   final TextEditingController titleController = TextEditingController();
-
   final quill.QuillController _controller = quill.QuillController.basic();
 
   final FocusNode _focusNode = FocusNode();
@@ -33,8 +33,17 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     super.dispose();
   }
 
-  /// ================= IMAGE PICK + CROP =================
+  /// ================= PERMISSION =================
+  Future<void> requestPermission() async {
+    await Permission.camera.request();
+    await Permission.photos.request();
+    await Permission.storage.request();
+  }
+
+  /// ================= PICK IMAGE =================
   Future<void> pickImage() async {
+    await requestPermission();
+
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
@@ -48,7 +57,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 final picked = await _picker.pickImage(
                   source: ImageSource.camera,
                 );
-                _cropImage(picked);
+                await _cropImage(picked);
               },
             ),
             ListTile(
@@ -59,7 +68,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 final picked = await _picker.pickImage(
                   source: ImageSource.gallery,
                 );
-                _cropImage(picked);
+                await _cropImage(picked);
               },
             ),
           ],
@@ -68,6 +77,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     );
   }
 
+  /// ================= CROP (FIX FOR V8) =================
   Future<void> _cropImage(XFile? picked) async {
     if (picked == null) return;
 
@@ -99,36 +109,37 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     debugPrint("CONTENT: $content");
   }
 
-  /// ================= TOOLBAR =================
+  /// ================= TOOLBAR BUTTON (WORD STYLE) =================
   Widget buildButton(IconData icon, quill.Attribute attribute) {
-    final isActive =
-        _controller.getSelectionStyle().attributes[attribute.key] ==
-        attribute.value;
+    final currentStyle = _controller.getSelectionStyle();
+    final isActive = currentStyle.attributes.containsKey(attribute.key);
 
     return GestureDetector(
       onTap: () {
-        final isCurrentlyActive =
-            _controller.getSelectionStyle().attributes[attribute.key] ==
-            attribute.value;
+        final currentStyle = _controller.getSelectionStyle();
+        final isActive = currentStyle.attributes.containsKey(attribute.key);
 
-        final newAttr = isCurrentlyActive
-            ? quill.Attribute.clone(attribute, null)
-            : attribute;
+        if (isActive) {
+          _controller.formatSelection(quill.Attribute.clone(attribute, null));
+        } else {
+          _controller.formatSelection(attribute);
+        }
 
-        _controller.formatSelection(newAttr);
         setState(() {});
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         margin: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFFF8BBD0).withOpacity(0.6)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: isActive ? const Color(0xFFF8BBD0) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
         ),
-        child: Icon(icon, size: 20),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isActive ? Colors.black : Colors.black54,
+        ),
       ),
     );
   }
@@ -159,7 +170,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                     color: isPressed ? Colors.green : const Color(0xFFF8BBD0),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.check),
+                  child: const Icon(Icons.check, color: Colors.black),
                 ),
               ),
             ),
@@ -193,6 +204,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 onTap: pickImage,
                 child: Container(
                   height: 120,
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(20),
@@ -261,6 +273,14 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                       buildButton(
                         Icons.format_strikethrough,
                         quill.Attribute.strikeThrough,
+                      ),
+                      buildButton(
+                        Icons.format_list_bulleted,
+                        quill.Attribute.ul,
+                      ),
+                      buildButton(
+                        Icons.format_list_numbered,
+                        quill.Attribute.ol,
                       ),
                     ],
                   ),
