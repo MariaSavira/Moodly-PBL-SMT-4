@@ -5,6 +5,7 @@ import '../../services/diary_service.dart';
 import '../../models/diary_model.dart';
 import 'diary_page.dart';
 import 'add_diary_page.dart';
+import 'search_page.dart';
 
 class MonthPage extends StatefulWidget {
   const MonthPage({super.key});
@@ -15,8 +16,6 @@ class MonthPage extends StatefulWidget {
 
 class _MonthPageState extends State<MonthPage> {
   bool isMonthMode = true;
-
-  /// 🔥 TIDAK ADA YANG TERPILIH DI AWAL
   int selectedIndex = -1;
 
   int selectedYear = DateTime.now().year;
@@ -40,8 +39,6 @@ class _MonthPageState extends State<MonthPage> {
   @override
   void initState() {
     super.initState();
-
-    /// 🔥 PAKSA KOSONG SAAT AWAL
     selectedIndex = -1;
   }
 
@@ -79,6 +76,7 @@ class _MonthPageState extends State<MonthPage> {
                 children: [
                   const SizedBox(height: 10),
 
+                  /// HEADER
                   Row(
                     children: [
                       const Icon(Icons.arrow_back),
@@ -92,13 +90,14 @@ class _MonthPageState extends State<MonthPage> {
 
                   const SizedBox(height: 20),
 
+                  /// FILTER + TOGGLE + SEARCH
                   Row(
                     children: [
                       _filterButton(),
                       const SizedBox(width: 10),
                       Expanded(child: _toggle()),
                       const SizedBox(width: 10),
-                      _circleIcon(Icons.search),
+                      _searchButton(), // 🔥 DIGANTI
                     ],
                   ),
 
@@ -135,10 +134,7 @@ class _MonthPageState extends State<MonthPage> {
       itemBuilder: (_, i) {
         return MonthItem(
           label: months[i],
-
-          /// 🔥 INI KUNCI UTAMA
           isSelected: selectedIndex >= 0 && selectedIndex == i,
-
           onTap: () {
             setState(() => selectedIndex = i);
 
@@ -165,22 +161,17 @@ class _MonthPageState extends State<MonthPage> {
           children: [
             const Icon(Icons.edit_note, size: 60, color: Colors.grey),
             const SizedBox(height: 15),
-
             Text(
               "Belum ada diary",
               style: Theme.of(context).textTheme.titleMedium,
             ),
-
             const SizedBox(height: 5),
-
             Text(
               "Kamu belum menulis diary di minggu ini",
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 20),
-
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
@@ -264,6 +255,23 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
+  /// ================= 🔥 SEARCH BUTTON =================
+  Widget _searchButton() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SearchPage()),
+        );
+      },
+      child: const CircleAvatar(
+        radius: 20,
+        backgroundColor: Color(0xFFF4B6C2),
+        child: Icon(Icons.search, color: Colors.black),
+      ),
+    );
+  }
+
   /// ================= FILTER UI =================
   Widget _yearFilter() {
     final years = getYears();
@@ -285,7 +293,6 @@ class _MonthPageState extends State<MonthPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("Tahun", style: Theme.of(context).textTheme.titleMedium),
-
                 const SizedBox(height: 15),
 
                 Wrap(
@@ -339,15 +346,6 @@ class _MonthPageState extends State<MonthPage> {
           ],
         ),
       ),
-    );
-  }
-
-  /// ================= ICON =================
-  Widget _circleIcon(IconData icon) {
-    return CircleAvatar(
-      radius: 20,
-      backgroundColor: const Color(0xFFF4B6C2),
-      child: Icon(icon, color: Colors.black),
     );
   }
 }
