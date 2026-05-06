@@ -265,16 +265,16 @@ class _MoodInputState extends State<MoodInput> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ KARTU PERTANYAAN MOOD - Dengan Gambar Emoji Hati Bergandengan
+
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDDDE3), // Pink muda
+                  color: const Color(0xFFFFD1DB),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Stack(
-                  clipBehavior: Clip.none, // Agar gambar bisa keluar dari container
+                  clipBehavior: Clip.none,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,14 +300,14 @@ class _MoodInputState extends State<MoodInput> {
                         ),
                       ],
                     ),
-                    // ✅ GAMBAR EMOJI HATI BERGANDENGAN - Pojok Kanan Atas (Ukuran Lebih Besar)
+
                     Positioned(
-                      top: -10, // Naik sedikit ke atas (keluar dari container)
-                      right: -10, // Keluar sedikit ke kanan
+                      top: -65,
+                      right: -20,
                       child: Image.asset(
-                        'assets/icons/login/image1.png', // Path ke gambar kamu
-                        width: 80, // Ukuran lebih besar (dari 40 jadi 80)
-                        height: 80,
+                        'assets/icons/login/image1.png',
+                        width: 85,
+                        height: 85,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -327,7 +327,7 @@ class _MoodInputState extends State<MoodInput> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Grid Mood Selection
+
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
