@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/moodly_colors.dart';
 import 'theme_page.dart';
+import 'language_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -28,9 +29,7 @@ class SettingsPage extends StatelessWidget {
                     title: "Pengaturan",
                     onBack: () => Navigator.pop(context),
                   ),
-
                   const SizedBox(height: 36),
-
                   Center(
                     child: _ProfileCard(
                       onEdit: () {
@@ -38,14 +37,11 @@ class SettingsPage extends StatelessWidget {
                       },
                     ),
                   ),
-
                   const SizedBox(height: 34),
-
                   _MainSettingsContainer(
                     children: [
                       _SectionTitle("PENGATURAN AKUN"),
                       const SizedBox(height: 12),
-
                       _SettingItem(
                         icon: Icons.account_circle,
                         iconColor: MoodlyColors.green,
@@ -70,12 +66,9 @@ class SettingsPage extends StatelessWidget {
                           Navigator.pushNamed(context, '/report');
                         },
                       ),
-
                       const SizedBox(height: 18),
-
                       _SectionTitle("PREFERENSI APLIKASI"),
                       const SizedBox(height: 12),
-
                       _SettingItem(
                         icon: Icons.notifications,
                         iconColor: MoodlyColors.pinkAccent,
@@ -104,15 +97,17 @@ class SettingsPage extends StatelessWidget {
                         title: "Bahasa",
                         subtitle: "Indonesia",
                         onTap: () {
-                          Navigator.pushNamed(context, '/language');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LanguagePage(),
+                            ),
+                          );
                         },
                       ),
-
                       const SizedBox(height: 18),
-
                       _SectionTitle("TENTANG"),
                       const SizedBox(height: 12),
-
                       _SettingItem(
                         icon: Icons.description,
                         iconColor: Colors.grey,
@@ -124,13 +119,11 @@ class SettingsPage extends StatelessWidget {
                         ),
                         onTap: () {},
                       ),
-
                       _LogoutItem(
                         onTap: () => _showLogoutDialog(context),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
                 ],
               ),
@@ -157,11 +150,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.warning_rounded,
-                  color: Colors.red,
-                  size: 48,
-                ),
+                const Icon(Icons.warning_rounded, color: Colors.red, size: 48),
                 const SizedBox(height: 14),
                 const Text(
                   "Apakah Anda yakin ingin\nkeluar dari akun Anda?",
@@ -279,16 +268,10 @@ class _ProfileCard extends StatelessWidget {
             height: 62,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: MoodlyColors.green,
-                width: 5,
-              ),
+              border: Border.all(color: MoodlyColors.green, width: 5),
             ),
             child: const Center(
-              child: Text(
-                "🧠",
-                style: TextStyle(fontSize: 28),
-              ),
+              child: Text("🧠", style: TextStyle(fontSize: 28)),
             ),
           ),
           const SizedBox(width: 10),
@@ -311,10 +294,7 @@ class _ProfileCard extends StatelessWidget {
                   "Premium Sanctuary Member",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],
             ),
@@ -492,11 +472,7 @@ class _LogoutItem extends StatelessWidget {
           ),
           child: const Row(
             children: [
-              Icon(
-                Icons.logout,
-                color: Colors.red,
-                size: 27,
-              ),
+              Icon(Icons.logout, color: Colors.red, size: 27),
               SizedBox(width: 14),
               Text(
                 "Keluar",
