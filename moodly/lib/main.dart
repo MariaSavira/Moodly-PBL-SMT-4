@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-
+import 'pages/admin/list_laporan_user_admin_page.dart';
 // firebase
 import 'package:moodly/pages/setting/settings_page.dart';
 
@@ -77,7 +77,7 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SplashScreenMoodly(),
+      home: const ListLaporanUserAdminPage(),
     );
   }
 }
