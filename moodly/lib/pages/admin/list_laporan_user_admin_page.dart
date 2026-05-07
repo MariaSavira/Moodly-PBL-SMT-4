@@ -33,7 +33,14 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadLaporan();
+  }
+
+  void _onScroll() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadLaporan() async {
@@ -122,16 +129,37 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   Color _badgeTextColor(LaporanStatus status) {
     switch (status) {
       case LaporanStatus.pending:
-        return const Color(0xFFD2AB49);
+        return const Color(0xFF9A5606);
       case LaporanStatus.diproses:
         return const Color(0xFF49A828);
       case LaporanStatus.selesai:
-        return const Color(0xFF49A828);
+        return const Color(0xFF20560A);
     }
+  }
+
+  double _customScrollbarTop(double viewportHeight) {
+    const double startTop = 300;
+    const double bottomSpace = 95;
+    const double thumbHeight = 45;
+
+    final double trackHeight = viewportHeight - startTop - bottomSpace;
+
+    if (!_scrollController.hasClients ||
+        _scrollController.position.maxScrollExtent <= 0 ||
+        trackHeight <= thumbHeight) {
+      return startTop;
+    }
+
+    final double scrollFraction =
+        (_scrollController.offset / _scrollController.position.maxScrollExtent)
+            .clamp(0.0, 1.0);
+
+    return startTop + (trackHeight - thumbHeight) * scrollFraction;
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -144,36 +172,50 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1FBD8),
       body: SafeArea(
-        child: RawScrollbar(
-          controller: _scrollController,
-          thumbVisibility: true,
-          thickness: 8,
-          radius: const Radius.circular(16),
-          thumbColor: const Color(0xFFD9D9D9),
-          minThumbLength: 105,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
               children: [
-                _buildTopBar(),
-                const SizedBox(height: 20),
-                _buildTitleSection(),
-                const SizedBox(height: 14),
-                _buildSearchBar(),
-                const SizedBox(height: 10),
-                _buildFilterRow(),
-                const SizedBox(height: 18),
-                _buildTabs(),
-                const SizedBox(height: 18),
-                if (filteredLaporan.isEmpty)
-                  _buildEmptyState()
-                else
-                  ...filteredLaporan.map(_buildReportCard),
+                SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTopBar(),
+                      const SizedBox(height: 20),
+                      _buildTitleSection(),
+                      const SizedBox(height: 14),
+                      _buildSearchBar(),
+                      const SizedBox(height: 10),
+                      _buildFilterRow(),
+                      const SizedBox(height: 18),
+                      _buildTabs(),
+                      const SizedBox(height: 18),
+                      if (filteredLaporan.isEmpty)
+                        _buildEmptyState()
+                      else
+                        ...filteredLaporan.map(_buildReportCard),
+                    ],
+                  ),
+                ),
+
+                // Scrollbar custom kecil sesuai Figma
+                Positioned(
+                  right: 4,
+                  top: _customScrollbarTop(constraints.maxHeight),
+                  child: Container(
+                    width: 5,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -583,16 +625,16 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
     return Row(
       children: [
         SizedBox(
-          width: 73,
-          height: 24,
+          width: 88,
+          height: 28,
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
               '#${laporan.id}',
               style: GoogleFonts.fredoka(
-                fontSize: 12,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
-                height: 22 / 12,
+                height: 22 / 16,
                 letterSpacing: 0,
                 color: Colors.black.withOpacity(0.8),
               ),
@@ -625,52 +667,52 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   }
 
   Widget _buildTypeBadge({
-  required String label,
-  required IconData icon,
-}) {
-  return Container(
-    width: 104,
-    height: 28,
-    padding: const EdgeInsets.only(left: 8, right: 10),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFD9DD),
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.25),
-          blurRadius: 5,
-          spreadRadius: 0,
-          offset: const Offset(0, 1),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 22,
-          color: const Color(0xFFFF8E99),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.openSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              height: 22 / 11,
-              letterSpacing: 0,
-              color: const Color(0xFF000000),
+    required String label,
+    required IconData icon,
+  }) {
+    return Container(
+      width: 104,
+      height: 28,
+      padding: const EdgeInsets.only(left: 8, right: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFD9DD),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            spreadRadius: 0,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: const Color(0xFFFF8E99),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.openSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                height: 22 / 11,
+                letterSpacing: 0,
+                color: const Color(0xFF000000),
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildUserIcon(String id) {
     Color bgColor;
