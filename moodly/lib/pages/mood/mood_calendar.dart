@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'mood_input.dart';
 
 class MoodCalendar extends StatefulWidget {
@@ -11,7 +12,7 @@ class MoodCalendar extends StatefulWidget {
   const MoodCalendar({
     super.key,
     this.initialYear = 2026,
-    this.initialMonth = 1
+    this.initialMonth = 1,
   });
 
   @override
@@ -21,7 +22,6 @@ class MoodCalendar extends StatefulWidget {
 class _MoodCalendarState extends State<MoodCalendar> {
   late DateTime _focusedDate;
   bool _isLoading = true;
-
   Map<String, String> _moodDatabase = {};
 
   @override
@@ -29,106 +29,70 @@ class _MoodCalendarState extends State<MoodCalendar> {
     super.initState();
     final now = DateTime.now();
     _focusedDate = DateTime(now.year, now.month, 1);
-    _loadMoodsFromFirestore();
+    _loadMoods();
   }
 
-  Future<void> _loadMoodsFromFirestore() async {
-    final user = FirebaseAuth.instance.currentUser;
+  String _getEmojiImagePath(String? mood) {
+    if (mood == null) return '';
+    switch (mood) {
+      case 'Senang':
+        return 'assets/emoji/emoji_senang.png';
+      case 'Netral':
+        return 'assets/emoji/emoji_netral.png';
+      case 'Sedih':
+        return 'assets/emoji/emoji_sedih.png';
+      case 'Marah':
+        return 'assets/emoji/emoji_marah.png';
+      default:
+        return 'assets/emoji/emoji_netral.png';
+    }
+  }
 
-    if (user == null) {
+  Future<void> _loadMoods() async {
+    Map<String, String> moods = {};
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
+      for (var key in keys) {
+        final dateKey = key.replaceFirst('mood_', '');
+        final mood = prefs.getString(key);
+        if (mood != null) {
+          moods[dateKey] = mood;
+        }
+      }
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('moods')
+            .doc(user.uid)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+          entries.forEach((key, value) {
+            moods[key] = value.toString();
+          });
+        }
+      }
+
       setState(() {
-        _moodDatabase = {};
+        _moodDatabase = moods;
         _isLoading = false;
       });
-      return;
-    }
-
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('moods')
-          .doc(user.uid)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
-        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
-
-        setState(() {
-          _moodDatabase = entries.map((key, value) =>
-              MapEntry(key, value.toString())
-          );
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _moodDatabase = {};
-          _isLoading = false;
-        });
-      }
     } catch (e) {
       print("❌ Error loading moods: $e");
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _saveMoodToFirestore(DateTime date, String mood) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('moods')
-          .doc(user.uid)
-          .set({
-        'entries.$dateKey': mood,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      await _loadMoodsFromFirestore();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Mood berhasil disimpan!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Error saving mood: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyimpan mood: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() {
+        _moodDatabase = moods;
+        _isLoading = false;
+      });
     }
   }
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String _getEmoji(String? mood) {
-    if (mood == null) return '';
-    switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
-    }
   }
 
   void _changeMonth(int offset) {
@@ -149,7 +113,8 @@ class _MoodCalendarState extends State<MoodCalendar> {
           builder: (_) => MoodInput(selectedDate: date),
         ),
       ).then((_) {
-        _loadMoodsFromFirestore();
+
+        _loadMoods();
       });
     } else {
       final dateKey = _getDateKey(date);
@@ -159,7 +124,7 @@ class _MoodCalendarState extends State<MoodCalendar> {
         SnackBar(
           content: Text(
             mood != null
-                ? 'Mood pada ${date.day}/${date.month}/${date.year}: ${_getEmoji(mood)} $mood'
+                ? 'Mood pada ${date.day}/${date.month}/${date.year}: $mood'
                 : 'Belum ada catatan mood pada ${date.day}/${date.month}/${date.year}',
           ),
           duration: const Duration(seconds: 2),
@@ -241,7 +206,6 @@ class _MoodCalendarState extends State<MoodCalendar> {
                           shape: BoxShape.circle,
                         ),
                       ),
-
                     Text(
                       '$day',
                       style: GoogleFonts.fredoka(
@@ -253,18 +217,15 @@ class _MoodCalendarState extends State<MoodCalendar> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 2),
 
               mood != null
                   ? SizedBox(
                 width: 28,
                 height: 28,
-                child: Center(
-                  child: Text(
-                    _getEmoji(mood),
-                    style: const TextStyle(fontSize: 22),
-                  ),
+                child: Image.asset(
+                  _getEmojiImagePath(mood),
+                  fit: BoxFit.contain,
                 ),
               )
                   : !isFuture
@@ -308,7 +269,7 @@ class _MoodCalendarState extends State<MoodCalendar> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
-            onPressed: _loadMoodsFromFirestore,
+            onPressed: _loadMoods,
             tooltip: 'Refresh data',
           ),
         ],

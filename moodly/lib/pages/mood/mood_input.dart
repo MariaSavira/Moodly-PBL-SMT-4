@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MoodInput extends StatefulWidget {
   final DateTime? selectedDate;
@@ -29,13 +30,13 @@ class _MoodInputState extends State<MoodInput> {
     });
   }
 
-  String _getEmojiForMood(String mood) {
+  String _getEmojiImagePath(String mood) {
     switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
+      case 'Senang': return 'assets/emoji/emoji_senang.png';
+      case 'Netral': return 'assets/emoji/emoji_netral.png';
+      case 'Sedih': return 'assets/emoji/emoji_sedih.png';
+      case 'Marah': return 'assets/emoji/emoji_marah.png';
+      default: return 'assets/emoji/emoji_netral.png';
     }
   }
 
@@ -49,19 +50,14 @@ class _MoodInputState extends State<MoodInput> {
     }
   }
 
-  Future<void> _saveMoodToFirestore({String? note}) async {
-    if (selectedMood == null) return;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Silakan login terlebih dahulu'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  Future<void> _saveMood({String? note}) async {
+    if (selectedMood == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih mood terlebih dahulu!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
@@ -71,21 +67,35 @@ class _MoodInputState extends State<MoodInput> {
     setState(() => _isSaving = true);
 
     try {
-      await FirebaseFirestore.instance
-          .collection('moods')
-          .doc(user.uid)
-          .set({
-        'entries.$dateKey': selectedMood,
-        if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('mood_$dateKey', selectedMood!);
+      if (note != null && note.isNotEmpty) {
+        await prefs.setString('note_$dateKey', note);
+      }
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('moods')
+            .doc(user.uid)
+            .set({
+          'entries.$dateKey': selectedMood,
+          if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Text(_getEmojiForMood(selectedMood!), style: const TextStyle(fontSize: 24)),
+                Image.asset(
+                  _getEmojiImagePath(selectedMood!),
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.contain,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -105,7 +115,10 @@ class _MoodInputState extends State<MoodInput> {
           ),
         );
 
-        Navigator.pop(context);
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       print("❌ Error saving mood: $e");
@@ -170,7 +183,7 @@ class _MoodInputState extends State<MoodInput> {
             onPressed: () {
               _noteController.clear();
               Navigator.pop(context);
-              _saveMoodToFirestore();
+              _saveMood();
             },
             child: Text(
               'Lewati',
@@ -185,7 +198,7 @@ class _MoodInputState extends State<MoodInput> {
             onPressed: () {
               final note = _noteController.text.trim();
               Navigator.pop(context);
-              _saveMoodToFirestore(note: note);
+              _saveMood(note: note);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.purple,
@@ -265,7 +278,6 @@ class _MoodInputState extends State<MoodInput> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -300,7 +312,6 @@ class _MoodInputState extends State<MoodInput> {
                         ),
                       ],
                     ),
-
                     Positioned(
                       top: -65,
                       right: -20,
@@ -314,9 +325,7 @@ class _MoodInputState extends State<MoodInput> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -327,7 +336,6 @@ class _MoodInputState extends State<MoodInput> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -342,9 +350,7 @@ class _MoodInputState extends State<MoodInput> {
                         _buildMoodCard('Marah', 'Marah'),
                       ],
                     ),
-
                     const SizedBox(height: 32),
-
                     Text(
                       'Apakah kamu ingin cerita apa\nyang ada di balik perasaanmu\nhari ini?',
                       textAlign: TextAlign.left,
@@ -355,9 +361,7 @@ class _MoodInputState extends State<MoodInput> {
                         height: 1.4,
                       ),
                     ),
-
                     const SizedBox(height: 32),
-
                     Center(
                       child: SizedBox(
                         width: double.infinity,
@@ -384,15 +388,13 @@ class _MoodInputState extends State<MoodInput> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Center(
                       child: SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: selectedMood == null ? null : () => _saveMoodToFirestore(),
+                          onPressed: selectedMood == null ? null : () => _saveMood(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF7CB342),
                             foregroundColor: Colors.white,
@@ -438,15 +440,29 @@ class _MoodInputState extends State<MoodInput> {
             width: 3,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]
-              : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+              ? [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ]
+              : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              _getEmojiForMood(moodValue),
-              style: const TextStyle(fontSize: 52),
+            Image.asset(
+              _getEmojiImagePath(moodValue),
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 12),
             Text(
