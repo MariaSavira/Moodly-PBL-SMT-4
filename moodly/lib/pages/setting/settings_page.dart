@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../../core/moodly_colors.dart';
+
+// core
+import '../../core/styles/moodly_colors.dart';
+
+// widgets
+import '../../widgets/setting/profile_card.dart';
+import '../../widgets/setting/section_card.dart';
+import '../../widgets/setting/setting_tile.dart';
+import '../../widgets/shared/moodly_app_bar.dart';
+
+// pages (internal)
+import 'edit_profile_page.dart';
+import 'change_password_page.dart';
 import 'theme_page.dart';
 import 'language_page.dart';
 

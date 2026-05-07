@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
+import '../core/styles/styles.dart';
 
 class MoodlyErrorBanner extends StatelessWidget {
   final String title;

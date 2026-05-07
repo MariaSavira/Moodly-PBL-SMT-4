@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
-import '../core/app_text_styles.dart';
+import '../core/styles/styles.dart';
 
 class MoodlyPrimaryButton extends StatelessWidget {
   final String label;

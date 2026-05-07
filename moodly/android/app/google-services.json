@@ -12,7 +12,20 @@
           "package_name": "com.example.moodly"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1028131929489-l96i2tbhmfbbd7a1gi33fkoe68ndp1is.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.moodly",
+            "certificate_hash": "075620831fb542f47cf28d57a7d8ca5823d361e4"
+          }
+        },
+        {
+          "client_id": "1028131929489-69kk8iu383mmmtlkh2a90vdb7h9uba7g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBdk69IkhAAsZ224MIcJZis9BD4q4szweU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1028131929489-69kk8iu383mmmtlkh2a90vdb7h9uba7g.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1028131929489-p9o04h6b7ij21insi9ecu7kpd9mdon9d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.moodly"
+              }
+            }
+          ]
         }
       }
     }
