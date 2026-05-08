@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'mood_input.dart';
@@ -24,11 +23,12 @@ class _MoodCalendarState extends State<MoodCalendar> {
   bool _isLoading = true;
   Map<String, String> _moodDatabase = {};
 
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
+
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _focusedDate = DateTime(now.year, now.month, 1);
+    _focusedDate = DateTime(widget.initialYear, widget.initialMonth, 1);
     _loadMoods();
   }
 
@@ -62,26 +62,30 @@ class _MoodCalendarState extends State<MoodCalendar> {
         }
       }
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        DocumentSnapshot doc = await FirebaseFirestore.instance
-            .collection('moods')
-            .doc(user.uid)
-            .get();
+      final doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .get();
 
-        if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
-          final entries = data?['entries'] as Map<String, dynamic>? ?? {};
-          entries.forEach((key, value) {
-            moods[key] = value.toString();
-          });
-        }
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+
+        entries.forEach((key, value) {
+          moods[key] = value.toString();
+        });
+
+        print("✅ Loaded ${entries.length} entries from Firestore");
+      } else {
+        print("⚠️ Document '$_documentId' not found in Firestore");
       }
 
       setState(() {
         _moodDatabase = moods;
         _isLoading = false;
       });
+
+      print("✅ Total moods loaded: ${moods.length}");
     } catch (e) {
       print("❌ Error loading moods: $e");
       setState(() {
@@ -113,7 +117,6 @@ class _MoodCalendarState extends State<MoodCalendar> {
           builder: (_) => MoodInput(selectedDate: date),
         ),
       ).then((_) {
-
         _loadMoods();
       });
     } else {

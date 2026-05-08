@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'mood_calendar.dart';
 
 class MoodYearCalendar extends StatefulWidget {
@@ -19,6 +18,8 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
   final List<int> _availableYears = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
   Map<String, Map<String, String>> _moodDatabase = {};
+
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
 
   final List<String> _monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -62,55 +63,49 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
         }
       }
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        for (var year in _availableYears) {
-          final doc = await FirebaseFirestore.instance
-              .collection('moods')
-              .doc(user.uid)
-              .get();
+      final doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .get();
 
-          if (doc.exists) {
-            final data = doc.data() as Map<String, dynamic>?;
-            final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
 
-            if (!allMoods.containsKey('$year')) {
-              allMoods['$year'] = {};
+        print("✅ Loaded ${entries.length} entries from Firestore for Guest");
+
+        entries.forEach((dateKey, moodValue) {
+          final parts = dateKey.split('-');
+          if (parts.length == 3) {
+            final year = parts[0];
+            final month = parts[1];
+            final day = parts[2];
+
+            if (!allMoods.containsKey(year)) {
+              allMoods[year] = {};
             }
 
-            entries.forEach((dateKey, moodValue) {
-
-              final parts = dateKey.split('-');
-              if (parts.length == 3) {
-                final monthInt = int.parse(parts[1]);
-                final dayInt = int.parse(parts[2]);
-                allMoods['$year']!['$monthInt-$dayInt'] = moodValue.toString();
-              }
-            });
+            final monthInt = int.parse(month);
+            final dayInt = int.parse(day);
+            allMoods[year]!['$monthInt-$dayInt'] = moodValue.toString();
           }
-        }
+        });
+      } else {
+        print("⚠️ Document '$_documentId' not found in Firestore");
       }
 
       setState(() {
         _moodDatabase = allMoods;
         _isLoading = false;
       });
+
+      print("📊 Total years loaded: ${_moodDatabase.keys.toList()}");
+
     } catch (e) {
       print("❌ Error loading moods: $e");
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  String _getEmoji(String? mood) {
-    if (mood == null) return '';
-    switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
     }
   }
 

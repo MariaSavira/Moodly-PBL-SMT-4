@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MoodInput extends StatefulWidget {
@@ -17,6 +16,8 @@ class _MoodInputState extends State<MoodInput> {
   String? selectedMood;
   final TextEditingController _noteController = TextEditingController();
   bool _isSaving = false;
+
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
 
   @override
   void dispose() {
@@ -67,23 +68,22 @@ class _MoodInputState extends State<MoodInput> {
     setState(() => _isSaving = true);
 
     try {
+      await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .set({
+        'entries.$dateKey': selectedMood,
+        if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('mood_$dateKey', selectedMood!);
       if (note != null && note.isNotEmpty) {
         await prefs.setString('note_$dateKey', note);
       }
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('moods')
-            .doc(user.uid)
-            .set({
-          'entries.$dateKey': selectedMood,
-          if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
+      print("✅ Mood saved to Firestore: $selectedMood on $dateKey");
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
