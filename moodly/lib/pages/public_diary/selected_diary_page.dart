@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../private_diary/month_page.dart';
+import 'public_diary_page.dart';
+
 class SelectedDiaryPage extends StatelessWidget {
   const SelectedDiaryPage({super.key});
 
@@ -7,20 +10,25 @@ class SelectedDiaryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE9ECD7),
+
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
               const SizedBox(height: 30),
 
-              // TITLE + IMAGE
+              /// TITLE + IMAGE
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
                 children: [
                   const Text(
                     "Diary Entries",
+
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -28,30 +36,53 @@ class SelectedDiaryPage extends StatelessWidget {
                     ),
                   ),
 
-                  Image.asset('assets/images/heart_brain.png', width: 110),
+                  Image.asset(
+                    'assets/icon/images/maskot_favorit.png',
+                    width: 110,
+                  ),
                 ],
               ),
 
-              const SizedBox(height: 50),
+              const SizedBox(height: 40),
 
-              // DESCRIPTION
+              /// DESCRIPTION
               const Center(
                 child: Text(
                   "Mau berbagi cerita atau\nmenyimpannya sendiri ?\nKamu yang tentukan",
+
                   textAlign: TextAlign.center,
+
                   style: TextStyle(fontSize: 18, color: Colors.black87),
                 ),
               ),
 
-              const SizedBox(height: 60),
-
-              // PUBLIC BUTTON
-              _buildButton(title: "Public Diary", onTap: () {}),
-
               const SizedBox(height: 50),
 
-              // PRIVATE BUTTON
-              _buildButton(title: "Private Diary", onTap: () {}),
+              /// PUBLIC BUTTON
+              _buildButton(
+                title: "Public Diary",
+
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PublicDiaryPage()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 35),
+
+              /// PRIVATE BUTTON
+              _buildButton(
+                title: "Private Diary",
+
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MonthPage()),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -62,12 +93,16 @@ class SelectedDiaryPage extends StatelessWidget {
   Widget _buildButton({required String title, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
+
       child: Container(
-        height: 100,
+        height: 75,
         width: double.infinity,
+
         decoration: BoxDecoration(
           color: const Color(0xFFB7DCA5),
+
           borderRadius: BorderRadius.circular(24),
+
           boxShadow: [
             BoxShadow(
               color: Colors.black26,
@@ -76,11 +111,13 @@ class SelectedDiaryPage extends StatelessWidget {
             ),
           ],
         ),
+
         child: Center(
           child: Text(
             title,
+
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),

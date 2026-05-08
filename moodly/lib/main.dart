@@ -8,7 +8,7 @@ import 'package:moodly/pages/setting/settings_page.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
 import 'pages/afirmasi/afirmasi_page.dart';
-import 'package:moodly/pages/private_diary/month_page.dart';
+import 'package:moodly/pages/public_diary/selected_diary_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/pages.dart';
 import 'pages/splash_screen.dart';
@@ -83,7 +83,7 @@ class MoodlyApp extends StatelessWidget {
 }
 
 class MainMenuPage extends StatelessWidget {
-   MainMenuPage({super.key});
+  MainMenuPage({super.key});
 
   final List<_FeatureItem> features = [
     _FeatureItem(
@@ -134,7 +134,7 @@ class MainMenuPage extends StatelessWidget {
       title: 'Diary Online',
       subtitle: 'Catatan pribadi pengguna',
       icon: Icons.menu_book_rounded,
-      page: MonthPage(),
+      page: SelectedDiaryPage(),
     ),
     _FeatureItem(
       title: 'Statistik Mood',
@@ -177,26 +177,19 @@ class MainMenuPage extends StatelessWidget {
           children: [
             const Text(
               'Fitur yang tersedia',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
               'Klik menu untuk membuka halaman.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 16),
 
             Expanded(
               child: GridView.builder(
                 itemCount: features.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
@@ -205,15 +198,12 @@ class MainMenuPage extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = features[index];
 
-
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => item.page,
-                        ),
+                        MaterialPageRoute(builder: (_) => item.page),
                       );
                     },
                     child: Container(
@@ -294,9 +284,7 @@ class MoodPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Mood Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Mood Page')));
   }
 }
 
@@ -305,9 +293,7 @@ class DiaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Diary Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Diary Page')));
   }
 }
 
@@ -316,9 +302,7 @@ class StatisticPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Statistic Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Statistic Page')));
   }
 }
 
@@ -327,9 +311,7 @@ class AffirmationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Affirmation Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Affirmation Page')));
   }
 }
 
@@ -338,9 +320,7 @@ class AnonymousPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Anonymous Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Anonymous Page')));
   }
 }
 
@@ -349,9 +329,7 @@ class EmergencyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Emergency Page')),
-    );
+    return const Scaffold(body: Center(child: Text('Emergency Page')));
   }
 }
 

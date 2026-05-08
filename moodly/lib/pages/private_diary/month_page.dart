@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/month_item.dart';
-import '../../widgets/date_section.dart';
-import '../../services/diary_service.dart';
+import '../../services/firestore_diary_service.dart';
 import '../../models/diary_model.dart';
 import 'diary_page.dart';
 import 'add_diary_page.dart';
@@ -36,15 +35,9 @@ class _MonthPageState extends State<MonthPage> {
     "DES",
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    selectedIndex = -1;
-  }
-
   List<int> getYears() {
     final currentYear = DateTime.now().year;
-    const startYear = 2026;
+    const startYear = 2024;
     return List.generate(currentYear - startYear + 1, (i) => startYear + i);
   }
 
@@ -79,7 +72,10 @@ class _MonthPageState extends State<MonthPage> {
                   /// HEADER
                   Row(
                     children: [
-                      const Icon(Icons.arrow_back),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.arrow_back),
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         "Private Diary",
@@ -97,7 +93,7 @@ class _MonthPageState extends State<MonthPage> {
                       const SizedBox(width: 10),
                       Expanded(child: _toggle()),
                       const SizedBox(width: 10),
-                      _searchButton(), // 🔥 DIGANTI
+                      _searchButton(),
                     ],
                   ),
 
@@ -122,7 +118,7 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= MONTH GRID =================
+  // ================= MONTH GRID =================
   Widget _monthGrid() {
     return GridView.builder(
       itemCount: months.length,
@@ -134,7 +130,7 @@ class _MonthPageState extends State<MonthPage> {
       itemBuilder: (_, i) {
         return MonthItem(
           label: months[i],
-          isSelected: selectedIndex >= 0 && selectedIndex == i,
+          isSelected: selectedIndex == i,
           onTap: () {
             setState(() => selectedIndex = i);
 
@@ -150,57 +146,103 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= WEEK =================
+  // ================= WEEK (FIXED STREAM SAFETY) =================
   Widget _weekContent() {
-    final data = DiaryService.getByWeek();
+    return StreamBuilder<List<DiaryModel>>(
+      stream: FirestoreDiaryService().getWeekDiaries(),
 
-    if (data.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.edit_note, size: 60, color: Colors.grey),
-            const SizedBox(height: 15),
-            Text(
-              "Belum ada diary",
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              "Kamu belum menulis diary di minggu ini",
-              style: Theme.of(context).textTheme.bodyMedium,
+      builder: (context, snapshot) {
+        /// LOADING
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        /// ERROR (FIX: tampilkan error asli)
+        if (snapshot.hasError) {
+          debugPrint("🔥 FIRESTORE ERROR: ${snapshot.error}");
+
+          return Center(
+            child: Text(
+              "Error: ${snapshot.error}",
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddDiaryPage()),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text("Tulis Diary"),
+          );
+        }
+
+        final data = snapshot.data ?? [];
+
+        /// EMPTY STATE
+        if (data.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.edit_note, size: 60, color: Colors.grey),
+                const SizedBox(height: 15),
+                Text(
+                  "Belum ada diary",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddDiaryPage()),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text("Tulis Diary"),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    final Map<int, List<DiaryModel>> grouped = {};
+        /// LIST DATA
+        return ListView.builder(
+          itemCount: data.length,
+          itemBuilder: (context, index) {
+            final diary = data[index];
 
-    for (var d in data) {
-      grouped.putIfAbsent(d.date, () => []).add(d);
-    }
-
-    return ListView(
-      children: grouped.entries.map((e) {
-        return DateSection(date: e.key, entries: e.value);
-      }).toList(),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    diary.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    diary.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "${diary.date} ${diary.month} ${diary.year}",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  /// ================= TOGGLE =================
+  // ================= TOGGLE =================
   Widget _toggle() {
     return Container(
       height: 40,
@@ -243,7 +285,7 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= FILTER BUTTON =================
+  // ================= FILTER =================
   Widget _filterButton() {
     return GestureDetector(
       onTap: () => setState(() => showYearFilter = true),
@@ -255,7 +297,7 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= 🔥 SEARCH BUTTON =================
+  // ================= SEARCH =================
   Widget _searchButton() {
     return GestureDetector(
       onTap: () {
@@ -272,7 +314,7 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  /// ================= FILTER UI =================
+  // ================= YEAR FILTER =================
   Widget _yearFilter() {
     final years = getYears();
 
@@ -287,50 +329,45 @@ class _MonthPageState extends State<MonthPage> {
           borderRadius: BorderRadius.circular(25),
           border: Border.all(color: const Color(0xFF7FB77E)),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Tahun", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 15),
+            Text("Tahun", style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 15),
 
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: years.map((year) {
-                    final isSelected = year == selectedYear;
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: years.map((year) {
+                final isSelected = year == selectedYear;
 
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedYear = year),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF7FB77E)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF7FB77E)),
-                        ),
-                        child: Text(
-                          "$year",
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 35),
-              ],
+                return GestureDetector(
+                  onTap: () => setState(() => selectedYear = year),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF7FB77E)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF7FB77E)),
+                    ),
+                    child: Text(
+                      "$year",
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
 
-            Positioned(
-              bottom: 0,
-              right: 0,
+            const SizedBox(height: 20),
+
+            Align(
+              alignment: Alignment.bottomRight,
               child: GestureDetector(
                 onTap: () => setState(() => showYearFilter = false),
                 child: Container(
