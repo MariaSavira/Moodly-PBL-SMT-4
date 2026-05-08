@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/admin/ajuan_banding_model.dart';
 import '../../services/admin/ajuan_banding_service.dart';
+import 'tinjau_ajuan_banding_user_admin_page.dart';
 
 class ListAjuanBandingAdminPage extends StatefulWidget {
   const ListAjuanBandingAdminPage({super.key});
@@ -32,14 +33,11 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   }
 
   void _onScroll() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAjuanBanding() async {
     final data = await _ajuanBandingService.getAjuanBanding();
-
     if (!mounted) return;
 
     setState(() {
@@ -118,22 +116,14 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   }
 
   Color _avatarColor(String id) {
-    if (id == 'BD-0021') {
-      return const Color(0xFF86F2B6);
-    } else if (id == 'BD-0020') {
-      return const Color(0xFFFF9EA2);
-    }
-
+    if (id == 'BD-0021') return const Color(0xFF86F2B6);
+    if (id == 'BD-0020') return const Color(0xFFFF9EA2);
     return const Color(0xFFB7F1FF);
   }
 
   String _avatarEmoji(String id) {
-    if (id == 'BD-0021') {
-      return '✧';
-    } else if (id == 'BD-0020') {
-      return '⌯';
-    }
-
+    if (id == 'BD-0021') return '✧';
+    if (id == 'BD-0020') return '⌯';
     return '☁';
   }
 
@@ -155,6 +145,17 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             .clamp(0.0, 1.0);
 
     return startTop + (trackHeight - thumbHeight) * scrollFraction;
+  }
+
+  void _goToTinjauAjuan(AjuanBandingModel ajuan) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TinjauAjuanBandingUserAdminPage(
+          ajuan: ajuan,
+        ),
+      ),
+    );
   }
 
   @override
@@ -199,8 +200,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
                     ],
                   ),
                 ),
-
-                // Scrollbar custom kecil
                 Positioned(
                   right: 4,
                   top: _customScrollbarTop(constraints.maxHeight),
@@ -230,7 +229,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             fontSize: 24,
             fontWeight: FontWeight.w700,
             height: 22 / 24,
-            letterSpacing: 0,
             color: const Color(0xFFFFB6CC),
           ),
         ),
@@ -288,7 +286,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             fontSize: 14,
             fontWeight: FontWeight.w400,
             height: 22 / 14,
-            letterSpacing: 0,
             color: const Color(0xFF0C0E0C),
           ),
         ),
@@ -306,7 +303,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             fontSize: 24,
             fontWeight: FontWeight.w700,
             height: 22 / 24,
-            letterSpacing: 0,
             color: const Color(0xFF486253),
           ),
         ),
@@ -317,7 +313,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             fontSize: 14,
             fontWeight: FontWeight.w400,
             height: 22 / 14,
-            letterSpacing: 0,
             color: const Color(0xFF0C0E0C),
           ),
         ),
@@ -333,7 +328,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
         onChanged: (_) => setState(() {}),
         style: GoogleFonts.openSans(
           fontSize: 14,
-          fontWeight: FontWeight.w400,
           height: 22 / 14,
           color: const Color(0xFF0C0E0C),
         ),
@@ -341,9 +335,7 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
           hintText: 'Cari ID, atau username...',
           hintStyle: GoogleFonts.openSans(
             fontSize: 14,
-            fontWeight: FontWeight.w400,
             height: 22 / 14,
-            letterSpacing: 0,
             color: const Color(0xFF8F8F8F),
           ),
           prefixIcon: const Icon(
@@ -424,9 +416,7 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
           dropdownColor: Colors.white,
           style: GoogleFonts.openSans(
             fontSize: 12,
-            fontWeight: FontWeight.w400,
             height: 22 / 12,
-            letterSpacing: 0,
             color: const Color(0xFF0C0E0C),
           ),
           items: items.map((item) {
@@ -479,10 +469,10 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
                             tab,
                             style: GoogleFonts.openSans(
                               fontSize: 12,
-                              fontWeight:
-                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                               height: 22 / 12,
-                              letterSpacing: 0,
                               color: const Color(0xFF0C0E0C),
                             ),
                           ),
@@ -543,123 +533,113 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   }
 
   Widget _buildAjuanCard(AjuanBandingModel ajuan) {
-  return GestureDetector(
-    onTap: () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Membuka tinjau ajuan ${ajuan.id}'),
-          duration: const Duration(seconds: 1),
+    return GestureDetector(
+      onTap: () => _goToTinjauAjuan(ajuan),
+      child: Container(
+        width: 326,
+        constraints: const BoxConstraints(
+          minHeight: 156,
         ),
-      );
-    },
-    child: Container(
-      width: 326,
-      constraints: const BoxConstraints(
-        minHeight: 156,
-      ),
-      margin: const EdgeInsets.only(left: 20, right: 16, bottom: 14),
-      padding: const EdgeInsets.fromLTRB(17, 13, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildCardTop(ajuan),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAvatar(ajuan),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildAjuanInfo(ajuan),
-              ),
-              const SizedBox(width: 8),
-              const Padding(
-                padding: EdgeInsets.only(top: 28),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 36,
-                  color: Color(0xFFCFCFCF),
+        margin: const EdgeInsets.only(left: 20, right: 16, bottom: 14),
+        padding: const EdgeInsets.fromLTRB(17, 13, 16, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCardTop(ajuan),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAvatar(ajuan),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _buildAjuanInfo(ajuan),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 8),
+                const Padding(
+                  padding: EdgeInsets.only(top: 28),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 36,
+                    color: Color(0xFFCFCFCF),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCardTop(AjuanBandingModel ajuan) {
-  return Row(
-    children: [
-      SizedBox(
-        width: 73,
-        height: 24,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            '#${ajuan.id}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.fredoka(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 22 / 12,
-              letterSpacing: 0,
-              color: Colors.black.withOpacity(0.8),
+    return Row(
+      children: [
+        SizedBox(
+          width: 73,
+          height: 24,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '#${ajuan.id}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.fredoka(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 22 / 12,
+                color: Colors.black.withOpacity(0.8),
+              ),
             ),
           ),
         ),
-      ),
-      const Spacer(),
-      Container(
-        width: 70,
-        height: 14,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: _statusBackgroundColor(ajuan.status),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          ajuan.status.label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.openSans(
-            fontSize: 10,
-            fontWeight: FontWeight.w400,
-            height: 1,
-            letterSpacing: 0,
-            color: _statusTextColor(ajuan.status),
+        const Spacer(),
+        Container(
+          width: 70,
+          height: 14,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _statusBackgroundColor(ajuan.status),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            ajuan.status.label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.openSans(
+              fontSize: 10,
+              height: 1,
+              color: _statusTextColor(ajuan.status),
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _buildAvatar(AjuanBandingModel ajuan) {
-  return Container(
-    width: 50,
-    height: 50,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: _avatarColor(ajuan.id),
-      shape: BoxShape.circle,
-    ),
-    child: Text(
-      _avatarEmoji(ajuan.id),
-      style: const TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w700,
-        color: Color(0xFF0C0E0C),
+    return Container(
+      width: 50,
+      height: 50,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _avatarColor(ajuan.id),
+        shape: BoxShape.circle,
       ),
-    ),
-  );
-}
+      child: Text(
+        _avatarEmoji(ajuan.id),
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0C0E0C),
+        ),
+      ),
+    );
+  }
 
   Widget _buildAjuanInfo(AjuanBandingModel ajuan) {
     return Column(
@@ -671,7 +651,6 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             fontSize: 13,
             fontWeight: FontWeight.w700,
             height: 22 / 13,
-            letterSpacing: 0,
             color: const Color(0xFF0C0E0C),
           ),
         ),
@@ -684,15 +663,13 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.openSans(
             fontSize: 11,
-            fontWeight: FontWeight.w400,
             height: 20 / 11,
-            letterSpacing: 0,
             color: const Color(0xFF0C0E0C),
           ),
         ),
         const SizedBox(height: 3),
         SizedBox(
-          width: 49,
+          width: 70,
           height: 18,
           child: Text(
             _formatTanggal(ajuan.tanggal),
@@ -700,9 +677,7 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.openSans(
               fontSize: 8,
-              fontWeight: FontWeight.w400,
               height: 18 / 8,
-              letterSpacing: 0,
               color: const Color(0xFF6B6B6B),
             ),
           ),
@@ -712,47 +687,38 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   }
 
   Widget _buildBanBadge(String jenisBan) {
-  final bool isSementara = jenisBan.toLowerCase().contains('sementara');
+    final bool isSementara = jenisBan.toLowerCase().contains('sementara');
 
-  return Container(
-    width: 89,
-    height: 19,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: isSementara
-          ? const Color(0xFFAEDB9A)
-          : const Color(0xFFFFB9B9),
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.25),
-          blurRadius: 5,
-          spreadRadius: 0,
-          offset: const Offset(0, 1),
-        ),
-      ],
-    ),
-    child: SizedBox(
-      width: 70,
-      height: 22,
-      child: Center(
-        child: Text(
-          jenisBan,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.openSans(
-            fontSize: 10,
-            fontWeight: FontWeight.w400,
-            height: 22 / 10,
-            letterSpacing: 0,
-            color: const Color(0xFF000000),
+    return Container(
+      width: 89,
+      height: 19,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color:
+            isSementara ? const Color(0xFFAEDB9A) : const Color(0xFFFFB9B9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 5,
+            spreadRadius: 0,
+            offset: const Offset(0, 1),
           ),
+        ],
+      ),
+      child: Text(
+        jenisBan,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.openSans(
+          fontSize: 10,
+          height: 22 / 10,
+          color: const Color(0xFF000000),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildEmptyState() {
     return Container(
