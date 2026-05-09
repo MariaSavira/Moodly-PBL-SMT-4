@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'tinjau_laporan_user_admin_page.dart';
 import '../../models/admin/laporan_user_model.dart';
 import '../../services/admin/laporan_user_service.dart';
 
@@ -112,6 +112,8 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
         return 'Diproses';
       case LaporanStatus.selesai:
         return 'Selesai';
+      case LaporanStatus.ditolak:
+        return 'Ditolak';
     }
   }
 
@@ -123,6 +125,8 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
         return const Color(0xFFDDF1D2);
       case LaporanStatus.selesai:
         return const Color(0xFFAEDB9A);
+      case LaporanStatus.ditolak:
+        return const Color(0xFFF8D7DA);
     }
   }
 
@@ -134,6 +138,8 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
         return const Color(0xFF49A828);
       case LaporanStatus.selesai:
         return const Color(0xFF20560A);
+      case LaporanStatus.ditolak:
+        return const Color(0xFF721C24);
     }
   }
 
@@ -547,9 +553,24 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   }
 
   Widget _buildReportCard(LaporanUserModel laporan) {
-    final isChat = laporan.tipeKonten == 'Chat Anonim';
+  final isChat = laporan.tipeKonten == 'Chat Anonim';
 
-    return Container(
+  return GestureDetector(
+    onTap: () async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TinjauLaporanUserAdminPage(
+            laporan: laporan,
+          ),
+        ),
+      );
+
+      if (result == true) {
+        _loadLaporan();
+      }
+    },
+    child: Container(
       width: double.infinity,
       margin: const EdgeInsets.only(left: 20, right: 12, bottom: 20),
       padding: const EdgeInsets.fromLTRB(17, 14, 17, 17),
@@ -569,7 +590,7 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
           const SizedBox(height: 22),
           Row(
             children: [
-              _buildUserIcon(laporan.id),
+              _buildUserIcon(laporan),
               const SizedBox(width: 7),
               Text(
                 laporan.namaTerlapor,
@@ -618,9 +639,9 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
           ),
         ],
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildCardTop(LaporanUserModel laporan) {
     return Row(
       children: [
@@ -630,7 +651,7 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '#${laporan.id}',
+              '#LP-${laporan.id.substring(0, 4).toUpperCase()}',
               style: GoogleFonts.fredoka(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -714,39 +735,43 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
     );
   }
 
-  Widget _buildUserIcon(String id) {
-    Color bgColor;
-    String emoji;
-
-    if (id == 'LP-0005') {
-      bgColor = const Color(0xFF8BF4BC);
-      emoji = '⌣';
-    } else if (id == 'LP-0004') {
-      bgColor = const Color(0xFFFF9EA2);
-      emoji = '⌾';
-    } else {
-      bgColor = const Color(0xFFFFD18B);
-      emoji = '☁';
-    }
-
-    return Container(
-      width: 25,
-      height: 25,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: bgColor,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        emoji,
-        style: const TextStyle(
-          fontSize: 15,
-          color: Color(0xFF2B2B2B),
-          fontWeight: FontWeight.w700,
-        ),
+  Widget _buildUserIcon(LaporanUserModel laporan) {
+  if (laporan.avatarTerlapor.isNotEmpty) {
+    return ClipOval(
+      child: Image.asset(
+        laporan.avatarTerlapor,
+        width: 25,
+        height: 25,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _defaultUserIcon();
+        },
       ),
     );
   }
+
+  return _defaultUserIcon();
+}
+
+Widget _defaultUserIcon() {
+  return Container(
+    width: 25,
+    height: 25,
+    alignment: Alignment.center,
+    decoration: const BoxDecoration(
+      color: Color(0xFFFFD18B),
+      shape: BoxShape.circle,
+    ),
+    child: const Text(
+      '☁',
+      style: TextStyle(
+        fontSize: 15,
+        color: Color(0xFF2B2B2B),
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Container(

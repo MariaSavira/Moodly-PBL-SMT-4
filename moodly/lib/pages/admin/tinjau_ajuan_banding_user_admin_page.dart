@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/admin/ajuan_banding_model.dart';
-import 'list_ajuan_banding_admin_page.dart';
+import '../../services/admin/ajuan_banding_service.dart';
 
 class TinjauAjuanBandingUserAdminPage extends StatefulWidget {
   final AjuanBandingModel? ajuan;
@@ -20,6 +20,7 @@ class TinjauAjuanBandingUserAdminPage extends StatefulWidget {
 class _TinjauAjuanBandingUserAdminPageState
     extends State<TinjauAjuanBandingUserAdminPage> {
   final TextEditingController _catatanController = TextEditingController();
+  final AjuanBandingService _ajuanService = AjuanBandingService();
 
   late final AjuanBandingModel _ajuan;
 
@@ -29,26 +30,42 @@ class _TinjauAjuanBandingUserAdminPageState
 
     _ajuan = widget.ajuan ??
         AjuanBandingModel(
-          id: 'BD-0021',
+          documentId: '',
+          id: 'BD-0001',
           username: 'UserXyz',
           jenisBan: 'Ban Sementara',
-          alasanBanding:
-              'Saya tidak sengaja berkata kasar. Maaf, saya sedang dalam kondisi tertekan dan tidak berpikir jernih saat itu. Saya berjanji tidak akan mengulanginya lagi. Terima kasih.',
-          tanggal: DateTime(2026, 4, 8),
+          alasanBanding: 'Tidak sengaja, aku hanya berbagi cerita pribadi....',
+          tanggal: DateTime(2026, 4, 10),
           status: AjuanBandingStatus.pending,
+          catatanAdmin: '',
         );
+
+    _catatanController.text = _ajuan.catatanAdmin;
 
     _catatanController.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
-  void _goToListAjuanBanding() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ListAjuanBandingAdminPage(),
-      ),
+  Future<void> _ubahStatus(AjuanBandingStatus status) async {
+    if (_ajuan.documentId.isEmpty) {
+      _showMessage('Data ajuan belum terhubung ke Firebase');
+      return;
+    }
+
+    await _ajuanService.updateStatusAjuanBanding(
+      documentId: _ajuan.documentId,
+      status: status,
+      catatanAdmin: _catatanController.text.trim(),
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context, true);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
     );
   }
 
@@ -94,18 +111,6 @@ class _TinjauAjuanBandingUserAdminPageState
     }
   }
 
-  void _terimaBanding() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Banding diterima')),
-    );
-  }
-
-  void _tolakBanding() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Banding ditolak')),
-    );
-  }
-
   @override
   void dispose() {
     _catatanController.dispose();
@@ -148,7 +153,7 @@ class _TinjauAjuanBandingUserAdminPageState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               GestureDetector(
-                onTap: _goToListAjuanBanding,
+                onTap: () => Navigator.pop(context),
                 child: const Padding(
                   padding: EdgeInsets.only(top: 5),
                   child: Icon(Icons.arrow_back_rounded, size: 26),
@@ -282,7 +287,7 @@ class _TinjauAjuanBandingUserAdminPageState
             'Keputusan',
             null,
             child: _pinkBox(
-              text: 'Ban Sementara (7 Hari)',
+              text: _ajuan.jenisBan,
               width: 140,
               height: 35,
               light: false,
@@ -324,7 +329,7 @@ class _TinjauAjuanBandingUserAdminPageState
           _normalText('Tanggal Pengajuan'),
           const SizedBox(height: 4),
           Text(
-            'Diajukan 08 April 2026  •  09.15',
+            'Diajukan ${_formatTanggal(_ajuan.tanggal)}  •  09.15',
             style: GoogleFonts.openSans(
               fontSize: 10,
               color: const Color(0xFF6B6B6B),
@@ -380,20 +385,20 @@ class _TinjauAjuanBandingUserAdminPageState
             label: 'Terima Banding',
             icon: Icons.check_circle_rounded,
             color: const Color(0xFF8ECD86),
-            onTap: _terimaBanding,
+            onTap: () => _ubahStatus(AjuanBandingStatus.disetujui),
           ),
           const SizedBox(height: 12),
           _buildActionButton(
             label: 'Tolak Banding',
             icon: Icons.cancel_rounded,
             color: const Color(0xFFFF7474),
-            onTap: _tolakBanding,
+            onTap: () => _ubahStatus(AjuanBandingStatus.ditolak),
           ),
           const SizedBox(height: 12),
           _buildActionButton(
             label: 'Kembali',
             color: const Color(0xFFD9D9D9),
-            onTap: _goToListAjuanBanding,
+            onTap: () => Navigator.pop(context),
           ),
         ],
       ),

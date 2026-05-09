@@ -147,16 +147,20 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
     return startTop + (trackHeight - thumbHeight) * scrollFraction;
   }
 
-  void _goToTinjauAjuan(AjuanBandingModel ajuan) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TinjauAjuanBandingUserAdminPage(
-          ajuan: ajuan,
-        ),
+  Future<void> _goToTinjauAjuan(AjuanBandingModel ajuan) async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => TinjauAjuanBandingUserAdminPage(
+        ajuan: ajuan,
       ),
-    );
+    ),
+  );
+
+  if (result == true) {
+    _loadAjuanBanding();
   }
+}
 
   @override
   void dispose() {

@@ -1,37 +1,28 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../models/admin/ajuan_banding_model.dart';
 
 class AjuanBandingService {
-  Future<List<AjuanBandingModel>> getAjuanBanding() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-    return [
-      AjuanBandingModel(
-        id: 'BD-0021',
-        username: 'UserXyz',
-        jenisBan: 'Ban Sementara',
-        alasanBanding:
-            'Tidak sengaja, aku hanya berbagi cerita pribadi....',
-        tanggal: DateTime(2026, 4, 10),
-        status: AjuanBandingStatus.pending,
-      ),
-      AjuanBandingModel(
-        id: 'BD-0020',
-        username: 'UserAbc',
-        jenisBan: 'Ban Permanen',
-        alasanBanding:
-            'Saya menyesal dan janji tidak akan mengulangi ....',
-        tanggal: DateTime(2026, 4, 9),
-        status: AjuanBandingStatus.disetujui,
-      ),
-      AjuanBandingModel(
-        id: 'BD-0019',
-        username: 'UserNaa',
-        jenisBan: 'Ban Permanen',
-        alasanBanding:
-            'Saya menyesal dan janji tidak akan mengulangi ....',
-        tanggal: DateTime(2026, 4, 8),
-        status: AjuanBandingStatus.ditolak,
-      ),
-    ];
+  Future<List<AjuanBandingModel>> getAjuanBanding() async {
+    final snapshot = await _firestore
+    .collection('ajuan_banding')
+    .get();
+
+    return snapshot.docs
+        .map((doc) => AjuanBandingModel.fromFirestore(doc))
+        .toList();
+  }
+
+  Future<void> updateStatusAjuanBanding({
+    required String documentId,
+    required AjuanBandingStatus status,
+    String? catatanAdmin,
+  }) async {
+    await _firestore.collection('ajuan_banding').doc(documentId).update({
+      'status': status.value,
+      if (catatanAdmin != null) 'catatanAdmin': catatanAdmin,
+    });
   }
 }
