@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/month_item.dart';
 import '../../widgets/date_section.dart';
 import '../../services/diary_service.dart';
-import '../../models/diary_model.dart';
+import '../../core/models/diary_model.dart';
 import 'diary_page.dart';
 import 'add_diary_page.dart';
 

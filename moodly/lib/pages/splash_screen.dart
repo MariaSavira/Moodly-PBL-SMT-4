@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../main.dart';
+import 'homepage.dart';
 
 class SplashScreenMoodly extends StatefulWidget {
   const SplashScreenMoodly({super.key});
@@ -70,15 +70,13 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
       curve: const Interval(0.42, 0.72, curve: Curves.easeOut),
     );
 
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.22),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _introController,
-        curve: const Interval(0.42, 0.78, curve: Curves.easeOutCubic),
-      ),
-    );
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.22), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _introController,
+            curve: const Interval(0.42, 0.78, curve: Curves.easeOutCubic),
+          ),
+        );
 
     _subtitleFade = CurvedAnimation(
       parent: _introController,
@@ -92,12 +90,9 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, __, ___) => MainMenuPage(),
+          pageBuilder: (_, __, ___) => const Homepage(),
           transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
@@ -157,37 +152,25 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
               Positioned(
                 top: -80,
                 left: -50,
-                child: _blob(
-                  size: 220,
-                  color: pinkSoft.withOpacity(0.35),
-                ),
+                child: _blob(size: 220, color: pinkSoft.withOpacity(0.35)),
               ),
 
               Positioned(
                 top: 110,
                 right: -40,
-                child: _blob(
-                  size: 170,
-                  color: greenSoft.withOpacity(0.28),
-                ),
+                child: _blob(size: 170, color: greenSoft.withOpacity(0.28)),
               ),
 
               Positioned(
                 bottom: 80,
                 left: -70,
-                child: _blob(
-                  size: 250,
-                  color: pinkSoft.withOpacity(0.20),
-                ),
+                child: _blob(size: 250, color: pinkSoft.withOpacity(0.20)),
               ),
 
               Positioned(
                 bottom: -20,
                 right: -50,
-                child: _blob(
-                  size: 220,
-                  color: greenSoft.withOpacity(0.22),
-                ),
+                child: _blob(size: 220, color: greenSoft.withOpacity(0.22)),
               ),
 
               Center(
@@ -311,7 +294,9 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
                       opacity: _titleFade,
                       child: SlideTransition(
                         position: _titleSlide,
-                        child: _AnimatedMoodlyTitle(controller: _introController),
+                        child: _AnimatedMoodlyTitle(
+                          controller: _introController,
+                        ),
                       ),
                     ),
 
@@ -377,26 +362,18 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 
   Widget _sparkle({required double size, required Color color}) {
-    return Icon(
-      Icons.auto_awesome_rounded,
-      size: size,
-      color: color,
-    );
+    return Icon(Icons.auto_awesome_rounded, size: size, color: color);
   }
 }
 
 class _AnimatedMoodlyTitle extends AnimatedWidget {
-  const _AnimatedMoodlyTitle({
-    required AnimationController controller,
-  }) : super(listenable: controller);
+  const _AnimatedMoodlyTitle({required AnimationController controller})
+    : super(listenable: controller);
 
   AnimationController get controller => listenable as AnimationController;
 
@@ -409,25 +386,23 @@ class _AnimatedMoodlyTitle extends AnimatedWidget {
       curve: const Interval(0.58, 0.88, curve: Curves.easeOut),
     ).value;
 
-    final double restOffsetY = Tween<double>(
-      begin: 10,
-      end: 0,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(0.58, 0.88, curve: Curves.easeOutCubic),
-      ),
-    ).value;
+    final double restOffsetY = Tween<double>(begin: 10, end: 0)
+        .animate(
+          CurvedAnimation(
+            parent: controller,
+            curve: const Interval(0.58, 0.88, curve: Curves.easeOutCubic),
+          ),
+        )
+        .value;
 
-    final double mScale = Tween<double>(
-      begin: 0.88,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(0.42, 0.68, curve: Curves.easeOutBack),
-      ),
-    ).value;
+    final double mScale = Tween<double>(begin: 0.88, end: 1.0)
+        .animate(
+          CurvedAnimation(
+            parent: controller,
+            curve: const Interval(0.42, 0.68, curve: Curves.easeOutBack),
+          ),
+        )
+        .value;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

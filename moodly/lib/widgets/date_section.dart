@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/diary_model.dart';
+import '../core/models/diary_model.dart';
 import 'diary_card.dart';
 
 class DateSection extends StatelessWidget {

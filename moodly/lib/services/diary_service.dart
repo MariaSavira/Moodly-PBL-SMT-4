@@ -1,4 +1,4 @@
-import '../models/diary_model.dart';
+import '../core/models/diary_model.dart';
 
 class DiaryService {
   static List<DiaryModel> allData = [
