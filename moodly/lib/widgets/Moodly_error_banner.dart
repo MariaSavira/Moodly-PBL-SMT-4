@@ -17,37 +17,68 @@ class MoodlyErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 250,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.errorBackground,
-          borderRadius: BorderRadius.circular(28),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.errorBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.error.withOpacity(0.16),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.error, color: AppColors.error, size: 18),
-            const SizedBox(width: 7),
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: AppTextStyles.errorBody,
-                  children: [
-                    TextSpan(text: '$title\n', style: AppTextStyles.errorTitle),
-                    if (description != null) TextSpan(text: '$description\n'),
-                    if (actionLabel != null)
-                      TextSpan(
-                        text: actionLabel!,
-                        style: AppTextStyles.errorTitle.copyWith(fontSize: 20),
-                      ),
-                  ],
-                ),
-              ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.10),
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
+            child: const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.error,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.errorTitle.copyWith(fontSize: 14),
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    description!,
+                    style: AppTextStyles.errorBody.copyWith(
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                if (actionLabel != null && onAction != null) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: onAction,
+                    child: Text(
+                      actionLabel!,
+                      style: AppTextStyles.errorTitle.copyWith(
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

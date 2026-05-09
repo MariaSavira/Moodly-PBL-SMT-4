@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../core/models/streak_model.dart';
 import '../../core/services/streak_service.dart';
@@ -20,30 +21,62 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _loadStreak();
+    _initStreak();
   }
 
-  Future<void> _loadStreak() async {
-    final streak = await _service.getStreak('USER_UID'); // ganti dengan uid dari Auth
+  Future<void> _initStreak() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final streak = await _service.getStreak(uid);
+
+    // Auto daily logic
+    final now = DateTime.now();
+    final last = streak.lastUpdate;
+
+    if (!_isSameDay(now, last)) {
+      final daysMissed = now.difference(last).inDays;
+      if (daysMissed == 1) {
+        // normal increment
+        streak.currentDay = streak.currentDay < 7 ? streak.currentDay + 1 : 1;
+        streak.completed = [false, false, false];
+      } else if (daysMissed > 1) {
+        // skipped more than 1 day
+        if (streak.freezeLeft > 0) {
+          streak.freezeLeft--;
+          streak.freezeActive = false; // freeze consumed automatically
+        } else {
+          streak.currentDay = 1;
+          streak.completed = [false, false, false];
+        }
+      }
+      streak.lastUpdate = now;
+      await _service.updateStreak(uid, streak);
+    }
+
     setState(() {
       _streak = streak;
       _loading = false;
     });
   }
 
-  void _completeQuest(int index) {
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  void _completeQuest(int index) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     if (!_streak.completed[index]) {
       setState(() {
         _streak.completed[index] = true;
         _streak.totalPoints += _dailyPoints[_streak.currentDay - 1];
       });
-      _service.updateStreak('USER_UID', _streak);
+      await _service.updateStreak(uid, _streak);
       _showPoinAnimation(_dailyPoints[_streak.currentDay - 1]);
     }
   }
 
-  void _activateFreeze() {
+  void _activateFreeze() async {
     if (_streak.freezeLeft > 0 && !_streak.freezeActive) {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -52,12 +85,12 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 setState(() {
                   _streak.freezeActive = true;
                   _streak.freezeLeft--;
                 });
-                _service.updateStreak('USER_UID', _streak);
+                await _service.updateStreak(uid, _streak);
                 Navigator.pop(context);
               },
               child: const Text("Ya"),
@@ -68,20 +101,8 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
     }
   }
 
-  void _nextDay() {
-    setState(() {
-      if (_streak.currentDay < 7) {
-        _streak.currentDay++;
-      } else {
-        _streak.currentDay = 1;
-        _streak.completed = [false, false, false];
-      }
-      _streak.freezeActive = false;
-    });
-    _service.updateStreak('USER_UID', _streak);
-  }
-
-  void _tukarReward() {
+  void _tukarReward() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     if (_streak.totalPoints >= 300) {
       showDialog(
         context: context,
@@ -91,11 +112,11 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 setState(() {
                   _streak.totalPoints -= 300;
                 });
-                _service.updateStreak('USER_UID', _streak);
+                await _service.updateStreak(uid, _streak);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Selamat! Premium 1 bulan aktif.")),
@@ -213,12 +234,6 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
                   ElevatedButton(onPressed: () {}, child: const Text("Upgrade"))
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            // Next day button (testing)
-            ElevatedButton(
-              onPressed: _nextDay,
-              child: const Text("Next Day (Simulasi)"),
             ),
           ],
         ),
