@@ -673,8 +673,9 @@ GestureDetector(
       );
 
       if (result == true) {
-        _loadLaporan();
-      }
+  _loadLaporan();
+  _loadJumlahNotif();
+}
     },
     child: Container(
       width: double.infinity,
@@ -757,7 +758,7 @@ GestureDetector(
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '#LP-${laporan.id.substring(0, 4).toUpperCase()}',
+              '#LP-${_shortId(laporan.id)}',
               style: GoogleFonts.fredoka(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -840,7 +841,13 @@ GestureDetector(
       ),
     );
   }
+String _shortId(String id) {
+  if (id.length >= 4) {
+    return id.substring(0, 4).toUpperCase();
+  }
 
+  return id.toUpperCase().padLeft(4, '0');
+}
   Widget _buildUserIcon(LaporanUserModel laporan) {
   if (laporan.avatarTerlapor.isNotEmpty) {
     return ClipOval(

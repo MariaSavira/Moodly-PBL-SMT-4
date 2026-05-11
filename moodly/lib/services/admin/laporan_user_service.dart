@@ -11,7 +11,21 @@ class LaporanUserService {
         .orderBy('createdAt', descending: true)
         .get();
 
-    return snapshot.docs.map(_fromChatReport).toList();
+    return snapshot.docs.map(_fromReport).toList();
+  }
+
+  LaporanUserModel _fromReport(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    final bool isChatReport = data['reportedMessages'] != null;
+
+    if (isChatReport) {
+      return _fromChatReport(doc);
+    }
+
+    return _fromDiaryReport(doc);
   }
 
   LaporanUserModel _fromChatReport(
@@ -30,6 +44,7 @@ class LaporanUserService {
       namaPelapor: _getName(reporterInfo),
       namaTerlapor: _getName(reportedUserInfo),
       avatarTerlapor: _getAvatar(reportedUserInfo),
+      kategoriLaporan: data['reportCategory'] ?? 'Kata-kata tidak pantas',
       tanggal: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -37,6 +52,29 @@ class LaporanUserService {
       isiLaporan: _getIsiLaporan(reportedMessages),
       catatanAdmin: data['catatanAdmin'] ?? '',
       imageUrls: _getImageUrls(reportedMessages),
+    );
+  }
+
+  LaporanUserModel _fromDiaryReport(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    return LaporanUserModel(
+      documentId: doc.id,
+      id: data['diaryId'] ?? data['reportId'] ?? doc.id,
+      tipeKonten: 'Diary Online',
+      namaPelapor: data['reportedBy'] ?? '-',
+      namaTerlapor: data['reportedUser'] ?? '-',
+      avatarTerlapor: '',
+      kategoriLaporan: data['reportCategory'] ?? 'Tidak ada kategori',
+      tanggal: data['createdAt'] is Timestamp
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      status: laporanStatusFromString(data['status'] ?? 'pending'),
+      isiLaporan: data['diaryText'] ?? 'Diary tidak tersedia',
+      catatanAdmin: data['catatanAdmin'] ?? '',
+      imageUrls: const [],
     );
   }
 
@@ -101,24 +139,24 @@ class LaporanUserService {
   }
 
   List<String> _getImageUrls(dynamic reportedMessages) {
-  if (reportedMessages is! List || reportedMessages.isEmpty) {
-    return [];
-  }
+    if (reportedMessages is! List || reportedMessages.isEmpty) {
+      return [];
+    }
 
-  final List<String> urls = [];
+    final List<String> urls = [];
 
-  for (final message in reportedMessages) {
-    if (message is Map<String, dynamic>) {
-      final imageUrl = message['imageUrl'];
+    for (final message in reportedMessages) {
+      if (message is Map<String, dynamic>) {
+        final imageUrl = message['imageUrl'];
 
-      if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
-        urls.add(imageUrl.toString());
+        if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+          urls.add(imageUrl.toString());
+        }
       }
     }
-  }
 
-  return urls;
-}
+    return urls;
+  }
 
   Future<void> updateStatusLaporan({
     required String documentId,

@@ -56,6 +56,7 @@ class LaporanUserModel {
   final String namaPelapor;
   final String namaTerlapor;
   final String avatarTerlapor;
+  final String kategoriLaporan;
   final DateTime tanggal;
   final LaporanStatus status;
   final String isiLaporan;
@@ -69,6 +70,7 @@ class LaporanUserModel {
     required this.namaPelapor,
     required this.namaTerlapor,
     required this.avatarTerlapor,
+    required this.kategoriLaporan,
     required this.tanggal,
     required this.status,
     required this.isiLaporan,
@@ -88,6 +90,7 @@ class LaporanUserModel {
       namaPelapor: data['namaPelapor'] ?? '',
       namaTerlapor: data['namaTerlapor'] ?? '',
       avatarTerlapor: data['avatarTerlapor'] ?? '',
+      kategoriLaporan: data['kategoriLaporan'] ?? 'Tidak ada kategori',
       tanggal: data['tanggal'] is Timestamp
           ? (data['tanggal'] as Timestamp).toDate()
           : DateTime.now(),
@@ -105,6 +108,7 @@ class LaporanUserModel {
       'namaPelapor': namaPelapor,
       'namaTerlapor': namaTerlapor,
       'avatarTerlapor': avatarTerlapor,
+      'kategoriLaporan': kategoriLaporan,
       'tanggal': Timestamp.fromDate(tanggal),
       'status': status.value,
       'isiLaporan': isiLaporan,
