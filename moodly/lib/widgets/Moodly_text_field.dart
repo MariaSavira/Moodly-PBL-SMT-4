@@ -2,29 +2,31 @@ import 'package:flutter/material.dart';
 import '../core/styles/styles.dart';
 
 class MoodlyTextField extends StatelessWidget {
-  final TextEditingController controller;
+  final TextEditingController? controller;
   final String label;
   final String hintText;
-  final Widget prefixIcon;
+  final Widget? prefixIcon;
   final Widget? suffixIcon;
   final bool obscureText;
-  final TextInputType keyboardType;
-  final String? Function(String?)? validator;
   final bool hasError;
-  final void Function(String)? onChanged;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
+  final TextStyle? labelStyle;
 
   const MoodlyTextField({
     super.key,
-    required this.controller,
+    this.controller,
     required this.label,
     required this.hintText,
-    required this.prefixIcon,
+    this.prefixIcon,
     this.suffixIcon,
     this.obscureText = false,
-    this.keyboardType = TextInputType.text,
-    this.validator,
     this.hasError = false,
+    this.keyboardType,
+    this.validator,
     this.onChanged,
+    this.labelStyle,
   });
 
   @override
@@ -33,7 +35,10 @@ class MoodlyTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
-          Text(label, style: AppTextStyles.label),
+          Text(
+            label,
+            style: labelStyle ?? AppTextStyles.label,
+          ),
           const SizedBox(height: 8),
         ],
         SizedBox(
@@ -53,37 +58,41 @@ class MoodlyTextField extends StatelessWidget {
               hintStyle: AppTextStyles.hintText.copyWith(
                 color: hasError ? AppColors.error : AppColors.textHint,
               ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 13),
-                child: IconTheme(
-                  data: IconThemeData(
-                    color: hasError ? AppColors.error : AppColors.textPrimary,
-                    size: 19,
-                  ),
-                  child: prefixIcon,
-                ),
-              ),
+              prefixIcon: prefixIcon == null
+                  ? null
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                      child: IconTheme(
+                        data: IconThemeData(
+                          color: hasError
+                              ? AppColors.error
+                              : AppColors.textPrimary,
+                          size: 19,
+                        ),
+                        child: prefixIcon!,
+                      ),
+                    ),
               prefixIconConstraints: const BoxConstraints(minWidth: 42),
               suffixIcon: suffixIcon,
               filled: true,
               fillColor: AppColors.inputFill,
               contentPadding: const EdgeInsets.symmetric(vertical: 11),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.inputBorder),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                   color: hasError ? AppColors.error : AppColors.inputBorder,
                 ),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.error),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(50),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.error),
               ),
               errorStyle: const TextStyle(height: 0, fontSize: 0),

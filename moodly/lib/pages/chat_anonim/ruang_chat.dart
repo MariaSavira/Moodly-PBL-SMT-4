@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'image_preview_page.dart';
 import 'dart:async';
+import '../afirmasi/widgets/cute_top_popup.dart';
+import 'homepage_chat_anonim.dart';
 
 class ChatAnonimPage extends StatefulWidget {
   final String roomId;
@@ -20,20 +22,28 @@ class ChatAnonimPage extends StatefulWidget {
 }
 
 class _ChatAnonimPageState extends State<ChatAnonimPage> {
+  bool _hasShownRoomInfoPopup = false;
   final ChatService _chatService = ChatService();
   final TextEditingController _messageController = TextEditingController();
 
   String chatPartnerName = 'Teman Chat';
   String chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
 
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _roomSubscription;
+  bool _hasForcedExit = false;
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userWarningSubscription;
+  bool _isShowingWarningPopup = false;
+
   Timer? _idleTimer;
   bool _hasClosedByIdle = false;
 
-  String? selectedActionMessageId;
   String? replyingMessageId;
   String? replyingText;
   String? replyingType;
   String? replyingSenderId;
+  String? editingMessageId;
+  String? editingOriginalText;
 
   Timer? _typingTimer;
 
@@ -45,6 +55,84 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final minute = dateTime.minute.toString().padLeft(2, '0');
 
     return '$hour.$minute';
+  }
+
+  void _showTopInfo({
+    required String title,
+    required String message,
+    CutePopupType type = CutePopupType.info,
+  }) {
+    showCuteTopPopup(
+      context,
+      title: title,
+      message: message,
+      type: type,
+    );
+  }
+
+  void _showRoomAutoClosePopupOnce() {
+    if (_hasShownRoomInfoPopup || !mounted) return;
+    _hasShownRoomInfoPopup = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      _showTopInfo(
+        title: 'Info percakapan',
+        message: 'Room akan tertutup otomatis setelah 5 menit tanpa aktivitas.',
+        type: CutePopupType.info,
+      );
+    });
+  }
+
+  Future<void> _forceCloseChat({
+    required String title,
+    required String message,
+    CutePopupType type = CutePopupType.warning,
+  }) async {
+    if (_hasForcedExit || !mounted) return;
+    _hasForcedExit = true;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HomeChatAnonim(),
+      ),
+      (route) => false,
+    );
+  }
+
+  void _startUserWarningWatcher() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    _userWarningSubscription?.cancel();
+
+    _userWarningSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) async {
+      final data = doc.data();
+      if (data == null) return;
+
+      if (data['hasWarning'] == true && !_isShowingWarningPopup && mounted) {
+        _isShowingWarningPopup = true;
+
+        _showTopInfo(
+          title: 'Tarik napas dulu...',
+          message: data['warningMessage'] ??
+              'Harap berbicara dengan lebih sopan.',
+          type: CutePopupType.warning,
+        );
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'hasWarning': false,
+        }, SetOptions(merge: true));
+
+        _isShowingWarningPopup = false;
+      }
+    });
   }
 
   bool isSelectingReport = false;
@@ -126,6 +214,51 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
+    Widget _typingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(left: 4, bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const _TypingDots(),
+      ),
+    );
+  }
+
+  Widget _roomNoticeCard() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8BDC0),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Text(
+        'Room akan tertutup otomatis setelah 5 menit tanpa aktivitas.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          height: 1.45,
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'OpenSans',
+        ),
+      ),
+    );
+  }
+
   String? roomId;
   bool isLoading = true;
 
@@ -189,29 +322,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   Future<void> _confirmReportMessages() async {
     if (selectedReportMessages.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Laporkan Chat?'),
-          content: const Text(
-            'Apakah Anda yakin ingin melaporkan chat ini?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Tidak'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Iya'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
+    final confirmed = await _showReportConfirmSheet();
+    if (!confirmed) return;
 
     await _chatService.reportMessages(
       messages: selectedReportMessages,
@@ -225,42 +337,16 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       selectedReportMessages.clear();
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Chat berhasil dilaporkan.'),
-        backgroundColor: Colors.red,
-      ),
+    _showTopInfo(
+      title: 'Chat berhasil dilaporkan',
+      message: 'Pesan yang kamu pilih sudah dikirim untuk ditinjau.',
+      type: CutePopupType.warning,
     );
 
-    _showAfterReportDialog();
-  }
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
 
-  Future<void> _showAfterReportDialog() async {
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Laporan Berhasil'),
-          content: const Text(
-            'Anda dapat menghentikan percakapan atau melanjutkan chat ini.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Lanjutkan'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await _handleEndChat();
-              },
-              child: const Text('Berhenti Matching'),
-            ),
-          ],
-        );
-      },
-    );
+    _showAfterReportSheet();
   }
 
   Future<void> _checkWarningStatus() async {
@@ -276,23 +362,11 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     if (data == null) return;
 
     if (data['hasWarning'] == true && mounted) {
-      await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Tarik Napas Dulu...'),
-            content: Text(
-              data['warningMessage'] ??
-                  'Harap berbicara dengan lebih sopan.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Oke, Aku Mengerti'),
-              ),
-            ],
-          );
-        },
+      _showTopInfo(
+        title: 'Tarik napas dulu...',
+        message: data['warningMessage'] ??
+            'Harap berbicara dengan lebih sopan.',
+        type: CutePopupType.warning,
       );
 
       await FirebaseFirestore.instance
@@ -323,7 +397,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     await _loadChatPartner(id);
     await _checkWarningStatus();
 
+    _startUserWarningWatcher();
+    _showRoomAutoClosePopupOnce();
     _startIdleWatcher();
+    _startRoomWatcher();
   }
 
   Future<void> _loadChatPartner(String roomId) async {
@@ -375,10 +452,51 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     });
   }
 
+  void _startRoomWatcher() {
+    if (roomId == null) return;
+
+    _roomSubscription?.cancel();
+
+    _roomSubscription = _chatService.roomStream(roomId!).listen((doc) async {
+      if (!doc.exists) {
+        await _forceCloseChat(
+          title: 'Percakapan berakhir',
+          message: 'Room chat sudah tidak tersedia lagi.',
+          type: CutePopupType.warning,
+        );
+        return;
+      }
+
+      final data = doc.data();
+      final participants = (data?['participants'] as List?) ?? [];
+      final status = data?['status'];
+
+      if (participants.length < 2 || status == 'closed') {
+        await _forceCloseChat(
+          title: 'Percakapan berakhir',
+          message: 'Teman chat telah mengakhiri percakapan.',
+          type: CutePopupType.warning,
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _userWarningSubscription?.cancel();
     _idleTimer?.cancel();
     _typingTimer?.cancel();
+    _roomSubscription?.cancel();
+
+    if (roomId != null) {
+      unawaited(
+        _chatService.updateTypingStatus(
+          roomId: roomId!,
+          isTyping: false,
+        ),
+      );
+    }
+
     _messageController.dispose();
     super.dispose();
   }
@@ -386,9 +504,41 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   Future<void> _handleSend() async {
     if (roomId == null) return;
 
+    final trimmed = _messageController.text.trim();
+    if (trimmed.isEmpty) return;
+
+    _typingTimer?.cancel();
+    await _chatService.updateTypingStatus(
+      roomId: roomId!,
+      isTyping: false,
+    );
+
+    if (editingMessageId != null) {
+      await _chatService.editMessage(
+        roomId: roomId!,
+        messageId: editingMessageId!,
+        newText: trimmed,
+      );
+
+      _messageController.clear();
+
+      setState(() {
+        editingMessageId = null;
+        editingOriginalText = null;
+      });
+
+      _showTopInfo(
+        title: 'Pesan diperbarui',
+        message: 'Perubahan pesan sudah disimpan.',
+        type: CutePopupType.success,
+      );
+
+      return;
+    }
+
     await _chatService.sendMessage(
       roomId: roomId!,
-      text: _messageController.text,
+      text: trimmed,
       replyToMessageId: replyingMessageId,
       replyText: replyingText,
       replyType: replyingType,
@@ -405,6 +555,20 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     });
   }
 
+  void _cancelEditing() {
+    if (roomId != null) {
+      _chatService.updateTypingStatus(
+        roomId: roomId!,
+        isTyping: false,
+      );
+    }
+    setState(() {
+      editingMessageId = null;
+      editingOriginalText = null;
+    });
+    _messageController.clear();
+  }
+
   void _setReplyMessage(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
 
@@ -417,62 +581,121 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   }
 
   Future<void> _showEditMessageDialog(String messageId, String oldText) async {
-    final controller = TextEditingController(text: oldText);
+    setState(() {
+      editingMessageId = messageId;
+      editingOriginalText = oldText;
+      replyingMessageId = null;
+      replyingText = null;
+      replyingType = null;
+      replyingSenderId = null;
+    });
 
-    await showDialog(
+    _messageController.text = oldText;
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _messageController.text.length),
+    );
+  }
+
+    void _showMyMessageActions(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final text = data['text'] ?? '';
+    final type = data['type'] ?? 'text';
+
+    if (type != 'text') return;
+
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Pesan'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLines: null,
-            decoration: const InputDecoration(
-              hintText: 'Tulis ulang pesan...',
-            ),
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF8),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (roomId == null) return;
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _actionSheetItem(
+                icon: Icons.edit_rounded,
+                label: 'Edit',
+                iconColor: const Color(0xFF6FB65B),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditMessageDialog(doc.id, text);
+                },
+              ),
+              _actionSheetItem(
+                icon: Icons.delete_rounded,
+                label: 'Hapus',
+                iconColor: const Color(0xFFE36A77),
+                onTap: () async {
+                  Navigator.pop(context);
 
-                await _chatService.deleteMessageForEveryone(
-                  roomId: roomId!,
-                  messageId: messageId,
-                );
+                  if (roomId == null) return;
 
-                if (!mounted) return;
-                Navigator.pop(context);
-              },
-              child: const Text('Hapus'),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (roomId == null) return;
-
-                await _chatService.editMessage(
-                  roomId: roomId!,
-                  messageId: messageId,
-                  newText: controller.text,
-                );
-
-                if (!mounted) return;
-                Navigator.pop(context);
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
+                  await _chatService.deleteMessageForEveryone(
+                    roomId: roomId!,
+                    messageId: doc.id,
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  void _showOtherUserMessageActions(
+  Widget _actionSheetItem({
+    required IconData icon,
+    required String label,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: iconColor.withOpacity(0.12),
+            ),
+            child: Icon(
+              icon,
+              size: 26,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+    void _showOtherUserMessageActions(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     showModalBottomSheet(
@@ -481,31 +704,34 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       builder: (context) {
         return Container(
           margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFFFFCF8),
             borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              GestureDetector(
+              _actionSheetItem(
+                icon: Icons.reply_rounded,
+                label: 'Balas',
+                iconColor: const Color(0xFF6FB65B),
                 onTap: () {
                   Navigator.pop(context);
-
-                  // nanti reply bisa kita sambung di step berikutnya
                   _setReplyMessage(doc);
                 },
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.reply_rounded, size: 32, color: Colors.green),
-                    SizedBox(height: 6),
-                    Text('Reply'),
-                  ],
-                ),
               ),
-              GestureDetector(
+              _actionSheetItem(
+                icon: Icons.warning_rounded,
+                label: 'Lapor',
+                iconColor: const Color(0xFFE36A77),
                 onTap: () {
                   Navigator.pop(context);
 
@@ -518,14 +744,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                     }
                   });
                 },
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.warning_rounded, size: 32, color: Colors.red),
-                    SizedBox(height: 6),
-                    Text('Lapor'),
-                  ],
-                ),
               ),
             ],
           ),
@@ -538,8 +756,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     _idleTimer?.cancel();
 
     _idleTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      if (roomId == null) return;
-      if (_hasClosedByIdle) return;
+      if (roomId == null || _hasClosedByIdle || _hasForcedExit) return;
 
       final roomDoc = await FirebaseFirestore.instance
           .collection('chat_rooms')
@@ -548,10 +765,11 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
       if (!roomDoc.exists) {
         _hasClosedByIdle = true;
-
-        if (!mounted) return;
-
-        Navigator.of(context).pop();
+        await _forceCloseChat(
+          title: 'Percakapan berakhir',
+          message: 'Room chat sudah tidak tersedia lagi.',
+          type: CutePopupType.warning,
+        );
         return;
       }
 
@@ -571,17 +789,11 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           idleLimit: const Duration(minutes: 5),
         );
 
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Room ditutup otomatis karena tidak ada aktivitas selama 5 menit.',
-            ),
-          ),
+        await _forceCloseChat(
+          title: 'Room ditutup otomatis',
+          message: 'Percakapan berakhir karena tidak ada aktivitas selama 5 menit.',
+          type: CutePopupType.warning,
         );
-
-        Navigator.of(context).pop();
       }
     });
   }
@@ -667,6 +879,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
               width: 180,
               height: 180,
               fit: BoxFit.cover,
+              alignment: Alignment.center,
             ),
           ),
         );
@@ -720,14 +933,18 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFF7E8EB),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               data['replyTo']['text'] ?? '',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF7B6670),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         Text(
@@ -768,6 +985,197 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
+  Future<bool> _showReportConfirmSheet() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF8),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Laporkan pesan ini?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF2B2B2B),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Pesan yang kamu pilih akan dikirim untuk ditinjau. Kamu juga bisa menghentikan percakapan setelahnya.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: Color(0xFF666666),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor: const Color(0xFFF4F0F1),
+                      ),
+                      child: const Text(
+                        'Batal',
+                        style: TextStyle(
+                          color: Color(0xFF7A6872),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: const Color(0xFFE36A77),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Laporkan',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _showAfterReportSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF8),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Laporan berhasil dikirim',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF2B2B2B),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Jika kamu merasa tidak nyaman, kamu bisa menghentikan percakapan sekarang.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: Color(0xFF666666),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor: const Color(0xFFF4F0F1),
+                      ),
+                      child: const Text(
+                        'Lanjutkan',
+                        style: TextStyle(
+                          color: Color(0xFF7A6872),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _handleEndChat();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: const Color(0xFF84C76A),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Berhenti Chat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleEndChat() async {
     if (roomId == null) return;
 
@@ -775,7 +1183,13 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     if (!mounted) return;
 
-    Navigator.of(context).pop();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HomeChatAnonim(),
+      ),
+      (route) => false,
+    );
   }
 
   @override
@@ -807,11 +1221,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 22,
-                    color: Colors.black87,
-                  ),
+                  const SizedBox(width: 42),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Center(
@@ -832,10 +1242,12 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                       child: Image.asset(
                         chatPartnerAvatar,
                         fit: BoxFit.cover,
+                        alignment: Alignment.center,
                         errorBuilder: (context, error, stackTrace) {
                           return Image.asset(
                             'assets/profile_pic/PP_default.jpg',
                             fit: BoxFit.cover,
+                            alignment: Alignment.center,
                           );
                         },
                       ),
@@ -893,33 +1305,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 children: [
                                   const SizedBox(height: 10),
 
-                                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                                    stream: _chatService.roomStream(roomId!),
-                                    builder: (context, snapshot) {
-                                      final typingUsers = snapshot.data?.data()?['typingUsers'] ?? [];
-
-                                      final isOtherTyping = typingUsers is List &&
-                                          typingUsers.any(
-                                            (uid) => uid != FirebaseAuth.instance.currentUser?.uid,
-                                          );
-
-                                      if (!isOtherTyping) return const SizedBox();
-
-                                      return const Padding(
-                                        padding: EdgeInsets.only(bottom: 6),
-                                        child: Text(
-                                          'Sedang mengetik...',
-                                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                                        ),
-                                      );
-                                    },
-                                  ),
-
-                                  buildSystemMessage(
-                                    prefix: '',
-                                    highlight: 'Jika sama-sama diam, room akan ditutup otomatis dalam 5 menit.',
-                                    suffix: '',
-                                  ),
                                   buildSystemMessage(
                                     prefix: 'Kamu terhubung dengan ',
                                     highlight: chatPartnerName,
@@ -961,40 +1346,12 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             mainAxisAlignment:
                                                 isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                                             children: [
-                                              if (isMe && selectedActionMessageId == doc.id)
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      selectedActionMessageId = null;
-                                                    });
-
-                                                    _showEditMessageDialog(doc.id, text);
-                                                  },
-                                                  child: Container(
-                                                    width: 38,
-                                                    height: 38,
-                                                    margin: const EdgeInsets.only(right: 6),
-                                                    decoration: const BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: Color(0xFF75BE62),
-                                                    ),
-                                                    child: const Icon(
-                                                      Icons.edit_rounded,
-                                                      color: Colors.white,
-                                                      size: 20,
-                                                    ),
-                                                  ),
-                                                ),
-
                                               GestureDetector(
                                                 onLongPress: () {
                                                   final type = data['type'] ?? 'text';
 
                                                   if (isMe && type == 'text') {
-                                                    setState(() {
-                                                      selectedActionMessageId =
-                                                          selectedActionMessageId == doc.id ? null : doc.id;
-                                                    });
+                                                    _showMyMessageActions(doc);
                                                   } else if (!isMe) {
                                                     _showOtherUserMessageActions(doc);
                                                   }
@@ -1010,10 +1367,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                         selectedReportMessages.add(doc);
                                                       }
                                                     });
-                                                  } else {
-                                                    setState(() {
-                                                      selectedActionMessageId = null;
-                                                    });
                                                   }
                                                 },
                                                 child: Container(
@@ -1026,10 +1379,18 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                   ),
                                                   decoration: BoxDecoration(
                                                     color: selectedReportMessageIds.contains(doc.id)
-                                                        ? const Color(0xFFFFD6D6)
-                                                        : isMe
-                                                            ? const Color(0xFFE9F6E2)
-                                                            : pinkBubble,
+                                                      ? const Color(0xFFFFD6D6)
+                                                      : editingMessageId == doc.id
+                                                          ? const Color(0xFFFFF1F3)
+                                                          : isMe
+                                                              ? const Color(0xFFE9F6E2)
+                                                              : pinkBubble,
+                                                    border: editingMessageId == doc.id
+                                                      ? Border.all(
+                                                          color: const Color(0xFFF4B7C1),
+                                                          width: 1.4,
+                                                        )
+                                                      : null,
                                                     borderRadius: BorderRadius.only(
                                                       topLeft: const Radius.circular(18),
                                                       topRight: const Radius.circular(18),
@@ -1093,6 +1454,20 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                       ),
                                     );
                                   }),
+                                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                    stream: _chatService.roomStream(roomId!),
+                                    builder: (context, snapshot) {
+                                      final typingUsers = snapshot.data?.data()?['typingUsers'] ?? [];
+
+                                      final isOtherTyping = typingUsers is List &&
+                                          typingUsers.any(
+                                            (uid) => uid != FirebaseAuth.instance.currentUser?.uid,
+                                          );
+
+                                      if (!isOtherTyping) return const SizedBox();
+                                      return _typingBubble();
+                                    },
+                                  ),
                                 ],
                               );
                             },
@@ -1102,78 +1477,192 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                     ),
 
                     if (isSelectingReport)
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 78,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${selectedReportMessages.length} pesan dipilih untuk dilaporkan',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 78,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4F6),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: const Color(0xFFF4C7CF),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF8D3D9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.warning_rounded,
+                                  color: Color(0xFFE36A77),
+                                  size: 20,
                                 ),
                               ),
-                            ),
-                            IconButton(
-                              onPressed: _confirmReportMessages,
-                              icon: const Icon(Icons.warning_rounded, color: Colors.white),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  isSelectingReport = false;
-                                  selectedReportMessageIds.clear();
-                                  selectedReportMessages.clear();
-                                });
-                              },
-                              icon: const Icon(Icons.close_rounded, color: Colors.white),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '${selectedReportMessages.length} pesan dipilih untuk dilaporkan',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6C5962),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _confirmReportMessages,
+                                icon: const Icon(
+                                  Icons.check_rounded,
+                                  color: Color(0xFF84C76A),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    isSelectingReport = false;
+                                    selectedReportMessageIds.clear();
+                                    selectedReportMessages.clear();
+                                  });
+                                },
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF8D737C),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
 
                     if (replyingMessageId != null)
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 70,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                replyingText ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 70,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4F6),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFF4C7CF),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF39AAA),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
                               ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  replyingMessageId = null;
-                                });
-                              },
-                              child: const Icon(Icons.close),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  replyingText ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6C5962),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    replyingMessageId = null;
+                                    replyingText = null;
+                                    replyingType = null;
+                                    replyingSenderId = null;
+                                  });
+                                },
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF8D737C),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                    
+                                        if (editingMessageId != null)
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 70,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4F6),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFF4C7CF),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF84C76A),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _messageController.text.isNotEmpty
+                                      ? _messageController.text
+                                      : (editingOriginalText ?? 'Mengedit pesan'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF5B6953),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _cancelEditing,
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFF7B8A72),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
                     Positioned(
                       left: 0,
@@ -1247,12 +1736,25 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                         onChanged: (value) {
                                           if (roomId == null) return;
 
+                                          _typingTimer?.cancel();
+
+                                          if (editingMessageId != null) {
+                                            setState(() {});
+                                          }
+
+                                          if (value.trim().isEmpty) {
+                                            _chatService.updateTypingStatus(
+                                              roomId: roomId!,
+                                              isTyping: false,
+                                            );
+                                            return;
+                                          }
+
                                           _chatService.updateTypingStatus(
                                             roomId: roomId!,
-                                            isTyping: value.isNotEmpty,
+                                            isTyping: true,
                                           );
 
-                                          _typingTimer?.cancel();
                                           _typingTimer = Timer(const Duration(seconds: 2), () {
                                             if (roomId == null) return;
 
@@ -1262,9 +1764,11 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             );
                                           });
                                         },
-                                        decoration: const InputDecoration(
-                                          hintText: 'Bagaimana kabarmu?',
-                                          hintStyle: TextStyle(
+                                        decoration: InputDecoration(
+                                          hintText: editingMessageId != null
+                                              ? 'Perbarui pesanmu...'
+                                              : 'Bagaimana kabarmu?',
+                                          hintStyle: const TextStyle(
                                             color: Color(0xFF8A8A8A),
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -1283,22 +1787,38 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                     ),
                                     GestureDetector(
                                       onTap: _handleSend,
-                                      child: Container(
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 180),
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
+                                          horizontal: 10,
+                                          vertical: 7,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF8CCF68),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: editingMessageId != null
+                                              ? const Color(0xFFF39AAA)
+                                              : const Color(0xFF8CCF68),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
-                                        child: const Text(
-                                          'GIF',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w900,
-                                          ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              editingMessageId != null
+                                                  ? Icons.check_rounded
+                                                  : Icons.send_rounded,
+                                              size: 14,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              editingMessageId != null ? 'Simpan' : 'Kirim',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -1316,6 +1836,64 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _dot(int index) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        final progress = (_controller.value - (index * 0.12)) % 1.0;
+        final opacity = 0.35 + (0.65 * (1 - ((progress - 0.5).abs() * 2)));
+        return Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(
+            color: const Color(0xFF8A5A8D).withOpacity(opacity.clamp(0.25, 1.0)),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _dot(0),
+        _dot(1),
+        _dot(2),
+      ],
     );
   }
 }

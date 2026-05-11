@@ -9,6 +9,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'ruang_chat.dart';
 import '../auth/auth.dart';
 import 'dart:math';
+import 'dart:async';
+import '../afirmasi/widgets/cute_top_popup.dart';
+import 'package:flutter/gestures.dart';
+import '../homepage.dart';
 
 // App entry point.
 void main() {
@@ -34,6 +38,13 @@ class AnonymousChatHomePage extends StatefulWidget {
 }
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+    _userRoomSubscription;
+
+  String? _lastKnownRoomId;
+  bool _isOpeningRoom = false;
+  String? _lastHandledNoticeId;
+  bool _isMatchingPageOpen = false;
 
   @override
   void initState() {
@@ -56,8 +67,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       return;
     }
 
-    print('AUTH UID LOGIN: ${user.uid}');
-
     await loadProfileFromFirestoreOrLocal();
 
     if (!mounted) return;
@@ -67,22 +76,265 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         .doc(user.uid)
         .get();
 
-    final currentRoomId = userDoc.data()?['currentRoomId'];
+    final userData = userDoc.data();
+    final initialRoomId = userData?['currentRoomId'];
+    final initialNotice = userData?['chatNotice'];
+    final resolvedRoomId = initialRoomId is String && initialRoomId.isNotEmpty
+        ? initialRoomId
+        : null;
 
-    if (currentRoomId != null &&
-        currentRoomId is String &&
-        currentRoomId.isNotEmpty) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatAnonimPage(roomId: currentRoomId),
-        ),
-      );
+    _lastKnownRoomId = resolvedRoomId;
+
+    if (initialNotice is Map<String, dynamic>) {
+      await _consumeChatNotice(user.uid, initialNotice);
+    } else if (initialNotice is Map) {
+      await _consumeChatNotice(user.uid, Map<String, dynamic>.from(initialNotice));
+    }
+
+    _startUserRoomWatcher(user.uid);
+
+    if (resolvedRoomId != null) {
+      if (!_isMatchingPageOpen) {
+        await _openRoomIfNeeded(resolvedRoomId);
+      }
       return;
     }
 
     await syncUserProfileToFirestore();
-    print('SYNC PROFILE TO FIRESTORE SUCCESS');
+  }
+
+  @override
+  void dispose() {
+    _userRoomSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _showChatEndedPopup() {
+    if (!mounted) return;
+
+    showCuteTopPopup(
+      context,
+      title: 'Percakapan berakhir',
+      message: 'Teman chat telah mengakhiri percakapan atau room sudah ditutup.',
+      type: CutePopupType.warning,
+    );
+  }
+
+  CutePopupType _mapNoticeType(String? rawType) {
+    switch (rawType) {
+      case 'success':
+        return CutePopupType.success;
+      case 'error':
+        return CutePopupType.error;
+      case 'warning':
+        return CutePopupType.warning;
+      default:
+        return CutePopupType.info;
+    }
+  }
+
+  void _showRulesDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFCF8),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Peraturan Ruang Curhat',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                ),
+                const SizedBox(height: 14),
+                _ruleItem('Jaga privasi diri sendiri dan lawan bicara.'),
+                _ruleItem('Gunakan bahasa yang sopan dan tidak menyerang.'),
+                _ruleItem('Jangan meminta data pribadi seperti nomor, alamat, atau akun media sosial.'),
+                _ruleItem('Jangan membagikan isi chat, screenshot, atau rekaman percakapan ke media sosial atau platform apa pun demi menjaga privasi dan kenyamanan pengguna.'),
+                _ruleItem('Kalau merasa tidak nyaman, akhiri percakapan atau gunakan fitur laporan.'),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF84C76A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                    child: const Text(
+                      'Aku Mengerti',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _ruleItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: const BoxDecoration(
+              color: Color(0xFF84C76A),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _consumeChatNotice(
+    String uid,
+    Map<String, dynamic> notice,
+  ) async {
+    final noticeId = notice['id']?.toString();
+    if (noticeId == null || noticeId.isEmpty) return;
+    if (_lastHandledNoticeId == noticeId) return;
+
+    _lastHandledNoticeId = noticeId;
+
+    if (!mounted) return;
+
+    showCuteTopPopup(
+      context,
+      title: (notice['title']?.toString().isNotEmpty ?? false)
+          ? notice['title'].toString()
+          : 'Percakapan berakhir',
+      message: (notice['message']?.toString().isNotEmpty ?? false)
+          ? notice['message'].toString()
+          : 'Room chat telah selesai.',
+      type: _mapNoticeType(notice['type']?.toString()),
+    );
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'chatNotice': null,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _openRoomIfNeeded(String roomId) async {
+    if (_isOpeningRoom || !mounted) return;
+
+    _isOpeningRoom = true;
+
+    try {
+      final roomDoc = await FirebaseFirestore.instance
+          .collection('chat_rooms')
+          .doc(roomId)
+          .get();
+
+      if (!mounted) return;
+
+      if (!roomDoc.exists) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await FirebaseFirestore.instance.collection('users').doc(uid).set({
+            'currentRoomId': null,
+            'status': 'idle',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatAnonimPage(roomId: roomId),
+        ),
+      );
+    } finally {
+      _isOpeningRoom = false;
+    }
+  }
+
+  void _startUserRoomWatcher(String uid) {
+    _userRoomSubscription?.cancel();
+
+    _userRoomSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) async {
+      final data = doc.data();
+      final currentRoomId = data?['currentRoomId'];
+      final notice = data?['chatNotice'];
+
+      if (notice is Map<String, dynamic>) {
+        await _consumeChatNotice(uid, notice);
+      } else if (notice is Map) {
+        await _consumeChatNotice(uid, Map<String, dynamic>.from(notice));
+      }
+
+      final hasRoomNow =
+          currentRoomId is String && currentRoomId.trim().isNotEmpty;
+      final hadRoomBefore =
+          _lastKnownRoomId != null && _lastKnownRoomId!.trim().isNotEmpty;
+
+      if (hadRoomBefore && !hasRoomNow) {
+        _lastKnownRoomId = null;
+        return;
+      }
+
+      if (hasRoomNow) {
+        final roomId = currentRoomId as String;
+        _lastKnownRoomId = roomId;
+
+        if (!_isMatchingPageOpen) {
+          await _openRoomIfNeeded(roomId);
+        }
+      }
+    });
   }
 
   Future<void> syncUserProfileToFirestore() async {
@@ -451,13 +703,30 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: 20,
-          color: Colors.black87,
+        GestureDetector(
+          onTap: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const Homepage(),
+              ),
+              (route) => false,
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20,
+              color: Colors.black87,
+            ),
+          ),
         ),
         const SizedBox(width: 6),
-        Text('Ruang Curhat', style: Theme.of(context).textTheme.headlineLarge),
+        Text(
+          'Ruang Curhat',
+          style: Theme.of(context).textTheme.headlineLarge,
+        ),
       ],
     );
   }
@@ -742,12 +1011,22 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           isCtaPressed = false;
         });
       },
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        setState(() {
+          _isMatchingPageOpen = true;
+        });
+
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => const MatchingPage(),
           ),
         );
+
+        if (!mounted) return;
+
+        setState(() {
+          _isMatchingPageOpen = false;
+        });
       },
       child: AnimatedScale(
         scale: isCtaPressed ? 0.97 : 1.0,
@@ -774,17 +1053,19 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(height: 1.2, color: Colors.black87),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(height: 1.2, color: Colors.black87),
           children: [
             const TextSpan(text: 'Tolong hormati orang lain dan patuhi '),
             TextSpan(
               text: 'peraturan kami',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF7DCB66),
-                fontWeight: FontWeight.w900,
-              ),
+                    color: const Color(0xFF7DCB66),
+                    fontWeight: FontWeight.w900,
+                  ),
+              recognizer: TapGestureRecognizer()..onTap = _showRulesDialog,
             ),
           ],
         ),
@@ -856,10 +1137,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                                   selected: isSelected,
                                   filledAsset: item.filledAsset,
                                   onTap: () {
-                                    if (selectedNavIndex == index) return;
-                                    setState(() {
-                                      selectedNavIndex = index;
-                                    });
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const Homepage(),
+                                      ),
+                                      (route) => false,
+                                    );
                                   },
                                 ),
                               );
