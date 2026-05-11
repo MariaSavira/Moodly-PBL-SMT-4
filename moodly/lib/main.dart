@@ -61,9 +61,6 @@ class MoodlyApp extends StatelessWidget {
       supportedLocales: const [
         Locale('en'),
       ],
-      supportedLocales: const [
-        Locale('en'),
-      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.purple,

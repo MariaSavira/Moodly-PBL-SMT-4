@@ -28,17 +28,18 @@ class _TinjauLaporanUserAdminPageState
   void initState() {
     super.initState();
 
-    _laporan = widget.laporan ??
-        LaporanUserModel(
-          documentId: '',
-          id: 'LP-0005',
-          tipeKonten: 'Chat Anonim',
-          namaPelapor: 'Admin',
-          namaTerlapor: 'UserXyz',
-          avatarTerlapor: '',
-          tanggal: DateTime(2026, 4, 9),
-          status: LaporanStatus.pending,
-          isiLaporan:
+   _laporan = widget.laporan ??
+    LaporanUserModel(
+      documentId: '',
+      id: 'LP-0005',
+      tipeKonten: 'Chat Anonim',
+      namaPelapor: 'Admin',
+      namaTerlapor: 'UserXyz',
+      avatarTerlapor: '',
+kategoriLaporan: 'Kata-kata tidak pantas',
+tanggal: DateTime(2026, 4, 9),
+      status: LaporanStatus.pending,
+      isiLaporan:
           'aku ngerasa hidup ini berat banget, semuanya jahat, enggak ada yang peduli sama aku...',
           catatanAdmin: '',
           imageUrls: const [],
@@ -284,10 +285,10 @@ class _TinjauLaporanUserAdminPageState
                     ),
                     const SizedBox(height: 18),
                     _infoItem(
-                      Icons.flag_outlined,
-                      'Kategori Laporan',
-                      'Kata-kata tidak pantas',
-                    ),
+  Icons.flag_outlined,
+  'Kategori Laporan',
+  _laporan.kategoriLaporan,
+),
                   ],
                 ),
               ),
@@ -456,9 +457,9 @@ class _TinjauLaporanUserAdminPageState
               border: Border.all(color: const Color(0xFFFFB9B9)),
             ),
             child: Text(
-              'Konten ini mengandung kata-kata kasar dan membuat tidak nyaman. Mohon untuk ditindaklanjuti.',
-              style: GoogleFonts.openSans(fontSize: 12, height: 1.6),
-            ),
+  'Alasan laporan: ${_laporan.kategoriLaporan}',
+  style: GoogleFonts.openSans(fontSize: 12, height: 1.6),
+),
           ),
         ],
       ),
@@ -477,7 +478,6 @@ class _TinjauLaporanUserAdminPageState
             '${_formatTanggal(_laporan.tanggal)} • 14:32 WIB',
           ),
           _tableRow('Dilaporkan Melalui', 'Aplikasi Moodly'),
-          _tableRow('Catatan Pelapor', 'Tolong dicek, terima kasih.'),
           if (_laporan.catatanAdmin.isNotEmpty)
             _tableRow('Catatan Admin Lama', _laporan.catatanAdmin),
         ],
