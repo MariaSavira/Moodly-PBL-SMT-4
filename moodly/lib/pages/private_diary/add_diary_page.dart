@@ -230,44 +230,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     );
   }
 
-  /// ================= TOOLBAR BUTTON =================
-  Widget buildButton(IconData icon, quill.Attribute attribute) {
-    final currentStyle = _controller.getSelectionStyle();
-
-    final isActive = currentStyle.attributes.containsKey(attribute.key);
-
-    return GestureDetector(
-      onTap: () {
-        final currentStyle = _controller.getSelectionStyle();
-
-        final isActive = currentStyle.attributes.containsKey(attribute.key);
-
-        if (isActive) {
-          _controller.formatSelection(quill.Attribute.clone(attribute, null));
-        } else {
-          _controller.formatSelection(attribute);
-        }
-
-        setState(() {});
-      },
-
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFF8BBD0) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: isActive ? Colors.black : Colors.black54,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
@@ -390,50 +352,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           focusNode: _focusNode,
                           scrollController: _scrollController,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              /// TOOLBAR
-              Container(
-                height: 55,
-
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE9A7A7),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-
-                  child: Row(
-                    children: [
-                      buildButton(Icons.format_bold, quill.Attribute.bold),
-
-                      buildButton(Icons.format_italic, quill.Attribute.italic),
-
-                      buildButton(
-                        Icons.format_underline,
-                        quill.Attribute.underline,
-                      ),
-
-                      buildButton(
-                        Icons.format_strikethrough,
-                        quill.Attribute.strikeThrough,
-                      ),
-
-                      buildButton(
-                        Icons.format_list_bulleted,
-                        quill.Attribute.ul,
-                      ),
-
-                      buildButton(
-                        Icons.format_list_numbered,
-                        quill.Attribute.ol,
                       ),
                     ],
                   ),
