@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 // pages
-import 'package:moodly/pages/Login_page.dart';
-import 'package:moodly/pages/register_page.dart';
-import 'package:moodly/pages/Register_success_page.dart';
-import 'package:moodly/pages/otp_verification_page.dart';
+import 'package:moodly/pages/auth/login_page.dart';
+import 'package:moodly/pages/auth/register_page.dart';
+import 'package:moodly/pages/auth/register_success_page.dart';
+import 'package:moodly/pages/auth/otp_verification_page.dart';
 import 'package:moodly/pages/setting/settings_page.dart';
+import 'package:moodly/pages/setting/profile_page.dart';
 
 // firebase
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
+
 import 'pages/afirmasi/afirmasi_page.dart';
 import 'package:moodly/pages/private_diary/month_page.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,15 +21,20 @@ import 'package:moodly/pages/pages.dart';
 import 'pages/splash_screen.dart';
 import 'pages/mood/mood_year_calendar.dart';
 import 'pages/mood/mood_analysis.dart';
+
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  await MobileAds.instance.initialize();
+  if (!kIsWeb) {
+    await MobileAds.instance.initialize();
+  }
 
   runApp(const MoodlyApp());
 }
@@ -38,18 +47,19 @@ class MoodlyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Moodly',
-
       localizationsDelegates: [
         quill.FlutterQuillLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-
-      supportedLocales: const [Locale('en')],
-
+      supportedLocales: const [
+        Locale('en'),
+      ],
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.purple,
+        ),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
         useMaterial3: true,
         textTheme: GoogleFonts.fredokaTextTheme().copyWith(
@@ -76,22 +86,23 @@ class MoodlyApp extends StatelessWidget {
           labelLarge: GoogleFonts.openSans(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color.fromARGB(255, 255, 255, 255),
+            color: Colors.white,
           ),
         ),
       ),
 
-      home: const MainMenuPage(),
-
-      // kalau mau langsung test OTP, ganti home di atas menjadi:
-      // home: const OtpVerificationPage(email: 'test@gmail.com'),
+      // HOME UTAMA
       home: const SplashScreenMoodly(),
+
+      routes: {
+        '/profile': (context) => const ProfilePage(),
+      },
     );
   }
 }
 
 class MainMenuPage extends StatelessWidget {
-   MainMenuPage({super.key});
+  MainMenuPage({super.key});
 
   final List<_FeatureItem> features = [
     _FeatureItem(
@@ -110,7 +121,6 @@ class MainMenuPage extends StatelessWidget {
       title: 'OTP Verification',
       subtitle: 'Verifikasi kode OTP',
       icon: Icons.lock_clock,
-      page: OtpVerificationPage(email: 'test@gmail.com'),
       page: OtpVerificationPage(
         fullName: 'Test User',
         email: 'test@gmail.com',
@@ -120,7 +130,7 @@ class MainMenuPage extends StatelessWidget {
     ),
     _FeatureItem(
       title: 'Register Sukses',
-      subtitle: 'Register Berhasil',
+      subtitle: 'Register berhasil',
       icon: Icons.verified_rounded,
       page: RegisterSuccessPage(),
     ),
@@ -160,12 +170,15 @@ class MainMenuPage extends StatelessWidget {
       icon: Icons.forum_rounded,
       page: HomeChatAnonim(),
     ),
+
+    /*
     _FeatureItem(
       title: 'Bantuan Darurat',
       subtitle: 'Hotline dan dukungan awal',
       icon: Icons.warning_amber_rounded,
       page: EmergencyPage(),
     ),
+    */
   ];
 
   @override
@@ -188,9 +201,7 @@ class MainMenuPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 8),
-
             const Text(
               'Klik menu untuk membuka halaman.',
               style: TextStyle(
@@ -198,9 +209,7 @@ class MainMenuPage extends StatelessWidget {
                 color: Colors.black54,
               ),
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: GridView.builder(
                 itemCount: features.length,
@@ -212,7 +221,6 @@ class MainMenuPage extends StatelessWidget {
                 ),
                 itemBuilder: (context, index) {
                   final item = features[index];
-
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
@@ -249,9 +257,7 @@ class MainMenuPage extends StatelessWidget {
                               size: 28,
                             ),
                           ),
-
                           const SizedBox(height: 12),
-
                           Text(
                             item.title,
                             style: const TextStyle(
@@ -259,9 +265,7 @@ class MainMenuPage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-
                           const SizedBox(height: 6),
-
                           Expanded(
                             child: Text(
                               item.subtitle,
@@ -299,171 +303,4 @@ class _FeatureItem {
     required this.icon,
     required this.page,
   });
-}
-
-class MoodPage extends StatelessWidget {
-  const MoodPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Mood Page')),
-    );
-  }
-}
-
-class DiaryPage extends StatelessWidget {
-  const DiaryPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Diary Page')),
-    );
-  }
-}
-
-class StatisticPage extends StatelessWidget {
-  const StatisticPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Statistic Page')),
-    );
-  }
-}
-
-class AffirmationPage extends StatelessWidget {
-  const AffirmationPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Affirmation Page')),
-    );
-  }
-}
-
-class AnonymousPage extends StatelessWidget {
-  const AnonymousPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Anonymous Page')),
-    );
-  }
-}
-
-class EmergencyPage extends StatelessWidget {
-  const EmergencyPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Emergency Page')),
-    );
-  }
-}
-
-class DemoPageTemplate extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String description;
-  final List<String> progressItems;
-  final void Function(int index, String title)? onProgressTap; // ✅ TAMBAH
-
-  const DemoPageTemplate({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.description,
-    required this.progressItems,
-    this.onProgressTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title), backgroundColor: Colors.transparent),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.purpleAccent,
-                    child: Icon(icon, size: 34, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: progressItems.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      leading: const Icon(Icons.check_circle_outline_rounded),
-                      title: Text(progressItems[index]),
-                      onTap: onProgressTap != null
-                          ? () => onProgressTap!(index, progressItems[index])
-                          : null,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AuthPage extends StatelessWidget {
-  const AuthPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DemoPageTemplate(
-      title: 'Login & Register',
-      icon: Icons.login_rounded,
-      description: 'Halaman demo untuk autentikasi pengguna Moodly.',
-      progressItems: [
-        'UI login sederhana',
-        'UI register sederhana',
-        'Navigasi antar halaman auth',
-        'Siap dihubungkan ke Firebase Auth',
-      ],
-    );
-  }
 }

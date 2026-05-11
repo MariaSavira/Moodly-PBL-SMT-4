@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/moodly_colors.dart';
+import '../../core/styles/moodly_colors.dart';
 import '../../core/styles/moodly_colors.dart';
 import '../../widgets/shared/moodly_app_bar.dart';
 

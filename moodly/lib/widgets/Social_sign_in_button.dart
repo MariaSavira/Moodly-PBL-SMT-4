@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_text_styles.dart';
+import '../core/styles/app_text_styles.dart';
 import '../core/styles/styles.dart';
 
 class SocialSignInButton extends StatelessWidget {
