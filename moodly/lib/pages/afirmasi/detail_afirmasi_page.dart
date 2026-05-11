@@ -103,26 +103,38 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
 
     await _sendCurrentAfirmasiToWidget();
   }
-
-  Future<void> _sendCurrentAfirmasiToWidget() async {
-    if (_isLockPage(_currentIndex)) return;
-
-    final currentItem = _currentItem;
-
-    await HomeWidget.saveWidgetData<String>(
-      'previewCategory',
-      currentItem['kategori'] ?? 'Afirmasi',
-    );
-
-    await HomeWidget.saveWidgetData<String>(
-      'previewQuote',
-      currentItem['teks'] ?? '',
-    );
-
-    await HomeWidget.updateWidget(
-      androidName: 'MoodlyWidgetProvider',
-    );
+String _getWallpaperForIndex(int index) {
+  if (_backgroundImages.isEmpty) {
+    return 'assets/icon/images/bg_afirmasi_1.jpg';
   }
+  return _backgroundImages[index % _backgroundImages.length];
+}
+Future<void> _sendCurrentAfirmasiToWidget() async {
+  if (_isLockPage(_currentIndex)) return;
+
+  final currentItem = _currentItem;
+  final currentWallpaper = _backgroundForIndex(_currentIndex);
+
+  await HomeWidget.saveWidgetData<String>(
+    'previewCategory',
+    currentItem['kategori'] ?? 'Afirmasi',
+  );
+
+  await HomeWidget.saveWidgetData<String>(
+    'previewQuote',
+    currentItem['teks'] ?? '',
+  );
+
+  await HomeWidget.saveWidgetData<String>(
+    'selectedWallpaper',
+    currentWallpaper,
+  );
+
+  await HomeWidget.updateWidget(
+    androidName: 'MoodlyWidgetProvider',
+  );
+}
+
 
   void _loadRewardedAd() {
     RewardedAd.load(
@@ -780,14 +792,12 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
         controller: _pageController,
         itemCount: _pageViewItemCount,
         onPageChanged: (index) async {
-          setState(() {
-            _currentIndex = index;
-          });
+  setState(() {
+    _currentIndex = index;
+  });
 
-          if (!_isLockPage(index)) {
-            await _sendCurrentAfirmasiToWidget();
-          }
-        },
+  await _sendCurrentAfirmasiToWidget();
+},
                         itemBuilder: (context, index) {
                           final isLockPage = _isLockPage(index);
                           final backgroundPath = _backgroundForIndex(index);
