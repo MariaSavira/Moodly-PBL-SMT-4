@@ -1,238 +1,566 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../core/models/streak_model.dart';
+import 'reward_page.dart';
+import '../../widgets/streak/streak_feedback_popup.dart';
+import 'streak_detail_page.dart';
 import '../../core/services/streak_service.dart';
-import '../../core/styles/app_text.dart';
 
-class StreakPage extends StatefulWidget {
+class StreakPage extends StatelessWidget {
   const StreakPage({super.key});
 
-  @override
-  State<StreakPage> createState() => _StreakPageState();
-}
+  static const Color _bg = Color(0xFFF3FADC);
+  static const Color _card = Color(0xFFFFFDF9);
+  static const Color _green = Color(0xFF84C76A);
+  static const Color _greenSoft = Color(0xFFDDF0C7);
+  static const Color _greenPastel = Color(0xFFEAF6DA);
+  static const Color _pink = Color(0xFFF6BDC4);
+  static const Color _pinkSoft = Color(0xFFFFEEF1);
+  static const Color _mint = Color(0xFFCDEEE7);
+  static const Color _mintSoft = Color(0xFFEFFAF7);
+  static const Color _textDark = Color(0xFF222222);
+  static const Color _textSoft = Color(0xFF6F7A67);
 
-class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateMixin {
-  final StreakService _service = StreakService();
-  late StreakModel _streak;
-  bool _loading = true;
+  List<_RewardPreview> get _rewardPreviews => const [
+        _RewardPreview(
+          title: 'Avatar Anonim',
+          subtitle: 'Mulai 120 poin',
+          icon: Icons.face_rounded,
+          accent: Color(0xFFF8D3D9),
+          iconColor: Color(0xFFE58696),
+        ),
+        _RewardPreview(
+          title: 'Frame Avatar',
+          subtitle: 'Mulai 90 poin',
+          icon: Icons.auto_awesome_rounded,
+          accent: Color(0xFFE5F3D7),
+          iconColor: Color(0xFF74B55F),
+        ),
+        _RewardPreview(
+          title: 'Freeze Tambahan',
+          subtitle: '180 poin',
+          icon: Icons.favorite_rounded,
+          accent: Color(0xFFDFF3ED),
+          iconColor: Color(0xFF63B8A2),
+        ),
+        _RewardPreview(
+          title: 'Premium 1 Bulan',
+          subtitle: '3200 poin',
+          icon: Icons.workspace_premium_rounded,
+          accent: Color(0xFFF5EAFB),
+          iconColor: Color(0xFF9A76B3),
+        ),
+      ];
 
-  final List<int> _dailyPoints = [10, 10, 10, 10, 25, 50, 100];
+  List<BoxShadow> get _softShadow => const [
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, 0.10),
+          offset: Offset(0, 3),
+          blurRadius: 10,
+          spreadRadius: 0,
+        ),
+      ];
 
-  @override
-  void initState() {
-    super.initState();
-    _initStreak();
+  List<_WeeklyReward> get _weeklyRewards => const [
+        _WeeklyReward(dayLabel: 'Hari 1', pointLabel: '+10'),
+        _WeeklyReward(dayLabel: 'Hari 2', pointLabel: '+10'),
+        _WeeklyReward(dayLabel: 'Hari 3', pointLabel: '+10'),
+        _WeeklyReward(dayLabel: 'Hari 4', pointLabel: '+10'),
+        _WeeklyReward(dayLabel: 'Hari 5', pointLabel: '+15'),
+        _WeeklyReward(dayLabel: 'Hari 6', pointLabel: '+20'),
+        _WeeklyReward(dayLabel: 'Hari 7', pointLabel: '+30', isToday: true),
+      ];
+
+  List<_MissionSection> _buildSections(StreakState state) {
+    return [
+      _MissionSection(
+        title: 'Mood',
+        pointsLabel: '+${StreakService.moodPoints}',
+        progressLabel: state.moodDoneToday ? '1/1' : '0/1',
+        accent: const Color(0xFFF6D2D7),
+        accentSoft: const Color(0xFFFFF1F4),
+        chipColor: const Color(0xFFF3B6BF),
+        iconBg: const Color(0xFFFFFAFB),
+        icon: Icons.sentiment_satisfied_alt_rounded,
+        subtitle: 'Trigger utama streak harianmu',
+        footerLabel:
+            state.moodDoneToday ? 'Mood hari ini sudah selesai' : 'Isi mood sekarang',
+        footerIcon: state.moodDoneToday
+            ? Icons.check_circle_rounded
+            : Icons.arrow_forward_rounded,
+        action: _MissionAction.mood,
+        tasks: [
+          _MissionTask(
+            title: 'Isi mood hari ini',
+            isDone: state.moodDoneToday,
+          ),
+        ],
+      ),
+      _MissionSection(
+        title: 'Diary Online',
+        pointsLabel: '+${StreakService.diaryPoints}',
+        progressLabel: state.diaryDoneToday ? '1/1' : '0/1',
+        accent: const Color(0xFFE8F3D6),
+        accentSoft: const Color(0xFFF8FDEB),
+        chipColor: const Color(0xFFA9D78D),
+        iconBg: const Color(0xFFFFFEFA),
+        icon: Icons.eco_rounded,
+        subtitle: 'Luapkan isi hati dengan lebih lega',
+        footerLabel:
+            state.diaryDoneToday ? 'Bonus diary sudah diklaim' : 'Klaim bonus diary',
+        footerIcon: state.diaryDoneToday
+            ? Icons.check_circle_rounded
+            : Icons.arrow_forward_rounded,
+        action: _MissionAction.diary,
+        tasks: [
+          _MissionTask(
+            title: 'Klaim bonus diary hari ini',
+            isDone: state.diaryDoneToday,
+          ),
+        ],
+      ),
+      _MissionSection(
+        title: 'Afirmasi',
+        pointsLabel: '+${StreakService.affirmationPoints}',
+        progressLabel: state.affirmationDoneToday ? '1/1' : '0/1',
+        accent: const Color(0xFFD6F0EA),
+        accentSoft: const Color(0xFFF0FBF8),
+        chipColor: const Color(0xFFA7DDD1),
+        iconBg: const Color(0xFFFFFEFA),
+        icon: Icons.local_florist_rounded,
+        subtitle: 'Sempatkan jeda untuk menyapa dirimu',
+        footerLabel: state.affirmationDoneToday
+            ? 'Bonus afirmasi sudah diklaim'
+            : 'Klaim bonus afirmasi',
+        footerIcon: state.affirmationDoneToday
+            ? Icons.check_circle_rounded
+            : Icons.arrow_forward_rounded,
+        action: _MissionAction.affirmation,
+        tasks: [
+          _MissionTask(
+            title: 'Klaim bonus afirmasi hari ini',
+            isDone: state.affirmationDoneToday,
+          ),
+        ],
+      ),
+    ];
   }
 
-  Future<void> _initStreak() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final streak = await _service.getStreak(uid);
+  int _completedTodayCount(StreakState state) {
+    int count = 0;
+    if (state.moodDoneToday) count++;
+    if (state.diaryDoneToday) count++;
+    if (state.affirmationDoneToday) count++;
+    if (state.comboDoneToday) count++;
+    return count;
+  }
 
-    // Auto daily logic
-    final now = DateTime.now();
-    final last = streak.lastUpdate;
+  int _earnedTodayPoints(StreakState state) {
+    int total = 0;
+    if (state.moodDoneToday) total += StreakService.moodPoints;
+    if (state.diaryDoneToday) total += StreakService.diaryPoints;
+    if (state.affirmationDoneToday) total += StreakService.affirmationPoints;
+    if (state.comboDoneToday) total += StreakService.comboPoints;
+    return total;
+  }
 
-    if (!_isSameDay(now, last)) {
-      final daysMissed = now.difference(last).inDays;
-      if (daysMissed == 1) {
-        // normal increment
-        streak.currentDay = streak.currentDay < 7 ? streak.currentDay + 1 : 1;
-        streak.completed = [false, false, false];
-      } else if (daysMissed > 1) {
-        // skipped more than 1 day
-        if (streak.freezeLeft > 0) {
-          streak.freezeLeft--;
-          streak.freezeActive = false; // freeze consumed automatically
-        } else {
-          streak.currentDay = 1;
-          streak.completed = [false, false, false];
-        }
+  bool _comboReady(StreakState state) {
+    return state.moodDoneToday &&
+        state.diaryDoneToday &&
+        state.affirmationDoneToday &&
+        !state.comboDoneToday;
+  }
+
+  bool _freezeRiskTomorrow(StreakState state) {
+    return !state.moodDoneToday;
+  }
+
+  static const List<int> _milestones = [3, 7, 14, 30, 120];
+
+  int _nextMilestoneFor(int streak) {
+    for (final m in _milestones) {
+      if (streak < m) return m;
+    }
+    return _milestones.last;
+  }
+
+  int _currentMilestoneFor(int streak) {
+    int current = 0;
+    for (final m in _milestones) {
+      if (streak >= m) current = m;
+    }
+    return current;
+  }
+
+  String _currentBadgeTitleFor(int streak) {
+    if (streak >= 120) return 'Tumbuh dengan Tenang';
+    if (streak >= 30) return 'Menjaga Diri dengan Setia';
+    if (streak >= 14) return 'Tumbuh Pelan-Pelan';
+    if (streak >= 7) return 'Teman Diri Sendiri';
+    if (streak >= 3) return 'Mulai Konsisten';
+    return 'Belum ada badge';
+  }
+
+  String _nextBadgeTitleFor(int streak) {
+    if (streak < 3) return 'Mulai Konsisten';
+    if (streak < 7) return 'Teman Diri Sendiri';
+    if (streak < 14) return 'Tumbuh Pelan-Pelan';
+    if (streak < 30) return 'Menjaga Diri dengan Setia';
+    if (streak < 120) return 'Tumbuh dengan Tenang';
+    return 'Semua badge terbuka';
+  }
+
+  String _freezeStatusLabel(StreakState state) {
+    if (state.moodDoneToday) return 'Hari ini aman';
+    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
+      return 'Freeze siap melindungi';
+    }
+    return 'Besok streak rawan putus';
+  }
+
+  Color _freezeStatusBg(StreakState state) {
+    if (state.moodDoneToday) return _greenPastel;
+    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
+      return const Color(0xFFFFF0D9);
+    }
+    return const Color(0xFFFFE6EA);
+  }
+
+  Color _freezeStatusBorder(StreakState state) {
+    if (state.moodDoneToday) return const Color(0xFFB8E0A7);
+    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
+      return const Color(0xFFE7B35C);
+    }
+    return const Color(0xFFE48A98);
+  }
+
+  IconData _freezeStatusIcon(StreakState state) {
+    if (state.moodDoneToday) return Icons.check_circle_rounded;
+    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
+      return Icons.shield_moon_rounded;
+    }
+    return Icons.warning_amber_rounded;
+  }
+
+  Future<void> _handleMissionAction(
+    BuildContext context,
+    _MissionAction action,
+  ) async {
+    StreakClaimResult result;
+
+    switch (action) {
+      case _MissionAction.mood:
+        result = await StreakService.instance.claimMoodCheckIn();
+        break;
+      case _MissionAction.diary:
+        result = await StreakService.instance.claimDiaryBonus();
+        break;
+      case _MissionAction.affirmation:
+        result = await StreakService.instance.claimAffirmationBonus();
+        break;
+    }
+
+    if (!context.mounted) return;
+
+    if (result.success) {
+      IconData icon;
+      Color accent;
+      String title;
+
+      switch (action) {
+        case _MissionAction.mood:
+          icon = Icons.local_fire_department_rounded;
+          accent = const Color(0xFFE58696);
+          title = 'Mood berhasil dicatat';
+          break;
+        case _MissionAction.diary:
+          icon = Icons.eco_rounded;
+          accent = const Color(0xFF74B55F);
+          title = 'Bonus diary berhasil';
+          break;
+        case _MissionAction.affirmation:
+          icon = Icons.local_florist_rounded;
+          accent = const Color(0xFF63B8A2);
+          title = 'Bonus afirmasi berhasil';
+          break;
       }
-      streak.lastUpdate = now;
-      await _service.updateStreak(uid, streak);
-    }
 
-    setState(() {
-      _streak = streak;
-      _loading = false;
-    });
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  void _completeQuest(int index) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    if (!_streak.completed[index]) {
-      setState(() {
-        _streak.completed[index] = true;
-        _streak.totalPoints += _dailyPoints[_streak.currentDay - 1];
-      });
-      await _service.updateStreak(uid, _streak);
-      _showPoinAnimation(_dailyPoints[_streak.currentDay - 1]);
-    }
-  }
-
-  void _activateFreeze() async {
-    if (_streak.freezeLeft > 0 && !_streak.freezeActive) {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("Aktifkan Freeze"),
-          content: const Text("Apakah kamu yakin ingin menggunakan satu kesempatan freeze hari ini?"),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-            TextButton(
-              onPressed: () async {
-                setState(() {
-                  _streak.freezeActive = true;
-                  _streak.freezeLeft--;
-                });
-                await _service.updateStreak(uid, _streak);
-                Navigator.pop(context);
-              },
-              child: const Text("Ya"),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  void _tukarReward() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    if (_streak.totalPoints >= 300) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("Tukar Poin"),
-          content: const Text("Kamu bisa menukar 300 poin untuk Premium 1 bulan!"),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-            TextButton(
-              onPressed: () async {
-                setState(() {
-                  _streak.totalPoints -= 300;
-                });
-                await _service.updateStreak(uid, _streak);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Selamat! Premium 1 bulan aktif.")),
-                );
-              },
-              child: const Text("Tukar"),
-            ),
-          ],
-        ),
+      await showStreakFeedbackPopup(
+        context,
+        title: title,
+        message: result.message,
+        icon: icon,
+        accent: accent,
+        chipLabel: '+${result.pointsAdded} poin',
+        secondaryChipLabel:
+            result.freezeUsed > 0 ? '-${result.freezeUsed} freeze' : null,
+        buttonLabel: 'Sip',
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Poin tidak cukup untuk menukar.")),
+      await showStreakFeedbackPopup(
+        context,
+        title: 'Belum bisa diklaim',
+        message: result.message,
+        icon: Icons.info_outline_rounded,
+        accent: const Color(0xFF9A76B3),
+        buttonLabel: 'Mengerti',
       );
     }
   }
 
-  void _showPoinAnimation(int poin) {
-    final overlay = Overlay.of(context);
-    final entry = OverlayEntry(builder: (_) {
-      return Positioned(
-        top: 100,
-        left: MediaQuery.of(context).size.width / 2 - 50,
-        child: AnimatedOpacity(
-          opacity: 0.0,
-          duration: const Duration(seconds: 1),
-          child: Text(
-            '+$poin',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green),
-          ),
-        ),
+  Future<void> _handleComboTap(BuildContext context) async {
+    final result = await StreakService.instance.claimComboBonus();
+
+    if (!context.mounted) return;
+
+    if (result.success) {
+      await showStreakFeedbackPopup(
+        context,
+        title: 'Bonus combo berhasil',
+        message: result.message,
+        icon: Icons.auto_awesome_rounded,
+        accent: const Color(0xFFE58696),
+        chipLabel: '+${result.pointsAdded} poin',
+        secondaryChipLabel: 'Combo harian',
+        buttonLabel: 'Yay',
       );
-    });
-    overlay?.insert(entry);
-    Future.delayed(const Duration(seconds: 1), () => entry.remove());
+    } else {
+      await showStreakFeedbackPopup(
+        context,
+        title: 'Combo belum siap',
+        message: result.message,
+        icon: Icons.auto_awesome_outlined,
+        accent: const Color(0xFF9A76B3),
+        buttonLabel: 'Oke',
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Streak', style: AppText.title(context)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Animated Progress Bar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(7, (index) {
-                bool done = _streak.currentDay > index;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: done ? Colors.green[300] : Colors.pink[100],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text('+${_dailyPoints[index]}', style: AppText.body(context)),
-                );
-              }),
-            ),
-            const SizedBox(height: 20),
-            // Quest list
-            ...List.generate(_streak.completed.length, (index) {
-              return Card(
-                color: _streak.completed[index] ? Colors.green[100] : Colors.white,
-                child: ListTile(
-                  title: Text('Quest ${index + 1}', style: AppText.subtitle(context)),
-                  trailing: IconButton(
-                    icon: Icon(_streak.completed[index] ? Icons.check_circle : Icons.circle_outlined, color: Colors.green),
-                    onPressed: () => _completeQuest(index),
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 16),
-            // Freeze button
-            ElevatedButton(
-              onPressed: _activateFreeze,
-              child: Text('Aktifkan Freeze (${_streak.freezeLeft} tersisa)'),
-            ),
-            const SizedBox(height: 8),
-            // Reward button
-            ElevatedButton(
-              onPressed: _tukarReward,
-              child: const Text("Tukar Poin Reward"),
-            ),
-            const SizedBox(height: 12),
-            // Premium CTA
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.purple[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.purple),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      "Dapatkan poin tambahan dengan berlangganan Moodly Premium!",
-                      style: AppText.body(context),
+    return StreamBuilder<StreakState>(
+    stream: StreakService.instance.watchState(),
+    builder: (context, snapshot) {
+      final state = snapshot.data ?? StreakState.initial();
+
+        return Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 120,
+                  right: -60,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _greenSoft.withOpacity(0.35),
                     ),
                   ),
-                  ElevatedButton(onPressed: () {}, child: const Text("Upgrade"))
-                ],
+                ),
+                Positioned(
+                  top: 460,
+                  left: -70,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _pinkSoft.withOpacity(0.45),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -90,
+                  right: 20,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _greenSoft.withOpacity(0.25),
+                    ),
+                  ),
+                ),
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                        child: _buildHeader(context, state),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildSummaryCard(context, state),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildMissionHeader(context, state),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                      sliver: SliverList.separated(
+                        itemCount: _buildSections(state).length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (context, index) {
+                          final section = _buildSections(state)[index];
+                          return _buildMissionCard(context, section, state);
+                        },
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
+                        child: _buildRewardSection(context, state),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, StreakState state){
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.70),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 18,
+              color: _textDark,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Streak',
+            style: textTheme.headlineLarge?.copyWith(
+              fontSize: 28,
+              color: _textDark,
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () => _showStreakWalkthrough(context, state),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.72),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: const Icon(
+              Icons.question_mark_rounded,
+              size: 20,
+              color: _textDark,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopInfoChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color bgColor,
+    required Color iconColor,
+    Color textColor = _textDark,
+    VoidCallback? onTap,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 14,
+                color: textColor.withOpacity(0.72),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _green,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
             ),
           ],
@@ -240,4 +568,1828 @@ class _StreakPageState extends State<StreakPage> with SingleTickerProviderStateM
       ),
     );
   }
+
+  Widget _buildProgressBar({
+    required double value,
+    required Color fillColor,
+    Color bgColor = const Color(0xFFE8EEDF),
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: LinearProgressIndicator(
+        minHeight: 10,
+        value: value.clamp(0.0, 1.0).toDouble(),
+        backgroundColor: bgColor,
+        valueColor: AlwaysStoppedAnimation<Color>(fillColor),
+      ),
+    );
+  }
+
+  void _showStreakWalkthrough(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (_) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: _softShadow,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Tentang Halaman Streak',
+                  textAlign: TextAlign.center,
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontSize: 24,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _walkthroughItem(
+                  context,
+                  title: 'Streak Aktif',
+                  desc: 'Naik saat kamu isi mood harian. Ini trigger utamanya.',
+                ),
+                _walkthroughItem(
+                  context,
+                  title: 'Freeze Streak',
+                  desc: 'Melindungi streak saat kamu bolong, sesuai mode proteksi yang dipilih.',
+                ),
+                _walkthroughItem(
+                  context,
+                  title: 'Misi Harian',
+                  desc: 'Mood, diary, afirmasi, dan bonus combo memberi poin tambahan.',
+                ),
+                _walkthroughItem(
+                  context,
+                  title: 'Poin & Reward',
+                  desc: 'Poin bisa ditukar untuk reward reguler atau premium.',
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _green,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      'Mengerti',
+                      style: textTheme.labelLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _walkthroughItem(
+    BuildContext context, {
+    required String title,
+    required String desc,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 13,
+                color: _textDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              desc,
+              style: textTheme.bodySmall?.copyWith(
+                fontSize: 12,
+                color: _textSoft,
+                fontWeight: FontWeight.w700,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStreakUpPopup(BuildContext context, StreakState state) {
+    showStreakFeedbackPopup(
+      context,
+      title: 'Streak terjaga!',
+      message:
+          'Kamu berhasil menjaga konsistensimu hari ini. Langkah kecilmu tetap berarti.',
+      icon: Icons.local_fire_department_rounded,
+      accent: const Color(0xFFE58696),
+      chipLabel: '+10 poin',
+      secondaryChipLabel: '${state.currentStreak} hari',
+      buttonLabel: 'Lanjutkan',
+    );
+  }
+
+  void _showBadgeUnlockedPopup(BuildContext context, StreakState state) {
+    final badgeTitle = _currentBadgeTitleFor(state.currentStreak);
+
+    showStreakFeedbackPopup(
+      context,
+      title: 'Badge baru terbuka',
+      message:
+          badgeTitle == 'Belum ada badge'
+              ? 'Terus jaga streak-mu. Badge pertamamu akan terbuka di hari ke-3.'
+              : 'Kamu berhasil membuka badge baru karena tetap hadir untuk dirimu sendiri.',
+      icon: Icons.workspace_premium_rounded,
+      accent: const Color(0xFF9A76B3),
+      chipLabel: badgeTitle,
+      secondaryChipLabel:
+          badgeTitle == 'Belum ada badge' ? 'Menuju 3 hari' : 'Milestone tercapai',
+      buttonLabel: 'Lihat Badge',
+    );
+  }
+
+  void _showFreezeInfoSheet(BuildContext context, StreakState state) {
+    bool previewEnabled = state.freezeEnabled;
+    bool previewAutoUse = state.autoUseFreeze;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final textTheme = Theme.of(context).textTheme;
+
+            return Container(
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: _softShadow,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7E7E1),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Freeze Streak',
+                      style: textTheme.headlineLarge?.copyWith(
+                        fontSize: 24,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Freeze melindungi streak-mu saat kamu bolong. Kamu bisa memilih mode proteksi aktif atau auto-use.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: _textSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                      decoration: BoxDecoration(
+                        color: _greenPastel,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              color: _green,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  previewEnabled ? 'Proteksi sedang aktif' : 'Proteksi belum aktif',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontSize: 13,
+                                    color: _textDark,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Sisa freeze: ${state.freezeOwned}/${state.freezeMax} hari',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: _textSoft,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: previewEnabled,
+                            activeColor: _green,
+                            onChanged: (value) async {
+                              setModalState(() => previewEnabled = value);
+                              await StreakService.instance.toggleFreeze(value);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      decoration: BoxDecoration(
+                        color: _pinkSoft,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        'Starter dapat 1 freeze. Full streak 1 bulan memberi +3 freeze. Premium memberi +2 freeze. Maksimum simpan freeze: ${state.freezeMax} hari.',
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: _textDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final next = !previewAutoUse;
+                              setModalState(() => previewAutoUse = next);
+                              await StreakService.instance.toggleAutoUseFreeze(next);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                              decoration: BoxDecoration(
+                                color: previewAutoUse
+                                    ? const Color(0xFFF4F0FA)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFF9A76B3),
+                                  width: 1.3,
+                                  strokeAlign: BorderSide.strokeAlignInside,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    previewAutoUse
+                                        ? Icons.check_box_rounded
+                                        : Icons.check_box_outline_blank_rounded,
+                                    color: const Color(0xFF9A76B3),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Pakai Otomatis',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        fontSize: 11,
+                                        color: _textDark,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                            decoration: BoxDecoration(
+                              color: _freezeStatusBg(state),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _freezeStatusBorder(state),
+                                width: 1.3,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _freezeStatusIcon(state),
+                                  color: _freezeStatusBorder(state),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _freezeStatusLabel(state),
+                                    style: textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: _textDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMilestoneSheet(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final nextMilestone = _nextMilestoneFor(state.currentStreak);
+    final currentBadge = _currentBadgeTitleFor(state.currentStreak);
+    final nextBadge = _nextBadgeTitleFor(state.currentStreak);
+    final progressValue = state.currentStreak >= _milestones.last
+        ? 1.0
+        : (state.currentStreak / nextMilestone).clamp(0.0, 1.0).toDouble();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: _softShadow,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7E7E1),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Milestone Badge',
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontSize: 24,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Semakin konsisten kamu hadir untuk dirimu sendiri, semakin banyak badge yang bisa dibuka.',
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: _textSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: const [
+                    _BadgePill(label: '3 hari', title: 'Mulai Konsisten'),
+                    _BadgePill(label: '7 hari', title: 'Teman Diri Sendiri'),
+                    _BadgePill(label: '14 hari', title: 'Tumbuh Pelan-Pelan'),
+                    _BadgePill(label: '30 hari', title: 'Menjaga Diri dengan Setia'),
+                    _BadgePill(label: '120 hari', title: 'Tumbuh dengan Tenang'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  decoration: BoxDecoration(
+                    color: _greenPastel,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Badge aktif saat ini',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: _textSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        currentBadge,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontSize: 18,
+                          color: _textDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        state.currentStreak >= _milestones.last
+                            ? 'Semua badge sudah terbuka'
+                            : 'Badge berikutnya: $nextBadge',
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          color: _textDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildProgressBar(
+                        value: progressValue,
+                        fillColor: _green,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        state.currentStreak >= _milestones.last
+                            ? 'Kamu sudah menuntaskan semua milestone badge.'
+                            : '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge berikutnya',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: _textSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tekan detail streak untuk melihat progres lebih lengkap',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: _textSoft,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMilestoneTeaserCard(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final currentBadge = _currentBadgeTitleFor(state.currentStreak);
+    final nextBadge = _nextBadgeTitleFor(state.currentStreak);
+
+    return GestureDetector(
+      onTap: () => _showBadgeUnlockedPopup(context, state),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: _mintSoft,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFD8F2EA),
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Color(0xFF63B8A2),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Badge Milestonemu',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    currentBadge,
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontSize: 13,
+                      color: _textDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.currentStreak >= _milestones.last
+                        ? 'Semua badge sudah terbuka'
+                        : 'Badge berikutnya: $nextBadge',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _showMilestoneSheet(context, state),
+              child: const Icon(
+                Icons.open_in_new_rounded,
+                color: _textDark,
+                size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMissionInfoChip(
+    BuildContext context, {
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+    IconData? icon,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: textColor),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComboBanner(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final comboReady = _comboReady(state);
+
+    return GestureDetector(
+      onTap: () => _handleComboTap(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFF0F3),
+              Color(0xFFEFF8E5),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFFFD6DE),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Color(0xFFE58696),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                state.comboDoneToday
+                    ? 'Bonus combo hari ini sudah berhasil diklaim 🌷'
+                    : comboReady
+                        ? 'Mood, diary, dan afirmasi sudah lengkap. Tekan untuk klaim bonus combo hari ini.'
+                        : 'Selesaikan Mood + Diary + Afirmasi untuk membuka bonus combo hari ini.',
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final nextMilestone = _nextMilestoneFor(state.currentStreak);
+    final currentMilestone = _currentMilestoneFor(state.currentStreak);
+    final milestoneProgress = nextMilestone == 0
+        ? 1.0
+        : state.currentStreak / nextMilestone;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: _softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Streak aktifmu',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: _textSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _buildSummaryActionButton(
+                context,
+                label: 'Reward',
+                icon: Icons.redeem_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RewardPage(totalPoints: state.totalPoints),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${state.currentStreak}',
+                style: textTheme.headlineLarge?.copyWith(
+                  fontSize: 42,
+                  height: 1,
+                  color: _textDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'hari 🔥',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Kamu sudah konsisten menjaga dirimu dengan baik. Pelan-pelan, tapi kuat.',
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              height: 1.55,
+              color: _textSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildTopInfoChip(
+                context,
+                icon: Icons.stars_rounded,
+                label: '${state.totalPoints} poin',
+                bgColor: _pinkSoft,
+                iconColor: const Color(0xFFE58696),
+              ),
+              _buildTopInfoChip(
+                context,
+                icon: state.freezeEnabled
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                label: state.freezeEnabled
+                    ? 'Freeze aktif ${state.freezeOwned}/${state.freezeMax}'
+                    : 'Freeze nonaktif ${state.freezeOwned}/${state.freezeMax}',
+                bgColor: _greenPastel,
+                iconColor: _green,
+                onTap: () => _showFreezeInfoSheet(context, state),
+              ),
+              _buildTopInfoChip(
+                context,
+                icon: Icons.workspace_premium_rounded,
+                label: 'Menuju $nextMilestone hari',
+                bgColor: const Color(0xFFF4F0FA),
+                iconColor: const Color(0xFF9A76B3),
+                onTap: () => _showMilestoneSheet(context, state),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StreakDetailPage(
+                    currentStreak: state.currentStreak,
+                    freezeEnabled: state.freezeEnabled,
+                    freezeOwned: state.freezeOwned,
+                    freezeMax: state.freezeMax,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              decoration: BoxDecoration(
+                color: _greenPastel,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Progress ke milestone berikutnya',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 12,
+                          color: _textSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${state.currentStreak}/$nextMilestone hari',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 12,
+                          color: _textDark,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildProgressBar(
+                    value: milestoneProgress.clamp(0.0, 1.0).toDouble(),
+                    fillColor: _green,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge baru',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    currentMilestone == 0
+                        ? 'Badge pertamamu akan terbuka di hari ke-3'
+                        : 'Badge aktif: ${_currentBadgeTitleFor(state.currentStreak)}',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildWeeklyRewardsGrid(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyRewardItem(
+    BuildContext context,
+    _WeeklyReward item,
+    StreakState state,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: item.isToday ? () => _showStreakUpPopup(context, state) : null,
+      child: Column(
+        children: [
+          Text(
+            item.dayLabel,
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: _textDark,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: item.isToday ? 58 : 52,
+            height: item.isToday ? 58 : 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: item.isToday ? _pink : _pink.withOpacity(0.72),
+              boxShadow: item.isToday
+                  ? [
+                      ..._softShadow,
+                      BoxShadow(
+                        color: _pink.withOpacity(0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : _softShadow,
+              border: item.isToday
+                  ? Border.all(
+                      color: Colors.white,
+                      width: 2.2,
+                    )
+                  : null,
+            ),
+            child: Center(
+              child: Text(
+                item.pointLabel,
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: item.isToday ? 12 : 11,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyRewardsGrid(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      decoration: BoxDecoration(
+        color: _greenPastel,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                'Progress Mingguan',
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: _textSoft,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '7 hari streak',
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: _textSoft,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: _weeklyRewards
+                .map((item) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Column(
+                          children: [
+                            Text(
+                              item.dayLabel.replaceAll('Hari ', 'H'),
+                              style: textTheme.bodySmall?.copyWith(
+                                fontSize: 10,
+                                color: _textDark,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: item.isToday ? 40 : 36,
+                              height: item.isToday ? 40 : 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: item.isToday ? _pink : _pink.withOpacity(0.72),
+                                boxShadow: _softShadow,
+                                border: item.isToday
+                                    ? Border.all(color: Colors.white, width: 2)
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  item.pointLabel,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionHeader(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    const totalTasks = 4;
+    final completed = _completedTodayCount(state);
+    final progress = completed / totalTasks;
+    final todayPoints = _earnedTodayPoints(state);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Misi Hari Ini',
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontSize: 26,
+                    color: _textDark,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F0EE),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Streak Harian',
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 12,
+                    color: _textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Sedikit langkah hari ini tetap berarti. Lakukan pelan-pelan, satu misi demi satu.',
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              height: 1.5,
+              color: _textSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMissionInfoChip(
+                  context,
+                  label: '$completed/$totalTasks selesai',
+                  bgColor: _greenPastel,
+                  textColor: _textDark,
+                  icon: Icons.check_circle_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMissionInfoChip(
+                  context,
+                  label: '+$todayPoints poin hari ini',
+                  bgColor: _pinkSoft,
+                  textColor: const Color(0xFFE58696),
+                  icon: Icons.stars_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Progress harian',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: _textSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: _textDark,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildProgressBar(
+            value: progress,
+            fillColor: _green,
+          ),
+          const SizedBox(height: 14),
+          _buildComboBanner(context, state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionCard(
+    BuildContext context,
+    _MissionSection section,
+    StreakState state,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _softShadow,
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -22,
+            bottom: -18,
+            child: Icon(
+              section.icon,
+              size: 120,
+              color: Colors.white.withOpacity(0.16),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: section.chipColor,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      section.title,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontSize: 15,
+                        color: _textDark,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.78),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          section.pointsLabel,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            color: _green,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          section.progressLabel,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            color: _textDark,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                section.subtitle,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: _textSoft,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                decoration: BoxDecoration(
+                  color: section.accentSoft,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: section.accent.withOpacity(0.95),
+                    width: 1.1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: section.iconBg,
+                        shape: BoxShape.circle,
+                        boxShadow: _softShadow,
+                      ),
+                      child: Icon(
+                        section.icon,
+                        color: _green,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        children: section.tasks
+                            .map(
+                              (task) => Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: task == section.tasks.last ? 0 : 10,
+                                ),
+                                child: _buildTaskTile(context, task),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => _handleMissionAction(context, section.action),
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.88),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: section.accent.withOpacity(0.95),
+                      width: 1.1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        section.footerIcon,
+                        size: 18,
+                        color: _green,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          section.footerLabel,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            color: _textDark,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRewardSection(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Poin & Reward',
+                  style: textTheme.headlineLarge?.copyWith(
+                    fontSize: 24,
+                    color: _textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Poinmu bisa ditukar untuk reward kecil yang menyenangkan, atau disimpan untuk hadiah besar.',
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              height: 1.5,
+              color: _textSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildPointsHeroCard(context, state),
+          const SizedBox(height: 12),
+          _buildMilestoneTeaserCard(context, state),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 124,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _rewardPreviews.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                return _buildRewardPreviewCard(
+                  context,
+                  _rewardPreviews[index],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBottomActionButton(
+                  context,
+                  label: 'Redeem Premium',
+                  icon: Icons.workspace_premium_rounded,
+                  bgColor: _green,
+                  textColor: Colors.white,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RewardPage(
+                          totalPoints: state.totalPoints,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildBottomActionButton(
+                  context,
+                  label: 'Belanja Reward',
+                  icon: Icons.redeem_rounded,
+                  bgColor: _pinkSoft,
+                  textColor: _textDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RewardPage(
+                          totalPoints: state.totalPoints,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPointsHeroCard(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFF2F5),
+            Color(0xFFEFF8E8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: _softShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFFFD8DF),
+            ),
+            child: const Icon(
+              Icons.stars_rounded,
+              size: 26,
+              color: Color(0xFFE58696),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total poinmu',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: _textSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${state.totalPoints} poin',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontSize: 22,
+                    color: _textDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sedikit lagi menuju reward yang lebih besar.',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: _textSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRewardPreviewCard(
+    BuildContext context,
+    _RewardPreview item,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: 138,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: _softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: item.accent,
+            ),
+            child: Icon(
+              item.icon,
+              size: 22,
+              color: item.iconColor,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            item.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              color: _textDark,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.subtitle,
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: _textSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniRuleChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Color bgColor,
+    required Color iconColor,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: iconColor),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              label,
+              style: textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: _textDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Color bgColor,
+    required Color textColor,
+    VoidCallback? onTap,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 17, color: textColor),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  color: textColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaskTile(BuildContext context, _MissionTask task) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: task.isMuted ? 0.55 : 1,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.90),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                task.title,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 13,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: task.isDone ? _green : const Color(0xFFE6E6E1),
+              ),
+              child: Icon(
+                task.isDone ? Icons.check_rounded : Icons.circle_outlined,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeeklyReward {
+  final String dayLabel;
+  final String pointLabel;
+  final bool isToday;
+
+  const _WeeklyReward({
+    required this.dayLabel,
+    required this.pointLabel,
+    this.isToday = false,
+  });
+}
+
+class _MissionSection {
+  final String title;
+  final String pointsLabel;
+  final String progressLabel;
+  final Color accent;
+  final Color accentSoft;
+  final Color chipColor;
+  final Color iconBg;
+  final IconData icon;
+  final String subtitle;
+  final String footerLabel;
+  final IconData footerIcon;
+  final _MissionAction action;
+  final List<_MissionTask> tasks;
+
+  const _MissionSection({
+    required this.title,
+    required this.pointsLabel,
+    required this.progressLabel,
+    required this.accent,
+    required this.accentSoft,
+    required this.chipColor,
+    required this.iconBg,
+    required this.icon,
+    required this.subtitle,
+    required this.footerLabel,
+    required this.footerIcon,
+    required this.action,
+    required this.tasks,
+  });
+}
+
+class _MissionTask {
+  final String title;
+  final bool isDone;
+  final bool isMuted;
+
+  const _MissionTask({
+    required this.title,
+    required this.isDone,
+    this.isMuted = false,
+  });
+}
+
+class _RewardPreview {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accent;
+  final Color iconColor;
+
+  const _RewardPreview({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    required this.iconColor,
+  });
+}
+
+class _BadgePill extends StatelessWidget {
+  final String label;
+  final String title;
+
+  const _BadgePill({
+    required this.label,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: 145,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4F6),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: const Color(0xFFE58696),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              color: const Color(0xFF2A2A2A),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _MissionAction {
+  mood,
+  diary,
+  affirmation,
 }
