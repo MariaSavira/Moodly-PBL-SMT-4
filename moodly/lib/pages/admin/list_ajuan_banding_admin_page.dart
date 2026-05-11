@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/admin/ajuan_banding_model.dart';
 import '../../services/admin/ajuan_banding_service.dart';
 import 'tinjau_ajuan_banding_user_admin_page.dart';
@@ -18,6 +18,8 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  int _jumlahNotif = 0;
+
   List<AjuanBandingModel> _ajuanBandingList = [];
   String _selectedTab = 'Semua';
   String _selectedTanggal = 'Tanggal';
@@ -26,25 +28,126 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   final List<String> _tanggalOptions = ['Tanggal', 'Terbaru', 'Terlama'];
 
   @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    _loadAjuanBanding();
-  }
+void initState() {
+  super.initState();
+  _scrollController.addListener(_onScroll);
+  _loadAjuanBanding();
+ _loadJumlahNotif();
+}
 
   void _onScroll() {
     if (mounted) setState(() {});
   }
 
   Future<void> _loadAjuanBanding() async {
-    final data = await _ajuanBandingService.getAjuanBanding();
-    if (!mounted) return;
+  final data = await _ajuanBandingService.getAjuanBanding();
+  if (!mounted) return;
 
-    setState(() {
-      _ajuanBandingList = data;
-    });
-  }
+  setState(() {
+    _ajuanBandingList = data;
+  });
+}
 
+Future<void> _loadJumlahNotif() async {
+  final bandingPending = await FirebaseFirestore.instance
+      .collection('ajuan_banding')
+      .where('status', isEqualTo: 'pending')
+      .get();
+
+  if (!mounted) return;
+
+  setState(() {
+    _jumlahNotif = bandingPending.docs.length;
+  });
+}
+void _showNotifPopup() {
+  showMenu(
+    context: context,
+    position: const RelativeRect.fromLTRB(190, 72, 16, 0),
+    color: Colors.transparent,
+    elevation: 0,
+    items: [
+      PopupMenuItem(
+        enabled: false,
+        padding: EdgeInsets.zero,
+        child: Container(
+          width: 245,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF6FA),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _notifItem(
+            icon: Icons.gavel_rounded,
+            title: 'Ajuan Banding',
+            subtitle: '$_jumlahNotif banding menunggu keputusan',
+            color: const Color(0xFF8ECD86),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _notifItem({
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  required Color color,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.22),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 19, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.fredoka(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0C0E0C),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: GoogleFonts.openSans(
+                  fontSize: 10,
+                  color: const Color(0xFF6B6B6B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
   List<AjuanBandingModel> get _filteredAjuan {
     final keyword = _searchController.text.toLowerCase();
 
@@ -237,37 +340,40 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
           ),
         ),
         const Spacer(),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Icon(
-              Icons.notifications_rounded,
-              size: 24,
-              color: Color(0xFF8B8B8B),
+GestureDetector(
+  onTap: _showNotifPopup,
+  child: Stack(
+    clipBehavior: Clip.none,
+    children: [
+      const Icon(
+        Icons.notifications_rounded,
+        size: 24,
+        color: Color(0xFF8B8B8B),
+      ),
+      Positioned(
+        top: -5,
+        right: -2,
+        child: Container(
+          width: 15,
+          height: 15,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFF9AB2),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            _jumlahNotif.toString(),
+            style: GoogleFonts.openSans(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
             ),
-            Positioned(
-              top: -5,
-              right: -2,
-              child: Container(
-                width: 15,
-                height: 15,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF9AB2),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '1',
-                  style: GoogleFonts.openSans(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    ],
+  ),
+),
         const SizedBox(width: 14),
         Container(
           width: 38,

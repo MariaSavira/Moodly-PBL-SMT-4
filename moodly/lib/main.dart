@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:moodly/pages/admin/list_ajuan_banding_admin_page.dart';
 import 'pages/admin/list_laporan_user_admin_page.dart';
 // firebase
 import 'package:moodly/pages/setting/settings_page.dart';
@@ -77,7 +78,7 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const ListLaporanUserAdminPage(),
+      home: const ListAjuanBandingAdminPage(),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'tinjau_laporan_user_admin_page.dart';
 import '../../models/admin/laporan_user_model.dart';
 import '../../services/admin/laporan_user_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ListLaporanUserAdminPage extends StatefulWidget {
   const ListLaporanUserAdminPage({super.key});
@@ -17,6 +18,8 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  int _jumlahNotif = 0;
+
   List<LaporanUserModel> _laporanList = [];
   String _selectedTab = 'Semua';
   String _selectedTipe = 'Semua tipe';
@@ -30,12 +33,13 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   ];
   final List<String> _tanggalOptions = ['Tanggal', 'Terbaru', 'Terlama'];
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    _loadLaporan();
-  }
+ @override
+void initState() {
+  super.initState();
+  _scrollController.addListener(_onScroll);
+  _loadLaporan();
+  _loadJumlahNotif();
+}
 
   void _onScroll() {
     if (mounted) {
@@ -52,7 +56,106 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
       _laporanList = data;
     });
   }
+Future<void> _loadJumlahNotif() async {
+  final laporanPending = await FirebaseFirestore.instance
+      .collection('reports')
+      .where('status', isEqualTo: 'pending')
+      .get();
 
+  if (!mounted) return;
+
+  setState(() {
+    _jumlahNotif = laporanPending.docs.length;
+  });
+}
+
+void _showNotifPopup() {
+  showMenu(
+    context: context,
+    position: const RelativeRect.fromLTRB(190, 72, 16, 0),
+    color: Colors.transparent,
+    elevation: 0,
+    items: [
+      PopupMenuItem(
+        enabled: false,
+        padding: EdgeInsets.zero,
+        child: Container(
+          width: 245,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF6FA),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _notifItem(
+            icon: Icons.report_rounded,
+            title: 'Laporan User',
+            subtitle: '$_jumlahNotif laporan menunggu ditinjau',
+            color: const Color(0xFFFF8EA4),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+Widget _notifItem({
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  required Color color,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.22),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 19, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.fredoka(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0C0E0C),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: GoogleFonts.openSans(
+                  fontSize: 10,
+                  color: const Color(0xFF6B6B6B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
   List<LaporanUserModel> get _filteredLaporan {
     final keyword = _searchController.text.toLowerCase();
 
@@ -241,9 +344,11 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
           ),
         ),
         const Spacer(),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
+GestureDetector(
+  onTap: _showNotifPopup,
+  child: Stack(
+    clipBehavior: Clip.none,
+    children: [
             const Icon(
               Icons.notifications_rounded,
               size: 24,
@@ -261,7 +366,7 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
                   shape: BoxShape.circle,
                 ),
                 child: Text(
-                  '1',
+  _jumlahNotif.toString(),
                   style: GoogleFonts.openSans(
                     color: Colors.white,
                     fontSize: 9,
@@ -272,6 +377,7 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
             ),
           ],
         ),
+),
         const SizedBox(width: 14),
         Container(
           width: 38,
