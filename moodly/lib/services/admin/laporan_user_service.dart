@@ -101,24 +101,24 @@ class LaporanUserService {
   }
 
   List<String> _getImageUrls(dynamic reportedMessages) {
-    if (reportedMessages is! List || reportedMessages.isEmpty) {
-      return [];
-    }
+  if (reportedMessages is! List || reportedMessages.isEmpty) {
+    return [];
+  }
 
-    final List<String> urls = [];
+  final List<String> urls = [];
 
-    for (final message in reportedMessages) {
-      if (message is Map<String, dynamic>) {
-        final imageUrl = message['imageUrl'];
+  for (final message in reportedMessages) {
+    if (message is Map<String, dynamic>) {
+      final imageUrl = message['imageUrl'];
 
-        if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
-          urls.add(imageUrl.toString());
-        }
+      if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+        urls.add(imageUrl.toString());
       }
     }
-
-    return urls;
   }
+
+  return urls;
+}
 
   Future<void> updateStatusLaporan({
     required String documentId,

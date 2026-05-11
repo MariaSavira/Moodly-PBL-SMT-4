@@ -386,11 +386,13 @@ class _TinjauLaporanUserAdminPageState
                       padding: const EdgeInsets.only(bottom: 10),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          url,
-                          width: double.infinity,
-                          height: 180,
-                          fit: BoxFit.cover,
+                        child: Container(
+  width: double.infinity,
+  height: 180,
+  color: Colors.white,
+  child: Image.network(
+    url,
+    fit: BoxFit.contain,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
 
@@ -427,7 +429,9 @@ class _TinjauLaporanUserAdminPageState
                       ),
                     ),
                   ),
-                ],
+                
+            )
+            ],
               ],
             ),
           ),

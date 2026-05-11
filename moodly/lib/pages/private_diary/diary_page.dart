@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/diary_model.dart';
+import '../../core/models/diary_model.dart';
 import '../../services/diary_service.dart';
 import '../../widgets/date_section.dart';
 import 'package:moodly/pages/private_diary/add_diary_page.dart';
