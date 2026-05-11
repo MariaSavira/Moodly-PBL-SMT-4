@@ -36,28 +36,31 @@ class MoodlyWidgetProvider : AppWidgetProvider() {
                 android.graphics.Color.WHITE
             )
 
-            val overlayColor = getIntValue(
-                widgetData,
-                "overlayColor",
-                0x33000000.toInt()
-            )
+            val selectedWallpaper = widgetData.getString(
+                "selectedWallpaper",
+                "assets/icon/images/bg_afirmasi_1.jpg"
+            ) ?: "assets/icon/images/bg_afirmasi_1.jpg"
 
-            val backgroundRes = R.drawable.widget_bg_1
+            val backgroundRes = when (selectedWallpaper) {
+                "assets/icon/images/bg_afirmasi_1.jpg" -> R.drawable.widget_bg_1
+                "assets/icon/images/bg_afirmasi_2.jpg" -> R.drawable.widget_bg_2
+                "assets/icon/images/bg_afirmasi_3.jpg" -> R.drawable.widget_bg_3
+                "assets/icon/images/bg_afirmasi_4.jpg" -> R.drawable.widget_bg_4
+                "assets/icon/images/bg_afirmasi_5.jpg" -> R.drawable.widget_bg_5
+                else -> R.drawable.widget_bg_1
+            }
 
             val views = RemoteViews(context.packageName, R.layout.moodly_widget)
 
             views.setImageViewResource(R.id.widget_background, backgroundRes)
+            views.setTextViewText(R.id.widget_category, category)
+            views.setTextViewText(R.id.widget_quote, quote)
+            views.setTextColor(R.id.widget_quote, textColor)
 
             views.setViewVisibility(
                 R.id.widget_background,
                 if (useBackground) View.VISIBLE else View.GONE
             )
-
-            views.setTextViewText(R.id.widget_category, category)
-            views.setTextViewText(R.id.widget_quote, quote)
-
-            views.setTextColor(R.id.widget_quote, textColor)
-            views.setInt(R.id.widget_overlay, "setBackgroundColor", overlayColor)
 
             views.setViewVisibility(
                 R.id.widget_category,
