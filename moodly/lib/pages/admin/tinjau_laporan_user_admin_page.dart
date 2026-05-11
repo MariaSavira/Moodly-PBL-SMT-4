@@ -28,21 +28,21 @@ class _TinjauLaporanUserAdminPageState
   void initState() {
     super.initState();
 
-   _laporan = widget.laporan ??
-    LaporanUserModel(
-      documentId: '',
-      id: 'LP-0005',
-      tipeKonten: 'Chat Anonim',
-      namaPelapor: 'Admin',
-      namaTerlapor: 'UserXyz',
-      avatarTerlapor: '',
-      tanggal: DateTime(2026, 4, 9),
-      status: LaporanStatus.pending,
-      isiLaporan:
+    _laporan = widget.laporan ??
+        LaporanUserModel(
+          documentId: '',
+          id: 'LP-0005',
+          tipeKonten: 'Chat Anonim',
+          namaPelapor: 'Admin',
+          namaTerlapor: 'UserXyz',
+          avatarTerlapor: '',
+          tanggal: DateTime(2026, 4, 9),
+          status: LaporanStatus.pending,
+          isiLaporan:
           'aku ngerasa hidup ini berat banget, semuanya jahat, enggak ada yang peduli sama aku...',
-      catatanAdmin: '',
-      imageUrls: const [],
-    );
+          catatanAdmin: '',
+          imageUrls: const [],
+        );
     _catatanController.text = _laporan.catatanAdmin;
 
     _catatanController.addListener(() {
@@ -224,7 +224,7 @@ class _TinjauLaporanUserAdminPageState
                 ),
                 TextSpan(
                   text:
-                      '  •  Dilaporkan ${_formatTanggal(_laporan.tanggal)}  •  14:32 WIB',
+                  '  •  Dilaporkan ${_formatTanggal(_laporan.tanggal)}  •  14:32 WIB',
                   style: GoogleFonts.openSans(
                     fontSize: 12,
                     color: const Color(0xFF0C0E0C),
@@ -382,56 +382,56 @@ class _TinjauLaporanUserAdminPageState
                   if (_laporan.isiLaporan.trim().isNotEmpty)
                     const SizedBox(height: 12),
                   ..._laporan.imageUrls.map(
-                    (url) => Padding(
+                        (url) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-  width: double.infinity,
-  height: 180,
-  color: Colors.white,
-  child: Image.network(
-    url,
-    fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
+                          width: double.infinity,
+                          height: 180,
+                          color: Colors.white,
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
 
-                            return Container(
-                              width: double.infinity,
-                              height: 180,
-                              alignment: Alignment.center,
-                              color: const Color(0xFFFFEAEA),
-                              child: Text(
-                                'Memuat gambar...',
-                                style: GoogleFonts.openSans(
-                                  fontSize: 11,
-                                  color: const Color(0xFF6B6B6B),
+                              return Container(
+                                width: double.infinity,
+                                height: 180,
+                                alignment: Alignment.center,
+                                color: const Color(0xFFFFEAEA),
+                                child: Text(
+                                  'Memuat gambar...',
+                                  style: GoogleFonts.openSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFF6B6B6B),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: double.infinity,
-                              height: 120,
-                              alignment: Alignment.center,
-                              color: const Color(0xFFFFEAEA),
-                              child: Text(
-                                'Gambar gagal dimuat',
-                                style: GoogleFonts.openSans(
-                                  fontSize: 11,
-                                  color: const Color(0xFFFF0000),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: double.infinity,
+                                height: 120,
+                                alignment: Alignment.center,
+                                color: const Color(0xFFFFEAEA),
+                                child: Text(
+                                  'Gambar gagal dimuat',
+                                  style: GoogleFonts.openSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFFFF0000),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                
-            )
-            ],
+
+                  )
+                ],
               ],
             ),
           ),
