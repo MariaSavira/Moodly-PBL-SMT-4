@@ -9,6 +9,7 @@ import 'package:moodly/pages/auth/register_success_page.dart';
 import 'package:moodly/pages/auth/otp_verification_page.dart';
 import 'package:moodly/pages/setting/settings_page.dart';
 import 'package:moodly/pages/setting/profile_page.dart';
+import 'package:moodly/pages/setting/security_page.dart';
 
 // firebase
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -96,6 +97,7 @@ class MoodlyApp extends StatelessWidget {
 
       routes: {
         '/profile': (context) => const ProfilePage(),
+        '/security': (context) => const SecurityPage(),
       },
     );
   }
