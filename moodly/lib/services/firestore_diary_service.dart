@@ -3,6 +3,7 @@ import '../models/diary_model.dart';
 
 class FirestoreDiaryService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
+
   static final CollectionReference diaryRef = _db.collection("diaries");
 
   /// ================= ADD DIARY =================
@@ -30,15 +31,28 @@ class FirestoreDiaryService {
 
     await diaryRef.add({
       "title": title,
+
       "content": content,
+
       "time":
           "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}",
+
       "date": now.day,
+
       "month": monthMap[now.month],
+
       "year": now.year,
+
       "isPublic": isPublic,
+
       "username": "User",
+
       "createdAt": FieldValue.serverTimestamp(),
+
+      // =========================
+      // SOFT DELETE
+      // =========================
+      "isDeleted": false,
     });
   }
 
@@ -84,6 +98,11 @@ class FirestoreDiaryService {
   Stream<List<DiaryModel>> getPublicDiaries() {
     return diaryRef
         .where("isPublic", isEqualTo: true)
+        // =========================
+        // HANYA TAMPILKAN
+        // YANG BELUM DIHAPUS ADMIN
+        // =========================
+        .where("isDeleted", isEqualTo: false)
         .orderBy("createdAt", descending: true)
         .snapshots()
         .map((snapshot) {

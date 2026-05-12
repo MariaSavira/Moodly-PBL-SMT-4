@@ -14,6 +14,15 @@ class CommentPage extends StatefulWidget {
 class _CommentPageState extends State<CommentPage> {
   final TextEditingController commentController = TextEditingController();
 
+  int? replyingIndex;
+
+  final List<String> reportCategories = [
+    "Spam",
+    "Kata Kasar",
+    "Konten Tidak Pantas",
+    "Bullying",
+  ];
+
   List<Map<String, dynamic>> comments = [
     {
       "username": "Jerapah Tinggi",
@@ -25,9 +34,11 @@ class _CommentPageState extends State<CommentPage> {
 
       "time": "30 mnt",
 
+      "likes": 3,
+
       "isLiked": false,
 
-      "showReplies": true,
+      "showReplies": false,
 
       "replies": [
         {
@@ -38,6 +49,8 @@ class _CommentPageState extends State<CommentPage> {
           "profile": "assets/profile_pic/PP_11.png",
 
           "time": "10 mnt",
+
+          "likes": 1,
 
           "isLiked": false,
         },
@@ -53,6 +66,8 @@ class _CommentPageState extends State<CommentPage> {
 
       "time": "15 mnt",
 
+      "likes": 0,
+
       "isLiked": false,
 
       "showReplies": false,
@@ -62,7 +77,7 @@ class _CommentPageState extends State<CommentPage> {
   ];
 
   // =========================
-  // ADD COMMENT
+  // ADD COMMENT / REPLY
   // =========================
 
   void addComment() {
@@ -71,23 +86,48 @@ class _CommentPageState extends State<CommentPage> {
     }
 
     setState(() {
-      comments.add({
-        "username": "Kamu",
+      // REPLY
+      if (replyingIndex != null) {
+        comments[replyingIndex!]["replies"].add({
+          "username": "Kamu",
 
-        "comment": commentController.text,
+          "reply": commentController.text,
 
-        "profile": "assets/profile_pic/PP_2.png",
+          "profile": "assets/profile_pic/PP_2.png",
 
-        "time": "Baru saja",
+          "time": "Baru saja",
 
-        "isLiked": false,
+          "likes": 0,
 
-        "showReplies": false,
+          "isLiked": false,
+        });
 
-        "replies": [],
-      });
+        comments[replyingIndex!]["showReplies"] = true;
 
-      widget.diary.comments++;
+        replyingIndex = null;
+      }
+      // COMMENT
+      else {
+        comments.add({
+          "username": "Kamu",
+
+          "comment": commentController.text,
+
+          "profile": "assets/profile_pic/PP_2.png",
+
+          "time": "Baru saja",
+
+          "likes": 0,
+
+          "isLiked": false,
+
+          "showReplies": false,
+
+          "replies": [],
+        });
+
+        widget.diary.comments++;
+      }
     });
 
     commentController.clear();
@@ -100,6 +140,12 @@ class _CommentPageState extends State<CommentPage> {
   void toggleLikeComment(int index) {
     setState(() {
       comments[index]["isLiked"] = !comments[index]["isLiked"];
+
+      if (comments[index]["isLiked"]) {
+        comments[index]["likes"]++;
+      } else {
+        comments[index]["likes"]--;
+      }
     });
   }
 
@@ -111,6 +157,12 @@ class _CommentPageState extends State<CommentPage> {
     setState(() {
       comments[commentIndex]["replies"][replyIndex]["isLiked"] =
           !comments[commentIndex]["replies"][replyIndex]["isLiked"];
+
+      if (comments[commentIndex]["replies"][replyIndex]["isLiked"]) {
+        comments[commentIndex]["replies"][replyIndex]["likes"]++;
+      } else {
+        comments[commentIndex]["replies"][replyIndex]["likes"]--;
+      }
     });
   }
 
@@ -124,6 +176,171 @@ class _CommentPageState extends State<CommentPage> {
     });
   }
 
+  // =========================
+  // SUCCESS DIALOG
+  // =========================
+
+  void showSuccessDialog() {
+    showDialog(
+      context: context,
+
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFFDDE6B8),
+
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+
+              children: [
+                Container(
+                  height: 70,
+                  width: 70,
+
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1D1D7),
+                    shape: BoxShape.circle,
+                  ),
+
+                  child: const Icon(Icons.check, size: 40),
+                ),
+
+                const SizedBox(height: 18),
+
+                const Text(
+                  "Laporan Terkirim",
+
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  "Laporan akan diproses admin",
+
+                  textAlign: TextAlign.center,
+
+                  style: TextStyle(fontSize: 12),
+                ),
+
+                const SizedBox(height: 18),
+
+                SizedBox(
+                  width: double.infinity,
+
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF1D1D7),
+
+                      foregroundColor: Colors.black,
+
+                      elevation: 0,
+
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+
+                    child: const Text("OK"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // =========================
+  // REPORT COMMENT
+  // =========================
+
+  void showReportDialog(int index) {
+    showModalBottomSheet(
+      context: context,
+
+      backgroundColor: const Color(0xFFDDE6B8),
+
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+
+            children: [
+              const Text(
+                "Laporkan Komentar",
+
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 20),
+
+              ...reportCategories.map((category) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+
+                  child: Material(
+                    color: const Color(0xFFF1D1D7),
+
+                    borderRadius: BorderRadius.circular(18),
+
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+
+                      onTap: () {
+                        Navigator.pop(context);
+
+                        showSuccessDialog();
+                      },
+
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 15,
+                        ),
+
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flag_rounded),
+
+                            const SizedBox(width: 10),
+
+                            Text(
+                              category,
+
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,9 +349,6 @@ class _CommentPageState extends State<CommentPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // =========================
-            // HEADER
-            // =========================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
 
@@ -161,9 +375,6 @@ class _CommentPageState extends State<CommentPage> {
               ),
             ),
 
-            // =========================
-            // CONTENT
-            // =========================
             Expanded(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,9 +389,7 @@ class _CommentPageState extends State<CommentPage> {
 
                 child: Column(
                   children: [
-                    // =========================
-                    // POSTINGAN
-                    // =========================
+                    // POST
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
 
@@ -205,7 +414,6 @@ class _CommentPageState extends State<CommentPage> {
 
                                 style: const TextStyle(
                                   fontSize: 15,
-
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -217,7 +425,6 @@ class _CommentPageState extends State<CommentPage> {
 
                                 style: const TextStyle(
                                   fontSize: 12,
-
                                   height: 1.7,
                                 ),
                               ),
@@ -233,9 +440,7 @@ class _CommentPageState extends State<CommentPage> {
 
                     const SizedBox(height: 12),
 
-                    // =========================
-                    // LIST COMMENT
-                    // =========================
+                    // COMMENTS
                     Expanded(
                       child: ListView.builder(
                         itemCount: comments.length,
@@ -248,9 +453,7 @@ class _CommentPageState extends State<CommentPage> {
 
                             child: Column(
                               children: [
-                                // =========================
                                 // COMMENT
-                                // =========================
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
 
@@ -276,7 +479,6 @@ class _CommentPageState extends State<CommentPage> {
 
                                             style: const TextStyle(
                                               fontSize: 14,
-
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -288,7 +490,6 @@ class _CommentPageState extends State<CommentPage> {
 
                                             style: const TextStyle(
                                               fontSize: 12,
-
                                               height: 1.7,
                                             ),
                                           ),
@@ -302,20 +503,29 @@ class _CommentPageState extends State<CommentPage> {
 
                                                 style: TextStyle(
                                                   fontSize: 10,
-
                                                   color: Colors.grey.shade700,
                                                 ),
                                               ),
 
                                               const SizedBox(width: 18),
 
-                                              Text(
-                                                "Balas",
+                                              InkWell(
+                                                onTap: () {
+                                                  setState(() {
+                                                    replyingIndex = index;
+                                                  });
 
-                                                style: TextStyle(
-                                                  fontSize: 10,
+                                                  commentController.text =
+                                                      "@${comment["username"]} ";
+                                                },
 
-                                                  color: Colors.grey.shade700,
+                                                child: Text(
+                                                  "Balas",
+
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey.shade700,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -324,235 +534,71 @@ class _CommentPageState extends State<CommentPage> {
                                       ),
                                     ),
 
-                                    const SizedBox(width: 8),
+                                    PopupMenuButton(
+                                      icon: const Icon(Icons.more_horiz),
+
+                                      itemBuilder: (context) {
+                                        return [
+                                          const PopupMenuItem(
+                                            value: "report",
+                                            child: Text("Laporkan"),
+                                          ),
+                                        ];
+                                      },
+
+                                      onSelected: (value) {
+                                        if (value == "report") {
+                                          showReportDialog(index);
+                                        }
+                                      },
+                                    ),
 
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 40),
+                                      padding: const EdgeInsets.only(top: 30),
 
-                                      child: InkWell(
-                                        onTap: () {
-                                          toggleLikeComment(index);
-                                        },
+                                      child: Column(
+                                        children: [
+                                          InkWell(
+                                            onTap: () {
+                                              toggleLikeComment(index);
+                                            },
 
-                                        child: Icon(
-                                          comment["isLiked"]
-                                              ? Icons.favorite
-                                              : Icons.favorite_border,
+                                            child: Icon(
+                                              comment["isLiked"]
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
 
-                                          color: comment["isLiked"]
-                                              ? Colors.red
-                                              : Colors.black,
+                                              color: comment["isLiked"]
+                                                  ? Colors.red
+                                                  : Colors.black,
 
-                                          size: 20,
-                                        ),
+                                              size: 20,
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          Text(
+                                            "${comment["likes"]}",
+
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
 
-                                // =========================
-                                // REPLIES
-                                // =========================
+                                // BUTTON SHOW/HIDE
                                 if (comment["replies"] != null &&
-                                    comment["replies"].isNotEmpty &&
-                                    comment["showReplies"] == true)
+                                    comment["replies"].isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(
                                       left: 55,
-                                      top: 14,
-                                    ),
-
-                                    child: Column(
-                                      children: [
-                                        ...List.generate(
-                                          comment["replies"].length,
-
-                                          (replyIndex) {
-                                            final reply =
-                                                comment["replies"][replyIndex];
-
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 14,
-                                              ),
-
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 18,
-
-                                                    backgroundImage: AssetImage(
-                                                      reply["profile"],
-                                                    ),
-                                                  ),
-
-                                                  const SizedBox(width: 10),
-
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-
-                                                      children: [
-                                                        Text(
-                                                          reply["username"],
-
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 13,
-
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                        ),
-
-                                                        const SizedBox(
-                                                          height: 2,
-                                                        ),
-
-                                                        Text(
-                                                          reply["reply"],
-
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 12,
-                                                              ),
-                                                        ),
-
-                                                        const SizedBox(
-                                                          height: 8,
-                                                        ),
-
-                                                        Row(
-                                                          children: [
-                                                            Text(
-                                                              reply["time"],
-
-                                                              style: TextStyle(
-                                                                fontSize: 10,
-
-                                                                color: Colors
-                                                                    .grey
-                                                                    .shade700,
-                                                              ),
-                                                            ),
-
-                                                            const SizedBox(
-                                                              width: 18,
-                                                            ),
-
-                                                            Text(
-                                                              "Balas",
-
-                                                              style: TextStyle(
-                                                                fontSize: 10,
-
-                                                                color: Colors
-                                                                    .grey
-                                                                    .shade700,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-
-                                                  InkWell(
-                                                    onTap: () {
-                                                      toggleLikeReply(
-                                                        index,
-                                                        replyIndex,
-                                                      );
-                                                    },
-
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            top: 32,
-                                                          ),
-
-                                                      child: Icon(
-                                                        reply["isLiked"]
-                                                            ? Icons.favorite
-                                                            : Icons
-                                                                  .favorite_border,
-
-                                                        color: reply["isLiked"]
-                                                            ? Colors.red
-                                                            : Colors.black,
-
-                                                        size: 18,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-
-                                        InkWell(
-                                          onTap: () {
-                                            toggleReplies(index);
-                                          },
-
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                width: 45,
-
-                                                height: 1,
-
-                                                color: Colors.grey.shade600,
-                                              ),
-
-                                              const SizedBox(width: 10),
-
-                                              Row(
-                                                children: [
-                                                  Text(
-                                                    "Sembunyikan",
-
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-
-                                                      color:
-                                                          Colors.grey.shade700,
-                                                    ),
-                                                  ),
-
-                                                  Icon(
-                                                    Icons.keyboard_arrow_up,
-
-                                                    size: 16,
-
-                                                    color: Colors.grey.shade700,
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                // =========================
-                                // SHOW MORE
-                                // =========================
-                                if (comment["replies"] != null &&
-                                    comment["replies"].isNotEmpty &&
-                                    comment["showReplies"] == false)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 55,
-                                      top: 12,
+                                      top: 10,
                                     ),
 
                                     child: InkWell(
@@ -564,37 +610,223 @@ class _CommentPageState extends State<CommentPage> {
                                         children: [
                                           Container(
                                             width: 45,
-
                                             height: 1,
-
                                             color: Colors.grey.shade600,
                                           ),
 
                                           const SizedBox(width: 10),
 
-                                          Row(
-                                            children: [
-                                              Text(
-                                                "Lebih banyak",
+                                          Text(
+                                            comment["showReplies"]
+                                                ? "Sembunyikan"
+                                                : "Lebih banyak",
 
-                                                style: TextStyle(
-                                                  fontSize: 10,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
 
-                                                  color: Colors.grey.shade700,
-                                                ),
-                                              ),
+                                          Icon(
+                                            comment["showReplies"]
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
 
-                                              Icon(
-                                                Icons.keyboard_arrow_down,
+                                            size: 16,
 
-                                                size: 16,
-
-                                                color: Colors.grey.shade700,
-                                              ),
-                                            ],
+                                            color: Colors.grey.shade700,
                                           ),
                                         ],
                                       ),
+                                    ),
+                                  ),
+
+                                // REPLIES
+                                if (comment["replies"] != null &&
+                                    comment["replies"].isNotEmpty &&
+                                    comment["showReplies"] == true)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 55,
+                                      top: 14,
+                                    ),
+
+                                    child: Column(
+                                      children: [
+                                        ...List.generate(comment["replies"].length, (
+                                          replyIndex,
+                                        ) {
+                                          final reply =
+                                              comment["replies"][replyIndex];
+
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 14,
+                                            ),
+
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 18,
+
+                                                  backgroundImage: AssetImage(
+                                                    reply["profile"],
+                                                  ),
+                                                ),
+
+                                                const SizedBox(width: 10),
+
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+
+                                                    children: [
+                                                      Text(
+                                                        reply["username"],
+
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+
+                                                      const SizedBox(height: 2),
+
+                                                      Text(
+                                                        reply["reply"],
+
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+
+                                                      const SizedBox(height: 8),
+
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            reply["time"],
+
+                                                            style: TextStyle(
+                                                              fontSize: 10,
+                                                              color: Colors
+                                                                  .grey
+                                                                  .shade700,
+                                                            ),
+                                                          ),
+
+                                                          const SizedBox(
+                                                            width: 18,
+                                                          ),
+
+                                                          InkWell(
+                                                            onTap: () {
+                                                              setState(() {
+                                                                replyingIndex =
+                                                                    index;
+                                                              });
+
+                                                              commentController
+                                                                      .text =
+                                                                  "@${reply["username"]} ";
+                                                            },
+
+                                                            child: Text(
+                                                              "Balas",
+
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade700,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+
+                                                PopupMenuButton(
+                                                  icon: const Icon(
+                                                    Icons.more_horiz,
+                                                    size: 18,
+                                                  ),
+
+                                                  itemBuilder: (context) {
+                                                    return [
+                                                      const PopupMenuItem(
+                                                        value: "report",
+                                                        child: Text("Laporkan"),
+                                                      ),
+                                                    ];
+                                                  },
+
+                                                  onSelected: (value) {
+                                                    if (value == "report") {
+                                                      showSuccessDialog();
+                                                    }
+                                                  },
+                                                ),
+
+                                                Column(
+                                                  children: [
+                                                    InkWell(
+                                                      onTap: () {
+                                                        toggleLikeReply(
+                                                          index,
+                                                          replyIndex,
+                                                        );
+                                                      },
+
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              top: 20,
+                                                            ),
+
+                                                        child: Icon(
+                                                          reply["isLiked"]
+                                                              ? Icons.favorite
+                                                              : Icons
+                                                                    .favorite_border,
+
+                                                          color:
+                                                              reply["isLiked"]
+                                                              ? Colors.red
+                                                              : Colors.black,
+
+                                                          size: 18,
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(height: 4),
+
+                                                    Text(
+                                                      "${reply["likes"]}",
+
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        color: Colors
+                                                            .grey
+                                                            .shade700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
                                   ),
                               ],
@@ -604,9 +836,7 @@ class _CommentPageState extends State<CommentPage> {
                       ),
                     ),
 
-                    // =========================
-                    // INPUT COMMENT
-                    // =========================
+                    // INPUT
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
 
@@ -624,10 +854,12 @@ class _CommentPageState extends State<CommentPage> {
 
                               style: const TextStyle(fontSize: 12),
 
-                              decoration: const InputDecoration(
-                                hintText: "Tambahkan Komentar....",
+                              decoration: InputDecoration(
+                                hintText: replyingIndex != null
+                                    ? "Balas komentar..."
+                                    : "Tambahkan Komentar....",
 
-                                hintStyle: TextStyle(fontSize: 12),
+                                hintStyle: const TextStyle(fontSize: 12),
 
                                 border: InputBorder.none,
                               ),

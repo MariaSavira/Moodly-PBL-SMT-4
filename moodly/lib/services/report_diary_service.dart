@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ReportDiaryService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static final CollectionReference reportRef = _db.collection("report_diary");
+  static final CollectionReference reportRef = _db.collection("reports");
 
   // =========================
   // CREATE REPORT
