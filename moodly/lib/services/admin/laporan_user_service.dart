@@ -7,9 +7,8 @@ class LaporanUserService {
 
   Future<List<LaporanUserModel>> getLaporanUser() async {
     final snapshot = await _firestore
-        .collection('reports')
-        .orderBy('createdAt', descending: true)
-        .get();
+    .collection('reports')
+    .get();
 
     return snapshot.docs.map(_fromReport).toList();
   }
@@ -44,6 +43,7 @@ class LaporanUserService {
       namaPelapor: _getName(reporterInfo),
       namaTerlapor: _getName(reportedUserInfo),
       avatarTerlapor: _getAvatar(reportedUserInfo),
+      reportedUid: data['reportedUid'] ?? '',
       kategoriLaporan: data['reportCategory'] ?? 'Kata-kata tidak pantas',
       tanggal: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
@@ -51,32 +51,39 @@ class LaporanUserService {
       status: laporanStatusFromString(data['status'] ?? 'pending'),
       isiLaporan: _getIsiLaporan(reportedMessages),
       catatanAdmin: data['catatanAdmin'] ?? '',
+      diaryId: '',
       imageUrls: _getImageUrls(reportedMessages),
     );
   }
 
   LaporanUserModel _fromDiaryReport(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data();
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+) {
+  final data = doc.data();
 
-    return LaporanUserModel(
-      documentId: doc.id,
-      id: data['diaryId'] ?? data['reportId'] ?? doc.id,
-      tipeKonten: 'Diary Online',
-      namaPelapor: data['reportedBy'] ?? '-',
-      namaTerlapor: data['reportedUser'] ?? '-',
-      avatarTerlapor: '',
-      kategoriLaporan: data['reportCategory'] ?? 'Tidak ada kategori',
-      tanggal: data['createdAt'] is Timestamp
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      status: laporanStatusFromString(data['status'] ?? 'pending'),
-      isiLaporan: data['diaryText'] ?? 'Diary tidak tersedia',
-      catatanAdmin: data['catatanAdmin'] ?? '',
-      imageUrls: const [],
-    );
-  }
+  return LaporanUserModel(
+    documentId: doc.id,
+    id: data['diary_id'] ?? data['reportId'] ?? doc.id,
+    tipeKonten: 'Diary Online',
+    namaPelapor: data['reported_by'] ?? '-',
+    namaTerlapor: data['reported_user'] ?? '-',
+    avatarTerlapor: data['reported_profile'] ?? '',
+    reportedUid: data['reportedUid'] ?? '',
+    kategoriLaporan:
+        data['report_category'] ?? 'Tidak ada kategori',
+    tanggal: data['created_at'] is Timestamp
+        ? (data['created_at'] as Timestamp).toDate()
+        : DateTime.now(),
+    status: laporanStatusFromString(
+      data['status'] ?? 'pending',
+    ),
+    isiLaporan:
+        data['diary_text'] ?? 'Diary tidak tersedia',
+    catatanAdmin: data['catatanAdmin'] ?? '',
+    diaryId: data['diary_id'] ?? '',
+    imageUrls: const [],
+  );
+}
 
   String _getName(dynamic info) {
     if (info is Map<String, dynamic>) {

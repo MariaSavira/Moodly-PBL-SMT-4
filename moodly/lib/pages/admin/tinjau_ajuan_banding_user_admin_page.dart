@@ -47,21 +47,90 @@ class _TinjauAjuanBandingUserAdminPageState
     });
   }
 
-  Future<void> _ubahStatus(AjuanBandingStatus status) async {
-    if (_ajuan.documentId.isEmpty) {
-      _showMessage('Data ajuan belum terhubung ke Firebase');
-      return;
-    }
-
-    await _ajuanService.updateStatusAjuanBanding(
-      documentId: _ajuan.documentId,
-      status: status,
-      catatanAdmin: _catatanController.text.trim(),
-    );
-
-    if (!mounted) return;
-    Navigator.pop(context, true);
+Future<void> _ubahStatus(
+  AjuanBandingStatus status, {
+  String? tindakanDipilih,
+}) async {
+  if (_ajuan.documentId.isEmpty) {
+    _showMessage('Data ajuan belum terhubung ke Firebase');
+    return;
   }
+
+  await _ajuanService.updateStatusAjuanBanding(
+    documentId: _ajuan.documentId,
+    status: status,
+    catatanAdmin: _catatanController.text.trim(),
+    tindakanDipilih: tindakanDipilih,
+  );
+
+  if (!mounted) return;
+  Navigator.pop(context, true);
+}
+
+void _showPilihTindakanSheet() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Pilih Tindakan Akhir',
+              style: GoogleFonts.fredoka(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF486253),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _tindakanOption('Batasi User'),
+            _tindakanOption('Ban Sementara'),
+            _tindakanOption('Ban Permanen'),
+            _tindakanOption('Cabut Tindakan'),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _tindakanOption(String tindakan) {
+  return GestureDetector(
+    onTap: () {
+      Navigator.pop(context);
+      _ubahStatus(
+  AjuanBandingStatus.disetujui,
+  tindakanDipilih: tindakan,
+);
+    },
+    child: Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: tindakan == 'Cabut Tindakan'
+            ? const Color(0xFFD9FFD0)
+            : const Color(0xFFFFF1F1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        tindakan,
+        style: GoogleFonts.fredoka(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF0C0E0C),
+        ),
+      ),
+    ),
+  );
+}
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -385,7 +454,7 @@ class _TinjauAjuanBandingUserAdminPageState
             label: 'Terima Banding',
             icon: Icons.check_circle_rounded,
             color: const Color(0xFF8ECD86),
-            onTap: () => _ubahStatus(AjuanBandingStatus.disetujui),
+            onTap: _showPilihTindakanSheet,
           ),
           const SizedBox(height: 12),
           _buildActionButton(
