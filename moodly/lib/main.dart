@@ -81,7 +81,7 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const ListLaporanUserAdminPage(),
+      home: const ListAjuanBandingAdminPage(),
     );
   }
 }

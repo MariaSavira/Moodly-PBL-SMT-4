@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'profil_admin_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tinjau_laporan_user_admin_page.dart';
 import '../../models/admin/laporan_user_model.dart';
@@ -379,21 +380,31 @@ GestureDetector(
         ),
 ),
         const SizedBox(width: 14),
-        Container(
-          width: 38,
-          height: 38,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFFC4D7),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Text(
-              '👩🏻‍💻',
-              style: TextStyle(fontSize: 20),
-            ),
-          ),
-        ),
-        const SizedBox(width: 7),
+GestureDetector(
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfilAdminPage(),
+      ),
+    );
+  },
+  child: Container(
+    width: 38,
+    height: 38,
+    decoration: const BoxDecoration(
+      color: Color(0xFFFFC4D7),
+      shape: BoxShape.circle,
+    ),
+    child: const Center(
+      child: Text(
+        '👩🏻‍💻',
+        style: TextStyle(fontSize: 20),
+      ),
+    ),
+  ),
+),
+const SizedBox(width: 7),
         Text(
           'Admin',
           style: GoogleFonts.openSans(

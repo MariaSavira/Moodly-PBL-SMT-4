@@ -38,6 +38,8 @@ class _TinjauAjuanBandingUserAdminPageState
           tanggal: DateTime(2026, 4, 10),
           status: AjuanBandingStatus.pending,
           catatanAdmin: '',
+          alasanTindakan: 'User melanggar aturan komunitas.',
+          tindakanSaatIni: TindakanUser.banSementara,
         );
 
     _catatanController.text = _ajuan.catatanAdmin;
@@ -49,7 +51,7 @@ class _TinjauAjuanBandingUserAdminPageState
 
 Future<void> _ubahStatus(
   AjuanBandingStatus status, {
-  String? tindakanDipilih,
+  TindakanUser? tindakanDipilih,
 }) async {
   if (_ajuan.documentId.isEmpty) {
     _showMessage('Data ajuan belum terhubung ke Firebase');
@@ -89,10 +91,10 @@ void _showPilihTindakanSheet() {
               ),
             ),
             const SizedBox(height: 18),
-            _tindakanOption('Batasi User'),
-            _tindakanOption('Ban Sementara'),
-            _tindakanOption('Ban Permanen'),
-            _tindakanOption('Cabut Tindakan'),
+            _tindakanOption(TindakanUser.batasiUser),
+            _tindakanOption(TindakanUser.banSementara),
+            _tindakanOption(TindakanUser.banPermanen),
+            _tindakanOption(TindakanUser.cabutTindakan),
           ],
         ),
       );
@@ -100,14 +102,14 @@ void _showPilihTindakanSheet() {
   );
 }
 
-Widget _tindakanOption(String tindakan) {
+Widget _tindakanOption(TindakanUser tindakan) {
   return GestureDetector(
     onTap: () {
       Navigator.pop(context);
       _ubahStatus(
-  AjuanBandingStatus.disetujui,
-  tindakanDipilih: tindakan,
-);
+        AjuanBandingStatus.disetujui,
+        tindakanDipilih: tindakan,
+      );
     },
     child: Container(
       width: double.infinity,
@@ -115,13 +117,13 @@ Widget _tindakanOption(String tindakan) {
       padding: const EdgeInsets.symmetric(vertical: 13),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: tindakan == 'Cabut Tindakan'
+        color: tindakan == TindakanUser.cabutTindakan
             ? const Color(0xFFD9FFD0)
             : const Color(0xFFFFF1F1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        tindakan,
+        tindakan.label,
         style: GoogleFonts.fredoka(
           fontSize: 14,
           fontWeight: FontWeight.w700,
