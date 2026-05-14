@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/diary_model.dart';
 import '../../services/firestore_diary_service.dart';
 import '../../services/report_diary_service.dart';
+import 'comment_page.dart';
 
 class PublicDiaryPage extends StatefulWidget {
   const PublicDiaryPage({super.key});
@@ -27,7 +28,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
   List<DiaryModel> filteredDiaries = [];
 
-  // SEARCH
+  // ================= SEARCH =================
+
   void searchDiary(String value) {
     final keyword = value.toLowerCase();
 
@@ -40,22 +42,22 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     });
   }
 
-  // FILTER POPULAR
-  // sementara berdasarkan tanggal terbaru dulu
+  // ================= FILTER =================
+
   void filterPopular() {
     setState(() {
       filteredDiaries.sort((a, b) => b.date.compareTo(a.date));
     });
   }
 
-  // FILTER NEWEST
   void filterNewest() {
     setState(() {
       filteredDiaries.sort((a, b) => b.date.compareTo(a.date));
     });
   }
 
-  // SUCCESS DIALOG
+  // ================= SUCCESS DIALOG =================
+
   void showSuccessDialog() {
     showDialog(
       context: context,
@@ -138,7 +140,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     );
   }
 
-  // REPORT
+  // ================= REPORT =================
+
   void showReportDialog(DiaryModel diary) {
     showModalBottomSheet(
       context: context,
@@ -228,7 +231,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     );
   }
 
-  // FILTER DIALOG
+  // ================= FILTER DIALOG =================
+
   void showFilterDialog() {
     showModalBottomSheet(
       context: context,
@@ -299,6 +303,20 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     );
   }
 
+  // ================= TOGGLE LIKE =================
+
+  void toggleLike(DiaryModel diary) {
+    setState(() {
+      diary.isLiked = !diary.isLiked;
+
+      if (diary.isLiked) {
+        diary.likes++;
+      } else {
+        diary.likes--;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -307,13 +325,12 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER
+            // ================= HEADER =================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 
               child: Column(
                 children: [
-                  // ATAS
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
@@ -339,7 +356,6 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 18),
 
-                  // FILTER + SEARCH
                   Row(
                     children: [
                       InkWell(
@@ -399,7 +415,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
               ),
             ),
 
-            // LIST DIARY
+            // ================= LIST DIARY =================
             Expanded(
               child: StreamBuilder<List<DiaryModel>>(
                 stream: _service.getPublicDiaries(),
@@ -489,12 +505,24 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                                             ),
                                           ),
 
-                                          IconButton(
-                                            onPressed: () {
-                                              showReportDialog(diary);
+                                          PopupMenuButton(
+                                            icon: const Icon(Icons.more_horiz),
+
+                                            itemBuilder: (context) {
+                                              return [
+                                                const PopupMenuItem(
+                                                  value: "report",
+
+                                                  child: Text("Laporkan"),
+                                                ),
+                                              ];
                                             },
 
-                                            icon: const Icon(Icons.more_horiz),
+                                            onSelected: (value) {
+                                              if (value == "report") {
+                                                showReportDialog(diary);
+                                              }
+                                            },
                                           ),
                                         ],
                                       ),
@@ -528,15 +556,84 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                             const SizedBox(height: 16),
 
+                            // ================= BUTTONS =================
                             Row(
                               children: [
-                                const Icon(Icons.favorite_border, size: 24),
+                                // LIKE
+                                Material(
+                                  color: Colors.transparent,
+
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(30),
+
+                                    onTap: () {
+                                      toggleLike(diary);
+                                    },
+
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            diary.isLiked
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
+
+                                            color: diary.isLiked
+                                                ? Colors.red
+                                                : Colors.black,
+
+                                            size: 24,
+                                          ),
+
+                                          const SizedBox(width: 6),
+
+                                          Text("${diary.likes}"),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
 
                                 const SizedBox(width: 18),
 
-                                const Icon(
-                                  Icons.mode_comment_outlined,
-                                  size: 23,
+                                // COMMENT
+                                Material(
+                                  color: Colors.transparent,
+
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(30),
+
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CommentPage(diary: diary),
+                                        ),
+                                      );
+                                    },
+
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.mode_comment_outlined,
+
+                                            size: 23,
+                                          ),
+
+                                          const SizedBox(width: 6),
+
+                                          Text("${diary.comments}"),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -548,6 +645,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                               style: TextStyle(
                                 color: Colors.grey.shade700,
+
                                 fontSize: 11,
                               ),
                             ),
