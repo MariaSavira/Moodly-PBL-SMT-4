@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../core/styles/moodly_colors.dart';
-// core
-import '../../core/styles/moodly_colors.dart';
 
-// widgets
-import '../../widgets/setting/profile_card.dart';
-import '../../widgets/setting/section_card.dart';
-import '../../widgets/setting/setting_tile.dart';
-import '../../widgets/shared/moodly_app_bar.dart';
-
-// pages (internal)
-import 'edit_profile_page.dart';
-import 'change_password_page.dart';
+// pages
 import 'theme_page.dart';
 import 'language_page.dart';
+import 'notification_settings_page.dart';
+import 'report_history_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -43,6 +35,7 @@ class SettingsPage extends StatelessWidget {
                     onBack: () => Navigator.pop(context),
                   ),
                   const SizedBox(height: 36),
+
                   Center(
                     child: _ProfileCard(
                       onEdit: () {
@@ -50,11 +43,14 @@ class SettingsPage extends StatelessWidget {
                       },
                     ),
                   ),
+
                   const SizedBox(height: 34),
+
                   _MainSettingsContainer(
                     children: [
                       _SectionTitle("PENGATURAN AKUN"),
                       const SizedBox(height: 12),
+
                       _SettingItem(
                         icon: Icons.account_circle,
                         iconColor: MoodlyColors.green,
@@ -63,6 +59,7 @@ class SettingsPage extends StatelessWidget {
                           Navigator.pushNamed(context, '/profile');
                         },
                       ),
+
                       _SettingItem(
                         icon: Icons.shield,
                         iconColor: MoodlyColors.green,
@@ -71,25 +68,40 @@ class SettingsPage extends StatelessWidget {
                           Navigator.pushNamed(context, '/security');
                         },
                       ),
+
                       _SettingItem(
                         icon: Icons.error,
                         iconColor: MoodlyColors.green,
                         title: "Riwayat Pelapor",
                         onTap: () {
-                          Navigator.pushNamed(context, '/report');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReportHistoryPage(),
+                            ),
+                          );
                         },
                       ),
+
                       const SizedBox(height: 18),
                       _SectionTitle("PREFERENSI APLIKASI"),
                       const SizedBox(height: 12),
+
                       _SettingItem(
                         icon: Icons.notifications,
                         iconColor: MoodlyColors.pinkAccent,
                         title: "Notifikasi",
                         onTap: () {
-                          Navigator.pushNamed(context, '/notification');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const NotificationSettingsPage(),
+                            ),
+                          );
                         },
                       ),
+
                       _SettingItem(
                         icon: Icons.palette,
                         iconColor: MoodlyColors.pinkAccent,
@@ -104,6 +116,7 @@ class SettingsPage extends StatelessWidget {
                           );
                         },
                       ),
+
                       _SettingItem(
                         icon: Icons.language,
                         iconColor: MoodlyColors.pinkAccent,
@@ -118,9 +131,11 @@ class SettingsPage extends StatelessWidget {
                           );
                         },
                       ),
+
                       const SizedBox(height: 18),
                       _SectionTitle("TENTANG"),
                       const SizedBox(height: 12),
+
                       _SettingItem(
                         icon: Icons.description,
                         iconColor: Colors.grey,
@@ -132,11 +147,13 @@ class SettingsPage extends StatelessWidget {
                         ),
                         onTap: () {},
                       ),
+
                       _LogoutItem(
                         onTap: () => _showLogoutDialog(context),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 24),
                 ],
               ),
@@ -150,7 +167,7 @@ class SettingsPage extends StatelessWidget {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.35),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (_) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 34),
@@ -268,7 +285,7 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(40),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             blurRadius: 24,
             offset: const Offset(0, 14),
           ),
@@ -337,10 +354,10 @@ class _MainSettingsContainer extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
       decoration: BoxDecoration(
-        color: MoodlyColors.greenLight.withOpacity(0.42),
+        color: MoodlyColors.greenLight.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: MoodlyColors.green.withOpacity(0.18),
+          color: MoodlyColors.green.withValues(alpha: 0.18),
           width: 1.5,
         ),
       ),
@@ -402,7 +419,7 @@ class _SettingItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -477,7 +494,7 @@ class _LogoutItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
