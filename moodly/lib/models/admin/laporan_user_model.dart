@@ -56,11 +56,13 @@ class LaporanUserModel {
   final String namaPelapor;
   final String namaTerlapor;
   final String avatarTerlapor;
+  final String reportedUid;
   final String kategoriLaporan;
   final DateTime tanggal;
   final LaporanStatus status;
   final String isiLaporan;
   final String catatanAdmin;
+  final String diaryId;
   final List<String> imageUrls;
 
   const LaporanUserModel({
@@ -70,11 +72,13 @@ class LaporanUserModel {
     required this.namaPelapor,
     required this.namaTerlapor,
     required this.avatarTerlapor,
+    required this.reportedUid,
     required this.kategoriLaporan,
     required this.tanggal,
     required this.status,
     required this.isiLaporan,
     required this.catatanAdmin,
+    required this.diaryId,
     required this.imageUrls,
   });
 
@@ -90,6 +94,7 @@ class LaporanUserModel {
       namaPelapor: data['namaPelapor'] ?? '',
       namaTerlapor: data['namaTerlapor'] ?? '',
       avatarTerlapor: data['avatarTerlapor'] ?? '',
+      reportedUid: data['reportedUid'] ?? '',
       kategoriLaporan: data['kategoriLaporan'] ?? 'Tidak ada kategori',
       tanggal: data['tanggal'] is Timestamp
           ? (data['tanggal'] as Timestamp).toDate()
@@ -97,6 +102,7 @@ class LaporanUserModel {
       status: laporanStatusFromString(data['status'] ?? 'pending'),
       isiLaporan: data['isiLaporan'] ?? '',
       catatanAdmin: data['catatanAdmin'] ?? '',
+      diaryId: data['diaryId'] ?? data['diary_id'] ?? '',
       imageUrls: List<String>.from(data['imageUrls'] ?? const []),
     );
   }
@@ -108,11 +114,13 @@ class LaporanUserModel {
       'namaPelapor': namaPelapor,
       'namaTerlapor': namaTerlapor,
       'avatarTerlapor': avatarTerlapor,
+      'reportedUid': reportedUid,
       'kategoriLaporan': kategoriLaporan,
       'tanggal': Timestamp.fromDate(tanggal),
       'status': status.value,
       'isiLaporan': isiLaporan,
       'catatanAdmin': catatanAdmin,
+      'diaryId': diaryId,
       'imageUrls': imageUrls,
     };
   }

@@ -5,6 +5,12 @@ enum AjuanBandingStatus {
   disetujui,
   ditolak,
 }
+enum TindakanUser {
+  batasiUser,
+  banSementara,
+  banPermanen,
+  cabutTindakan,
+}
 
 extension AjuanBandingStatusExtension on AjuanBandingStatus {
   String get label {
@@ -29,7 +35,33 @@ extension AjuanBandingStatusExtension on AjuanBandingStatus {
     }
   }
 }
+extension TindakanUserExtension on TindakanUser {
+  String get label {
+    switch (this) {
+      case TindakanUser.batasiUser:
+        return 'Batasi User';
+      case TindakanUser.banSementara:
+        return 'Ban Sementara';
+      case TindakanUser.banPermanen:
+        return 'Ban Permanen';
+      case TindakanUser.cabutTindakan:
+        return 'Cabut Tindakan';
+    }
+  }
 
+  String get value {
+    switch (this) {
+      case TindakanUser.batasiUser:
+        return 'batasi_user';
+      case TindakanUser.banSementara:
+        return 'ban_sementara';
+      case TindakanUser.banPermanen:
+        return 'ban_permanen';
+      case TindakanUser.cabutTindakan:
+        return 'cabut_tindakan';
+    }
+  }
+}
 AjuanBandingStatus ajuanBandingStatusFromString(String value) {
   switch (value.toLowerCase()) {
     case 'disetujui':
@@ -41,12 +73,29 @@ AjuanBandingStatus ajuanBandingStatusFromString(String value) {
       return AjuanBandingStatus.pending;
   }
 }
+TindakanUser tindakanUserFromString(String value) {
+  switch (value.toLowerCase()) {
+    case 'ban_sementara':
+      return TindakanUser.banSementara;
 
+    case 'ban_permanen':
+      return TindakanUser.banPermanen;
+
+    case 'cabut_tindakan':
+      return TindakanUser.cabutTindakan;
+
+    case 'batasi_user':
+    default:
+      return TindakanUser.batasiUser;
+  }
+}
 class AjuanBandingModel {
   final String documentId;
   final String id;
   final String username;
   final String jenisBan;
+  final String alasanTindakan;
+  final TindakanUser tindakanSaatIni;
   final String alasanBanding;
   final DateTime tanggal;
   final AjuanBandingStatus status;
@@ -61,6 +110,8 @@ class AjuanBandingModel {
     required this.tanggal,
     required this.status,
     required this.catatanAdmin,
+    required this.alasanTindakan,
+    required this.tindakanSaatIni,
   });
 
   factory AjuanBandingModel.fromFirestore(
@@ -71,14 +122,18 @@ class AjuanBandingModel {
     return AjuanBandingModel(
       documentId: doc.id,
       id: data['id'] ?? doc.id,
-      username: data['username'] ?? '',
-      jenisBan: data['jenisBan'] ?? '',
-      alasanBanding: data['alasanBanding'] ?? '',
-      tanggal: data['tanggal'] is Timestamp
-          ? (data['tanggal'] as Timestamp).toDate()
+      username: data['username'] ?? data['reportedUserName'] ?? 'User tidak diketahui',
+      jenisBan: data['jenisBan'] ?? data['tindakanSaatIni'] ?? 'Belum ada tindakan',
+      alasanBanding: data['alasanBanding'] ?? 'Belum ada alasan banding',
+      tanggal: data['createdAt'] is Timestamp
+          ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
       status: ajuanBandingStatusFromString(data['status'] ?? 'pending'),
       catatanAdmin: data['catatanAdmin'] ?? '',
+alasanTindakan: data['alasanTindakan'] ?? '',
+tindakanSaatIni: tindakanUserFromString(
+  data['tindakanSaatIni'] ?? 'batasi_user',
+),
     );
   }
 
@@ -91,6 +146,8 @@ class AjuanBandingModel {
       'tanggal': Timestamp.fromDate(tanggal),
       'status': status.value,
       'catatanAdmin': catatanAdmin,
+      'alasanTindakan': alasanTindakan,
+      'tindakanSaatIni': tindakanSaatIni.value,
     };
   }
 }

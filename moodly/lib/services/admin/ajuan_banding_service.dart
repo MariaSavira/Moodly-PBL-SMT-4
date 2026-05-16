@@ -6,9 +6,7 @@ class AjuanBandingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<List<AjuanBandingModel>> getAjuanBanding() async {
-    final snapshot = await _firestore
-    .collection('ajuan_banding')
-    .get();
+    final snapshot = await _firestore.collection('reports').get();
 
     return snapshot.docs
         .map((doc) => AjuanBandingModel.fromFirestore(doc))
@@ -19,10 +17,12 @@ class AjuanBandingService {
     required String documentId,
     required AjuanBandingStatus status,
     String? catatanAdmin,
+    TindakanUser? tindakanDipilih,
   }) async {
-    await _firestore.collection('ajuan_banding').doc(documentId).update({
+    await _firestore.collection('reports').doc(documentId).update({
       'status': status.value,
       if (catatanAdmin != null) 'catatanAdmin': catatanAdmin,
+      if (tindakanDipilih != null) 'tindakanDipilih': tindakanDipilih.value,
     });
   }
 }

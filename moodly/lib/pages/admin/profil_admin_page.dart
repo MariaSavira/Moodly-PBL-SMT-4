@@ -1,19 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import 'edit_profil_admin.dart';
-import 'keamanan_akun_admin.dart';
-import 'notifikasi_admin.dart';
-import 'bantuan_admin.dart';
-
-class ProfilAdminPage extends StatefulWidget {
+class ProfilAdminPage extends StatelessWidget {
   const ProfilAdminPage({super.key});
-
-  @override
-  State<ProfilAdminPage> createState() => _ProfilAdminPageState();
-}
-
-class _ProfilAdminPageState extends State<ProfilAdminPage> {
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +32,11 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
             children: [
               _buildProfileCard(),
               const SizedBox(height: 24),
+
               _buildMenuList(context),
+
               const SizedBox(height: 32),
+
               _buildFooter(),
             ],
           ),
@@ -182,46 +173,30 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
             context,
             icon: Icons.person_outline,
             title: 'Edit Profil',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EditProfilAdminPage()),
-            ),
+            onTap: () => _navigateToDummy(context, 'Edit Profil'),
           ),
           _buildDivider(),
-
           _buildMenuItem(
             context,
             icon: Icons.shield_outlined,
             title: 'Keamanan Akun',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const KeamananAkunAdminPage()),
-            ),
+            onTap: () => _navigateToDummy(context, 'Keamanan Akun'),
           ),
           _buildDivider(),
-
           _buildMenuItem(
             context,
             icon: Icons.notifications_none_outlined,
             title: 'Notifikasi',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotifikasiAdminPage()),
-            ),
+            onTap: () => _navigateToDummy(context, 'Notifikasi'),
           ),
           _buildDivider(),
-
           _buildMenuItem(
             context,
             icon: Icons.help_outline,
             title: 'Bantuan',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BantuanAdminPage()),
-            ),
+            onTap: () => _navigateToDummy(context, 'Bantuan'),
           ),
           _buildDivider(),
-
           _buildMenuItem(
             context,
             icon: Icons.logout_outlined,
@@ -318,6 +293,28 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
     );
   }
 
+  void _navigateToDummy(BuildContext context, String pageTitle) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(pageTitle),
+            backgroundColor: const Color(0xFF4A6B5D),
+            foregroundColor: Colors.white,
+          ),
+          body: Center(
+            child: Text(
+              'Halaman $pageTitle sedang dalam pengembangan.',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -330,38 +327,12 @@ class _ProfilAdminPageState extends State<ProfilAdminPage> {
             child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.pop(context);
-
-              try {
-                await FirebaseAuth.instance.signOut();
-
-                if (mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/onboarding',
-                        (route) => false,
-                  );
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Berhasil keluar dari akun'),
-                      backgroundColor: const Color(0xFF4CAF50),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Gagal logout: $e'),
-                      backgroundColor: Colors.green.shade200,
-                    ),
-                  );
-                }
-              }
+              Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade200,
+              backgroundColor: const Color(0xFFD32F2F),
             ),
             child: const Text('Keluar'),
           ),

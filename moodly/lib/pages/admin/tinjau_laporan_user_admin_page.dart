@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/admin/laporan_user_model.dart';
 import '../../services/admin/laporan_user_service.dart';
 
@@ -36,13 +36,15 @@ class _TinjauLaporanUserAdminPageState
       namaPelapor: 'Admin',
       namaTerlapor: 'UserXyz',
       avatarTerlapor: '',
+reportedUid: '',
 kategoriLaporan: 'Kata-kata tidak pantas',
 tanggal: DateTime(2026, 4, 9),
       status: LaporanStatus.pending,
       isiLaporan:
           'aku ngerasa hidup ini berat banget, semuanya jahat, enggak ada yang peduli sama aku...',
           catatanAdmin: '',
-          imageUrls: const [],
+    diaryId: '',
+imageUrls: const [],
         );
     _catatanController.text = _laporan.catatanAdmin;
 
@@ -86,7 +88,33 @@ tanggal: DateTime(2026, 4, 9),
     if (!mounted) return;
     Navigator.pop(context, true);
   }
+Future<void> _hapusPostinganDiary() async {
+  if (_laporan.diaryId.isEmpty) {
+    _showMessage('ID diary tidak ditemukan');
+    return;
+  }
 
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('diaries')
+        .where('diary_id', isEqualTo: _laporan.diaryId)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      _showMessage('Postingan diary tidak ditemukan');
+      return;
+    }
+
+    await snapshot.docs.first.reference.update({
+      'isDeleted': true,
+      'deletedAt': Timestamp.now(),
+    });
+
+    _showMessage('Postingan diary berhasil dihapus');
+  } catch (e) {
+    _showMessage('Gagal hapus postingan: $e');
+  }
+}
   String _statusLabel() {
     switch (_laporan.status) {
       case LaporanStatus.pending:
@@ -564,14 +592,27 @@ tanggal: DateTime(2026, 4, 9),
         ),
         const SizedBox(height: 8),
         _actionButton(
-          icon: Icons.shield_outlined,
-          title: 'Tolak Laporan',
-          subtitle: 'Laporan tidak valid',
-          color: const Color(0xFFFF3B3B),
-          bg: const Color(0xFFFFF1F1),
-          border: const Color(0xFFFF8A8A),
-          onTap: () => _ubahStatus(LaporanStatus.ditolak),
-        ),
+  icon: Icons.shield_outlined,
+  title: 'Tolak Laporan',
+  subtitle: 'Laporan tidak valid',
+  color: const Color(0xFFFF3B3B),
+  bg: const Color(0xFFFFF1F1),
+  border: const Color(0xFFFF8A8A),
+  onTap: () => _ubahStatus(LaporanStatus.ditolak),
+),
+
+if (_laporan.tipeKonten == 'Diary Online') ...[
+  const SizedBox(height: 8),
+  _actionButton(
+    icon: Icons.delete_outline_rounded,
+    title: 'Hapus Postingan',
+    subtitle: 'Sembunyikan diary yang dilaporkan',
+    color: const Color(0xFFFF3B3B),
+    bg: const Color(0xFFFFF1F1),
+    border: const Color(0xFFFF8A8A),
+    onTap: _hapusPostinganDiary,
+  ),
+],
       ],
     );
   }
