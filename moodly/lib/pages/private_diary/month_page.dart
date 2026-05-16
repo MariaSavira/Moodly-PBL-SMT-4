@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../widgets/month_item.dart';
-import '../../widgets/date_section.dart';
-import '../../services/diary_service.dart';
 import '../../services/firestore_diary_service.dart';
 import '../../models/diary_model.dart';
 import 'diary_page.dart';
