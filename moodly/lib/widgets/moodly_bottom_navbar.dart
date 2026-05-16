@@ -13,19 +13,20 @@ class MoodlyBottomNavbar extends StatelessWidget {
     required this.onEmergencyTap,
   });
 
-  static const Color _greenMain = Color(0xFF84C96C);
-  static const Color _greenSoft = Color(0xFFBFE3AF);
-  static const Color _navBg = Color(0xFFCDE8B9);
-  static const Color _white = Color(0xFFFFFFFF);
+  static const Color _navBg = Color(0xFFE2EFCF);
+  static const Color _selectedBg = Color(0xFFFFFFFF);
+  static const Color _selectedIcon = Color(0xFF5F9E4E);
+  static const Color _selectedText = Color(0xFF5F9E4E);
+  static const Color _inactiveIcon = Color(0xFF8FA287);
+  static const Color _inactiveText = Color(0xFF8FA287);
   static const Color _danger = Color(0xFFE95C69);
-  static const Color _dangerSoft = Color(0xFFFFD7DD);
-  static const Color _textInactive = Color(0xFFF4FFF0);
+  static const Color _dangerRing = Color(0xFFF6D4DA);
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.25),
-          offset: Offset(0, 1),
-          blurRadius: 5,
+          color: Color.fromRGBO(0, 0, 0, 0.08),
+          offset: Offset(0, 6),
+          blurRadius: 18,
           spreadRadius: 0,
         ),
       ];
@@ -37,9 +38,6 @@ class MoodlyBottomNavbar extends StatelessWidget {
     required bool selected,
     required VoidCallback onPressed,
   }) {
-    final activeColor = _white;
-    final inactiveColor = _textInactive.withOpacity(0.92);
-
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -49,21 +47,69 @@ class MoodlyBottomNavbar extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 24,
-                color: selected ? activeColor : inactiveColor,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected ? _selectedBg : Colors.transparent,
+                  shape: BoxShape.circle,
+                  boxShadow: selected ? _softShadow : null,
+                ),
+                child: Icon(
+                  icon,
+                  size: 22,
+                  color: selected ? _selectedIcon : _inactiveIcon,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: AppText.bodyAlt(context).copyWith(
                   fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? activeColor : inactiveColor,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? _selectedText : _inactiveText,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sosButton(BuildContext context) {
+    return GestureDetector(
+      onTap: onEmergencyTap,
+      child: Container(
+        width: 78,
+        height: 78,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(
+            color: _dangerRing,
+            width: 4,
+          ),
+          boxShadow: _softShadow,
+        ),
+        child: Center(
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: _danger,
+            ),
+            child: Center(
+              child: Text(
+                'SOS',
+                style: AppText.bodyAlt(context).copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -75,21 +121,21 @@ class MoodlyBottomNavbar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: SizedBox(
-        height: 112,
+        height: 108,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
           children: [
             Positioned(
-              left: 14,
-              right: 14,
+              left: 16,
+              right: 16,
               bottom: 10,
               child: Container(
-                height: 72,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 76,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   color: _navBg,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(28),
                   boxShadow: _softShadow,
                 ),
                 child: Row(
@@ -108,7 +154,7 @@ class MoodlyBottomNavbar extends StatelessWidget {
                       selected: currentIndex == 1,
                       onPressed: () => onTap(1),
                     ),
-                    const SizedBox(width: 72),
+                    const SizedBox(width: 76),
                     _navItem(
                       context: context,
                       icon: Icons.forum_rounded,
@@ -127,40 +173,9 @@ class MoodlyBottomNavbar extends StatelessWidget {
                 ),
               ),
             ),
-
             Positioned(
-              bottom: 34,
-              child: GestureDetector(
-                onTap: onEmergencyTap,
-                child: Container(
-                  width: 74,
-                  height: 74,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _white,
-                    boxShadow: _softShadow,
-                    border: Border.all(
-                      color: _dangerSoft,
-                      width: 3,
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _danger,
-                      ),
-                      child: const Icon(
-                        Icons.sos_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              bottom: 24,
+              child: _sosButton(context),
             ),
           ],
         ),

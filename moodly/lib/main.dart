@@ -1,34 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:moodly/pages/admin/list_ajuan_banding_admin_page.dart';
-import 'pages/admin/list_laporan_user_admin_page.dart';
-import 'pages/admin/moderasi_admin.dart';
-// pages
-import 'package:moodly/pages/auth/login_page.dart';
-import 'package:moodly/pages/auth/register_page.dart';
-import 'package:moodly/pages/auth/register_success_page.dart';
-import 'package:moodly/pages/auth/otp_verification_page.dart';
-import 'package:moodly/pages/setting/settings_page.dart';
-import 'package:moodly/pages/setting/profile_page.dart';
-
-// firebase
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'firebase_options.dart';
-
-import 'pages/afirmasi/afirmasi_page.dart';
-import 'package:moodly/pages/private_diary/month_page.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'firebase_options.dart';
 import 'pages/onboarding_page.dart';
 import 'pages/splash_screen.dart';
-
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,9 +43,7 @@ class MoodlyApp extends StatelessWidget {
         Locale('en'),
       ],
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.purple,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         scaffoldBackgroundColor: const Color(0xFFF8F6FF),
         useMaterial3: true,
         textTheme: GoogleFonts.fredokaTextTheme().copyWith(
@@ -95,7 +74,7 @@ class MoodlyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const ModerasiAdminPage(),
+      home: const RootPage(),
     );
   }
 }

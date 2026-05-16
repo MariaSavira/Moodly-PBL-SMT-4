@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../core/services/auth_service.dart';
+import 'admin/moderasi_admin.dart';
 import 'homepage.dart';
+import 'onboarding_page.dart';
 
 class SplashScreenMoodly extends StatefulWidget {
   const SplashScreenMoodly({super.key});
@@ -70,13 +75,15 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
       curve: const Interval(0.42, 0.72, curve: Curves.easeOut),
     );
 
-    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.22), end: Offset.zero)
-        .animate(
-          CurvedAnimation(
-            parent: _introController,
-            curve: const Interval(0.42, 0.78, curve: Curves.easeOutCubic),
-          ),
-        );
+    _titleSlide = Tween<Offset>(
+      begin: const Offset(0, 0.22),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.42, 0.78, curve: Curves.easeOutCubic),
+      ),
+    );
 
     _subtitleFade = CurvedAnimation(
       parent: _introController,
@@ -86,17 +93,45 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     _introController.forward();
 
     Timer(const Duration(milliseconds: 3600), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, __, ___) => const Homepage(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
+      _handleNavigation();
     });
+  }
+
+  Future<void> _handleNavigation() async {
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    Widget nextPage = const OnboardingPage();
+
+    if (user != null) {
+      String role = 'user';
+
+      try {
+        role = await AuthService.instance.getCurrentUserRole();
+      } catch (_) {
+        role = 'user';
+      }
+
+      if (!mounted) return;
+
+      nextPage =
+          role == 'admin'
+              ? const ModerasiAdminPage()
+              : const Homepage();
+    }
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (_, __, ___) => nextPage,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   @override
@@ -373,7 +408,7 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
 
 class _AnimatedMoodlyTitle extends AnimatedWidget {
   const _AnimatedMoodlyTitle({required AnimationController controller})
-    : super(listenable: controller);
+      : super(listenable: controller);
 
   AnimationController get controller => listenable as AnimationController;
 

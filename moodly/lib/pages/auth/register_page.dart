@@ -12,6 +12,7 @@ import '../../widgets/social_sign_in_button.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 import '../chat_anonim/homepage_chat_anonim.dart';
 import 'auth.dart';
+import '../splash_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -76,7 +77,7 @@ class _RegisterPageState extends State<RegisterPage> {
   void _goToHomeChat() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const HomeChatAnonim()),
+      MaterialPageRoute(builder: (_) => const SplashScreenMoodly()),
       (route) => false,
     );
   }

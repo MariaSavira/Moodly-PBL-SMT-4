@@ -6,6 +6,7 @@ class UserModel {
   final String? photoUrl;
   final DateTime? createdAt;
   final bool isEmailVerified;
+  final String role;
 
   const UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     this.photoUrl,
     this.createdAt,
     this.isEmailVerified = false,
+    this.role = 'user',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -28,6 +30,7 @@ class UserModel {
           ? DateTime.tryParse(map['createdAt'].toString())
           : null,
       isEmailVerified: map['isEmailVerified'] as bool? ?? false,
+      role: map['role'] as String? ?? 'user',
     );
   }
 
@@ -40,6 +43,7 @@ class UserModel {
       'photoUrl': photoUrl,
       'createdAt': createdAt?.toIso8601String(),
       'isEmailVerified': isEmailVerified,
+      'role': role,
     };
   }
 
@@ -51,6 +55,7 @@ class UserModel {
     String? photoUrl,
     DateTime? createdAt,
     bool? isEmailVerified,
+    String? role,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -60,11 +65,12 @@ class UserModel {
       photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt ?? this.createdAt,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      role: role ?? this.role,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel(uid: $uid, fullName: $fullName, email: $email, isEmailVerified: $isEmailVerified)';
+    return 'UserModel(uid: $uid, fullName: $fullName, email: $email, isEmailVerified: $isEmailVerified, role: $role)';
   }
 }
