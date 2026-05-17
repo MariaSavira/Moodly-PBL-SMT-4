@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MoodInput extends StatefulWidget {
-  const MoodInput({super.key});
+  final DateTime? selectedDate;
+
+  const MoodInput({super.key, this.selectedDate});
 
   @override
   State<MoodInput> createState() => _MoodInputState();
@@ -11,6 +15,9 @@ class MoodInput extends StatefulWidget {
 class _MoodInputState extends State<MoodInput> {
   String? selectedMood;
   final TextEditingController _noteController = TextEditingController();
+  bool _isSaving = false;
+
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
 
   @override
   void dispose() {
@@ -24,13 +31,13 @@ class _MoodInputState extends State<MoodInput> {
     });
   }
 
-  String _getEmojiForMood(String mood) {
+  String _getEmojiImagePath(String mood) {
     switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
+      case 'Senang': return 'assets/emoji/emoji_senang.png';
+      case 'Netral': return 'assets/emoji/emoji_netral.png';
+      case 'Sedih': return 'assets/emoji/emoji_sedih.png';
+      case 'Marah': return 'assets/emoji/emoji_marah.png';
+      default: return 'assets/emoji/emoji_netral.png';
     }
   }
 
@@ -44,35 +51,89 @@ class _MoodInputState extends State<MoodInput> {
     }
   }
 
-  Future<void> _saveMood({bool withNote = false}) async {
-    if (selectedMood == null) return;
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (mounted) {
+  Future<void> _saveMood({String? note}) async {
+    if (selectedMood == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Text(_getEmojiForMood(selectedMood!), style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Mood "$selectedMood" berhasil disimpan! ${withNote ? "+ Catatan" : ""}',
-                  style: GoogleFonts.openSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
+        const SnackBar(
+          content: Text('Pilih mood terlebih dahulu!'),
+          backgroundColor: Colors.orange,
         ),
       );
+      return;
+    }
+
+    final dateToSave = widget.selectedDate ?? DateTime.now();
+    final dateKey = '${dateToSave.year}-${dateToSave.month.toString().padLeft(2, '0')}-${dateToSave.day.toString().padLeft(2, '0')}';
+
+    setState(() => _isSaving = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .set({
+        'entries.$dateKey': selectedMood,
+        if (note != null && note.isNotEmpty) 'notes.$dateKey': note,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('mood_$dateKey', selectedMood!);
+      if (note != null && note.isNotEmpty) {
+        await prefs.setString('note_$dateKey', note);
+      }
+
+      print("✅ Mood saved to Firestore: $selectedMood on $dateKey");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Image.asset(
+                  _getEmojiImagePath(selectedMood!),
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Mood "$selectedMood" berhasil disimpan! ${note != null ? "+ Catatan" : ""}',
+                    style: GoogleFonts.openSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      print("❌ Error saving mood: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -122,7 +183,7 @@ class _MoodInputState extends State<MoodInput> {
             onPressed: () {
               _noteController.clear();
               Navigator.pop(context);
-              _saveMood(withNote: false);
+              _saveMood();
             },
             child: Text(
               'Lewati',
@@ -135,8 +196,9 @@ class _MoodInputState extends State<MoodInput> {
           ),
           ElevatedButton(
             onPressed: () {
+              final note = _noteController.text.trim();
               Navigator.pop(context);
-              _saveMood(withNote: true);
+              _saveMood(note: note);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.purple,
@@ -176,22 +238,55 @@ class _MoodInputState extends State<MoodInput> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          if (_isSaving)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+              ),
+            ),
+        ],
       ),
-      body: SingleChildScrollView(
+      body: _isSaving
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Menyimpan...',
+              style: GoogleFonts.fredoka(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      )
+          : SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDDDE3),
+                  color: const Color(0xFFFFD1DB),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,23 +313,19 @@ class _MoodInputState extends State<MoodInput> {
                       ],
                     ),
                     Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.pink.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.favorite_rounded, color: Colors.pink, size: 24),
+                      top: -65,
+                      right: -20,
+                      child: Image.asset(
+                        'assets/icons/login/image1.png',
+                        width: 85,
+                        height: 85,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -245,7 +336,6 @@ class _MoodInputState extends State<MoodInput> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Grid Mood Selection
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -260,9 +350,7 @@ class _MoodInputState extends State<MoodInput> {
                         _buildMoodCard('Marah', 'Marah'),
                       ],
                     ),
-
                     const SizedBox(height: 32),
-
                     Text(
                       'Apakah kamu ingin cerita apa\nyang ada di balik perasaanmu\nhari ini?',
                       textAlign: TextAlign.left,
@@ -273,9 +361,7 @@ class _MoodInputState extends State<MoodInput> {
                         height: 1.4,
                       ),
                     ),
-
                     const SizedBox(height: 32),
-
                     Center(
                       child: SizedBox(
                         width: double.infinity,
@@ -302,15 +388,13 @@ class _MoodInputState extends State<MoodInput> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Center(
                       child: SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: selectedMood == null ? null : () => _saveMood(withNote: false),
+                          onPressed: selectedMood == null ? null : () => _saveMood(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF7CB342),
                             foregroundColor: Colors.white,
@@ -356,15 +440,29 @@ class _MoodInputState extends State<MoodInput> {
             width: 3,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]
-              : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+              ? [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ]
+              : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              _getEmojiForMood(moodValue),
-              style: const TextStyle(fontSize: 52),
+            Image.asset(
+              _getEmojiImagePath(moodValue),
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 12),
             Text(

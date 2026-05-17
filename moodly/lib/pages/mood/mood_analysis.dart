@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 class MoodAnalysis extends StatefulWidget {
@@ -11,48 +12,78 @@ class MoodAnalysis extends StatefulWidget {
 }
 
 class _MoodAnalysisState extends State<MoodAnalysis> {
-  int _selectedIndex = 1; // Default ke Bulan (index 1)
+  int _selectedIndex = 1;
   bool _isPremium = false;
   bool _isLoading = true;
 
   DateTime _selectedMonth = DateTime.now();
   late int _selectedWeek;
 
-  // Database Mood (Dummy Data)
-  final Map<String, String> _moodDatabase = {
-    '2026-03-01': 'Senang', '2026-03-02': 'Netral', '2026-03-03': 'Senang',
-    '2026-03-04': 'Senang', '2026-03-05': 'Netral', '2026-03-06': 'Netral',
-    '2026-03-07': 'Sedih', '2026-03-08': 'Senang', '2026-03-09': 'Senang',
-    '2026-03-10': 'Sedih', '2026-03-11': 'Sedih', '2026-03-12': 'Marah',
-    '2026-03-13': 'Sedih', '2026-03-14': 'Marah', '2026-03-15': 'Marah',
-    '2026-03-16': 'Sedih', '2026-03-17': 'Marah', '2026-03-18': 'Senang',
-    '2026-03-19': 'Senang', '2026-03-20': 'Senang', '2026-03-21': 'Senang',
-    '2026-03-22': 'Netral', '2026-03-23': 'Senang', '2026-03-24': 'Netral',
-    '2026-03-25': 'Netral', '2026-03-26': 'Senang', '2026-03-27': 'Netral',
-    '2026-03-28': 'Sedih', '2026-03-29': 'Senang', '2026-03-30': 'Senang',
-    '2026-03-31': 'Senang',
-    '2026-04-01': 'Senang', '2026-04-02': 'Netral', '2026-04-03': 'Sedih',
-    '2026-04-04': 'Marah', '2026-04-05': 'Netral', '2026-04-06': 'Senang',
-    '2026-04-07': 'Senang', '2026-04-08': 'Netral', '2026-04-09': 'Sedih',
-    '2026-04-10': 'Sedih', '2026-04-11': 'Marah', '2026-04-12': 'Senang',
-    '2026-04-13': 'Netral', '2026-04-14': 'Senang', '2026-04-15': 'Netral',
-    '2026-04-16': 'Sedih', '2026-04-17': 'Marah', '2026-04-18': 'Senang',
-    '2026-04-19': 'Netral', '2026-04-20': 'Senang', '2026-04-21': 'Netral',
-    '2026-04-22': 'Sedih', '2026-04-23': 'Marah', '2026-04-24': 'Senang',
-    '2026-04-25': 'Netral', '2026-04-26': 'Senang', '2026-04-27': 'Netral',
-    '2026-04-28': 'Sedih', '2026-04-29': 'Marah', '2026-04-30': 'Senang',
-  };
+  Map<String, String> _moodDatabase = {};
+
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
 
   @override
   void initState() {
     super.initState();
     _checkPremiumStatus();
+    _loadMoods();
     final now = DateTime.now();
     _selectedMonth = DateTime(now.year, now.month, 1);
     _selectedWeek = _calculateWeekNumber(now);
   }
 
-  // ✅ CEK STATUS PREMIUM DARI SHARED PREFERENCES
+  String _getEmojiImagePath(String? mood) {
+    if (mood == null) return '';
+    switch (mood) {
+      case 'Senang': return 'assets/emoji/emoji_senang.png';
+      case 'Netral': return 'assets/emoji/emoji_netral.png';
+      case 'Sedih': return 'assets/emoji/emoji_sedih.png';
+      case 'Marah': return 'assets/emoji/emoji_marah.png';
+      default: return 'assets/emoji/emoji_netral.png';
+    }
+  }
+
+  Future<void> _loadMoods() async {
+    Map<String, String> moods = {};
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
+      for (var key in keys) {
+        final dateKey = key.replaceFirst('mood_', '');
+        final mood = prefs.getString(key);
+        if (mood != null) {
+          moods[dateKey] = mood;
+        }
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+
+        entries.forEach((key, value) {
+          moods[key] = value.toString();
+        });
+
+        print("✅ Loaded ${entries.length} entries from Firestore for Analysis");
+      }
+
+      setState(() {
+        _moodDatabase = moods;
+      });
+
+      print("📊 Total moods loaded for analysis: ${moods.length}");
+    } catch (e) {
+      print("❌ Error loading moods for analysis: $e");
+    }
+  }
+
   Future<void> _checkPremiumStatus() async {
     final prefs = await SharedPreferences.getInstance();
     bool isPremium = prefs.getBool('isPremium') ?? false;
@@ -63,18 +94,16 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     });
   }
 
-  // ✅ UPGRADE KE PREMIUM
   Future<void> _upgradeToPremium() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isPremium', true);
 
     setState(() {
       _isPremium = true;
-      _selectedIndex = 0; // Auto switch ke tab Pekan
+      _selectedIndex = 0;
     });
   }
 
-  // ✅ RESET PREMIUM (untuk testing)
   Future<void> _resetPremium() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isPremium', false);
@@ -85,7 +114,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     });
   }
 
-  // ✅ DIALOG UPGRADE
   void _showUpgradeDialog() {
     showDialog(
       context: context,
@@ -120,21 +148,21 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
             ),
             const SizedBox(height: 12),
             _buildFeatureItem(Icons.bar_chart, 'Analisis mood mingguan'),
-            _buildFeatureItem(Icons.insights, 'Insight mendalam & tren'),
+            _buildFeatureItem(Icons.insights, 'Insight mendalam'),
             _buildFeatureItem(Icons.notifications_active, 'Notifikasi personal'),
-            _buildFeatureItem(Icons.cloud_download, 'Export data ke PDF'),
+
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: Colors.pink.shade100,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber, width: 1),
+                border: Border.all(color: Colors.pink.shade400, width: 1),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.local_offer, color: Colors.amber.shade700),
+                  Icon(Icons.local_offer, color: Colors.pinkAccent.shade200),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -142,7 +170,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                       style: GoogleFonts.fredoka(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.amber.shade900,
+                        color: Colors.pinkAccent.shade200,
                       ),
                     ),
                   ),
@@ -176,13 +204,13 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                       ),
                     ],
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.pink.shade200,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
+              backgroundColor: Colors.pink.shade100,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -193,7 +221,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               'Aktifkan Sekarang',
               style: GoogleFonts.fredoka(
                 fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.normal,
               ),
             ),
           ),
@@ -207,7 +235,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.green.shade700),
+          Icon(icon, size: 18, color: Colors.pinkAccent.shade200),
           const SizedBox(width: 8),
           Text(
             text,
@@ -219,16 +247,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
         ],
       ),
     );
-  }
-
-  String _getEmoji(String mood) {
-    switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
-    }
   }
 
   Color _getMoodColor(String mood) {
@@ -288,7 +306,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           'day': _getDayName(date.weekday),
           'date': day,
           'mood': mood,
-          'emoji': hasMood ? _getEmoji(mood) : '',
+          'emoji': hasMood ? _getEmojiImagePath(mood) : '',
           'color': hasMood ? _getMoodColor(mood) : Colors.grey.shade100,
           'value': hasMood ? _getMoodValue(mood) : 0.0,
           'isEmpty': !hasMood,
@@ -411,7 +429,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
           style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
         ),
         actions: [
-          // ✅ TOMBOL PREMIUM DI APPBAR
           if (!_isPremium)
             Container(
               margin: const EdgeInsets.only(right: 12),
@@ -436,17 +453,18 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
                 ),
               ),
             ),
-          // ✅ TOMBOL DEBUG RESET (hanya untuk testing)
+
           if (!kReleaseMode)
             IconButton(
               icon: Icon(Icons.refresh, color: Colors.purple),
               onPressed: () async {
+                await _loadMoods();
                 await _resetPremium();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Premium status direset ke FREE')),
+                  SnackBar(content: Text('Data di-refresh & Premium status direset')),
                 );
               },
-              tooltip: 'Reset Premium (Debug)',
+              tooltip: 'Refresh Data (Debug)',
             ),
         ],
       ),
@@ -481,7 +499,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
       decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(30)),
       child: Row(
         children: [
-          // TAB PEKAN (PREMIUM)
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -521,7 +538,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               ),
             ),
           ),
-          // TAB BULAN (FREE)
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedIndex = 1),
@@ -652,17 +668,17 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildStatCard('😊', '${stats['Senang']} Hari', 'Hari penuh kebahagiaan.', Colors.green.shade100)),
+              Expanded(child: _buildStatCard(_getEmojiImagePath('Senang'), '${stats['Senang']} Hari', 'Hari penuh kebahagiaan.', Colors.green.shade100)),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatCard('😐', '${stats['Netral']} Hari', 'Hari yang terasa biasa saja.', Colors.yellow.shade100)),
+              Expanded(child: _buildStatCard(_getEmojiImagePath('Netral'), '${stats['Netral']} Hari', 'Hari yang terasa biasa saja.', Colors.yellow.shade100)),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildStatCard('😔', '${stats['Sedih']} Hari', 'Hari dengan perasaan sedih.', Colors.green.shade50)),
+              Expanded(child: _buildStatCard(_getEmojiImagePath('Sedih'), '${stats['Sedih']} Hari', 'Hari dengan perasaan sedih.', Colors.green.shade50)),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatCard('😠', '${stats['Marah']} Hari', 'Hari dengan emosi marah.', Colors.red.shade100)),
+              Expanded(child: _buildStatCard(_getEmojiImagePath('Marah'), '${stats['Marah']} Hari', 'Hari dengan emosi marah.', Colors.red.shade100)),
             ],
           ),
         ],
@@ -670,14 +686,22 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     );
   }
 
-  Widget _buildStatCard(String emoji, String title, String description, Color bgColor) {
+  Widget _buildStatCard(String emojiPath, String title, String description, Color bgColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 32)),
+          Image.asset(
+            emojiPath,
+            width: 48,
+            height: 48,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.sentiment_satisfied, size: 32);
+            },
+          ),
           const SizedBox(height: 8),
           Text(title, style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 4),
@@ -736,9 +760,14 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
               if (!isEmpty && barHeight > 0)
                 Positioned(
                   bottom: barHeight - (emojiSize / 2.5),
-                  child: Text(
+                  child: Image.asset(
                     item['emoji'],
-                    style: TextStyle(fontSize: emojiSize),
+                    width: emojiSize,
+                    height: emojiSize,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const SizedBox.shrink();
+                    },
                   ),
                 ),
             ],
@@ -1002,7 +1031,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   }
 }
 
-// ✅ CUSTOM PAINTER UNTUK LINGKARAN
 class _BottomFilledCirclePainter extends CustomPainter {
   final Color color;
   final double progress;

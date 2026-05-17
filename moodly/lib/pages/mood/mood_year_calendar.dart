@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'mood_calendar.dart';
 
 class MoodYearCalendar extends StatefulWidget {
@@ -12,72 +14,12 @@ class MoodYearCalendar extends StatefulWidget {
 class _MoodYearCalendarState extends State<MoodYearCalendar> {
   int _selectedYear = 2026;
   bool _showYearDropdown = false;
+  bool _isLoading = true;
   final List<int> _availableYears = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
-  final Map<String, Map<String, String>> _moodDatabase = {
-    '2026': {
-      '1-5': 'Senang', '1-15': 'Sedih', '1-20': 'Netral', '1-25': 'Marah',
-      '2-1': 'Netral', '2-14': 'Senang', '2-17': 'Sedih', '2-18': 'Marah', '2-19': 'Sedih', '2-22': 'Netral',
-      '3-5': 'Senang', '3-10': 'Sedih', '3-12': 'Marah', '3-15': 'Marah', '3-18': 'Senang', '3-20': 'Senang', '3-25': 'Netral', '3-30': 'Senang',
-      '4-1': 'Senang', '4-5': 'Netral', '4-10': 'Sedih',
-    },
-    '2025': {
-      '1-10': 'Senang', '1-20': 'Netral', '1-25': 'Sedih',
-      '2-14': 'Senang', '2-20': 'Marah',
-      '3-5': 'Netral', '3-15': 'Senang', '3-25': 'Sedih',
-      '4-10': 'Senang', '4-20': 'Netral',
-      '5-5': 'Marah', '5-15': 'Senang',
-      '6-1': 'Netral', '6-15': 'Sedih',
-      '7-4': 'Senang', '7-20': 'Netral',
-      '8-10': 'Marah', '8-25': 'Senang',
-      '9-5': 'Netral', '9-15': 'Sedih',
-      '10-10': 'Senang', '10-20': 'Netral',
-      '11-1': 'Marah', '11-15': 'Senang',
-      '12-25': 'Netral', '12-31': 'Senang',
-    },
-    '2024': {
-      '1-1': 'Senang', '1-15': 'Netral', '1-30': 'Sedih',
-      '2-14': 'Marah', '2-28': 'Senang',
-      '3-10': 'Netral', '3-20': 'Sedih',
-      '4-5': 'Senang', '4-15': 'Netral',
-      '5-1': 'Marah', '5-20': 'Senang',
-      '6-15': 'Netral', '6-30': 'Sedih',
-      '7-4': 'Senang', '7-20': 'Netral',
-      '8-10': 'Marah', '8-25': 'Senang',
-      '9-5': 'Netral', '9-15': 'Sedih',
-      '10-10': 'Senang', '10-20': 'Netral',
-      '11-1': 'Marah', '11-15': 'Senang',
-      '12-25': 'Netral', '12-31': 'Senang',
-    },
-    '2023': {
-      '1-5': 'Senang', '1-20': 'Netral',
-      '2-10': 'Sedih', '2-25': 'Marah',
-      '3-1': 'Senang', '3-15': 'Netral', '3-30': 'Sedih',
-      '4-10': 'Marah', '4-20': 'Senang',
-      '5-5': 'Netral', '5-15': 'Sedih',
-      '6-1': 'Senang', '6-20': 'Netral',
-      '7-4': 'Marah', '7-15': 'Senang',
-      '8-10': 'Netral', '8-25': 'Sedih',
-      '9-5': 'Marah', '9-15': 'Senang',
-      '10-10': 'Netral', '10-20': 'Sedih',
-      '11-1': 'Marah', '11-15': 'Senang',
-      '12-25': 'Netral', '12-31': 'Senang',
-    },
-    '2022': {
-      '1-1': 'Senang', '1-15': 'Netral', '1-30': 'Sedih',
-      '2-14': 'Marah', '2-28': 'Senang',
-      '3-10': 'Netral', '3-20': 'Sedih',
-      '4-5': 'Senang', '4-15': 'Netral',
-      '5-1': 'Marah', '5-20': 'Senang',
-      '6-15': 'Netral', '6-30': 'Sedih',
-      '7-4': 'Senang', '7-20': 'Netral',
-      '8-10': 'Marah', '8-25': 'Senang',
-      '9-5': 'Netral', '9-15': 'Sedih',
-      '10-10': 'Senang', '10-20': 'Netral',
-      '11-1': 'Marah', '11-15': 'Senang',
-      '12-25': 'Netral', '12-31': 'Senang',
-    },
-  };
+  Map<String, Map<String, String>> _moodDatabase = {};
+
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
 
   final List<String> _monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -86,24 +28,94 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
 
   final List<String> _weekDays = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
 
-  String _getEmoji(String? mood) {
-    if (mood == null) return '';
-    switch (mood) {
-      case 'Senang': return '😊';
-      case 'Netral': return '😐';
-      case 'Sedih': return '😔';
-      case 'Marah': return '😠';
-      default: return '😐';
+  @override
+  void initState() {
+    super.initState();
+    _loadMoods();
+  }
+
+  Future<void> _loadMoods() async {
+    Map<String, Map<String, String>> allMoods = {};
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
+
+      for (var key in keys) {
+        final datePart = key.replaceFirst('mood_', '');
+        final mood = prefs.getString(key);
+
+        if (mood != null) {
+          final parts = datePart.split('-');
+          if (parts.length == 3) {
+            final year = parts[0];
+            final month = parts[1];
+            final day = parts[2];
+
+            if (!allMoods.containsKey(year)) {
+              allMoods[year] = {};
+            }
+
+            final monthInt = int.parse(month);
+            final dayInt = int.parse(day);
+            allMoods[year]!['$monthInt-$dayInt'] = mood;
+          }
+        }
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+
+        print("✅ Loaded ${entries.length} entries from Firestore for Guest");
+
+        entries.forEach((dateKey, moodValue) {
+          final parts = dateKey.split('-');
+          if (parts.length == 3) {
+            final year = parts[0];
+            final month = parts[1];
+            final day = parts[2];
+
+            if (!allMoods.containsKey(year)) {
+              allMoods[year] = {};
+            }
+
+            final monthInt = int.parse(month);
+            final dayInt = int.parse(day);
+            allMoods[year]!['$monthInt-$dayInt'] = moodValue.toString();
+          }
+        });
+      } else {
+        print("⚠️ Document '$_documentId' not found in Firestore");
+      }
+
+      setState(() {
+        _moodDatabase = allMoods;
+        _isLoading = false;
+      });
+
+      print("📊 Total years loaded: ${_moodDatabase.keys.toList()}");
+
+    } catch (e) {
+      print("❌ Error loading moods: $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Color? _getMoodColor(String? mood) {
     if (mood == null) return null;
     switch (mood) {
-      case 'Senang': return Colors.green.shade100;
-      case 'Netral': return Colors.grey.shade200;
-      case 'Sedih': return Colors.blue.shade100;
-      case 'Marah': return Colors.red.shade100;
+      case 'Senang': return const Color(0xFFA8F4AB);
+      case 'Netral': return const Color(0xFFFFECB3);
+      case 'Sedih': return const Color(0xFFC8E6C9);
+      case 'Marah': return const Color(0xFFEF9A9A);
       default: return null;
     }
   }
@@ -124,7 +136,9 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
           initialMonth: month,
         ),
       ),
-    );
+    ).then((_) {
+      _loadMoods();
+    });
   }
 
   bool _isCurrentMonth(int month) {
@@ -151,10 +165,23 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
             color: Colors.black,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            onPressed: _loadMoods,
+            tooltip: 'Refresh data',
+          ),
+        ],
       ),
       body: Stack(
         children: [
-          SingleChildScrollView(
+          _isLoading
+              ? const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+          )
+              : SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
@@ -191,7 +218,6 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Card Tahun
         Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 36),
           decoration: BoxDecoration(
@@ -208,7 +234,6 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
           ),
         ),
         const SizedBox(width: 10),
-        // Tombol Dropdown
         GestureDetector(
           onTap: () {
             setState(() {
@@ -216,17 +241,15 @@ class _MoodYearCalendarState extends State<MoodYearCalendar> {
             });
           },
           child: Container(
-            padding: const EdgeInsets.all(6), // Padding diperkecil
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              // Ubah warna berdasarkan status dropdown (terbuka/tertutup)
               color: _showYearDropdown ? Colors.green : Colors.lightGreen.shade300,
               shape: BoxShape.circle,
             ),
             child: Icon(
               _showYearDropdown ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              // Ubah warna ikon agar kontras dengan background
               color: _showYearDropdown ? Colors.white : Colors.green.shade800,
-              size: 20, // Ikon diperkecil
+              size: 20,
             ),
           ),
         ),

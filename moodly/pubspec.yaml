@@ -10,10 +10,11 @@ dependencies:
   firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
   cloud_firestore: ^6.3.0
-  google_fonts: ^8.0.2
+  google_fonts: ^8.1.0
   flutter_svg: ^2.2.4
   image_picker: ^1.2.1
   http: ^1.6.0
+  url_launcher: ^6.2.4
   firebase_storage: ^13.3.0
   shared_preferences: ^2.5.5
   google_sign_in: ^7.2.0
@@ -44,9 +45,18 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/icon/google.png
+    - assets/icon/facebook.png
+    - assets/icon/image1.png
+    - assets/icon/image2.png
+    - assets/icon/image3.png
+    - assets/icon/image4.png
     - assets/icon/images/
     - assets/profile_pic/
     - assets/icons/
+    - assets/homepage_assets/
+    - assets/mascots/
     - assets/icons/navbar/
     - assets/images/
     - assets/icons/login/
+    - assets/emoji/
