@@ -1,13 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/styles/app_text.dart';
+import '../core/services/moodly_notification_service.dart';
+import '../widgets/shared/moodly_user_avatar.dart';
 import '../core/services/streak_service.dart';
 import '../widgets/moodly_bottom_navbar.dart';
-import 'streak/streak_page.dart';
-import 'streak/reward_page.dart';
-import 'mood/mood_input.dart';
-import 'private_diary/month_page.dart';
-import 'private_diary/add_diary_page.dart';
+import '../services/afirmasi/afirmasi_service.dart';
+import 'afirmasi/widgets/cute_top_popup.dart';
 import 'pages.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -20,11 +22,38 @@ class _HomepageState extends State<Homepage> {
   int _currentNavIndex = 0;
 
   String? moodHariIni;
-  String tipMood = 'Pelan-pelan ya, semuanya bisa dibicarakan nanti 😉';
+  String tipMood = 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.';
+  String _affirmationPreview =
+      'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
+  String _affirmationCategory = 'Untuk hari ini';
+
   DateTime selectedDate = DateTime.now();
+
+  bool _hasUnreadNotifications = false;
+
+  static const String _moodDocumentId = 'BeZzql14Y8xGyoLUDb0L';
+
+  static const List<String> _homepageAfirmasiCategories = [
+    'Rasa Syukur',
+    'Meredakan Kecemasan',
+    'Motivasi',
+    'Kesehatan Mental',
+    'Cinta Diri',
+  ];
 
   bool get _hasSelectedMood =>
       moodHariIni != null && moodHariIni!.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncHomepageState();
+    _bootstrapSignals();
+  }
+
+  Future<void> _bootstrapSignals() async {
+    await MoodlyNotificationService.instance.syncForCurrentUser();
+  }
 
   String get _greetingText {
     final hour = DateTime.now().hour;
@@ -32,6 +61,209 @@ class _HomepageState extends State<Homepage> {
     if (hour >= 11 && hour < 15) return 'Selamat siang,';
     if (hour >= 15 && hour < 18) return 'Selamat sore,';
     return 'Selamat malam,';
+  }
+
+  String _dateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _selectedDateLabel() {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${selectedDate.day} ${months[selectedDate.month - 1]}';
+  }
+
+  String _defaultTipForMood(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return 'Senang itu valid. Nikmati tanpa merasa bersalah.';
+      case 'Netral':
+        return 'Hari yang biasa tetap layak dihargai.';
+      case 'Sedih':
+        return 'Pelan-pelan. Hari berat tidak membuatmu gagal.';
+      case 'Marah':
+        return 'Tarik napas. Jeda sebentar juga bentuk merawat diri.';
+      default:
+        return 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.';
+    }
+  }
+
+  String? _moodBadgeAsset(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return 'assets/emoji/emoji_senang.png';
+      case 'Netral':
+        return 'assets/emoji/emoji_netral.png';
+      case 'Sedih':
+        return 'assets/emoji/emoji_sedih.png';
+      case 'Marah':
+        return 'assets/emoji/emoji_marah.png';
+      default:
+        return null;
+    }
+  }
+
+  Color _moodBadgeBg(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFFF8CF52);
+      case 'Netral':
+        return const Color(0xFFE4EF84);
+      case 'Sedih':
+        return const Color(0xFF9DEFF1);
+      case 'Marah':
+        return const Color(0xFFF06E7F);
+      default:
+        return Colors.transparent;
+    }
+  }
+
+  LinearGradient _profileGradientForMood(String? mood) {
+    switch (mood) {
+      case 'Marah':
+        return const LinearGradient(
+          colors: [Color(0xFFEFCACC), Color(0xFFFFE6C3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case 'Sedih':
+        return const LinearGradient(
+          colors: [Color(0xFFCEF2FF), Color(0xFFCCFFE6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case 'Senang':
+        return const LinearGradient(
+          colors: [Color(0xFFF8B658), Color(0xFFEFCACC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case 'Netral':
+        return const LinearGradient(
+          colors: [Color(0xFFB5E0A6), Color(0xFFF3FADC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      default:
+        return const LinearGradient(
+          colors: [Color(0xFFF3CDD3), Color(0xFFEBDCC4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+    }
+  }
+
+  Future<void> _syncHomepageState() async {
+    await _loadSelectedDateMood();
+    await _loadHomepageAffirmationPreview();
+  }
+
+  Future<void> _loadSelectedDateMood() async {
+    final key = _dateKey(selectedDate);
+
+    String? mood;
+    String? note;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      mood = prefs.getString('mood_$key');
+      note = prefs.getString('note_$key');
+
+      if (mood == null || mood.trim().isEmpty || note == null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('moods')
+            .doc(_moodDocumentId)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+          final notes = data?['notes'] as Map<String, dynamic>? ?? {};
+
+          mood ??= entries[key]?.toString();
+          note ??= notes[key]?.toString();
+        }
+      }
+    } catch (_) {
+      // sengaja diam, biar UI tetap hidup
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      moodHariIni = (mood != null && mood.trim().isNotEmpty) ? mood.trim() : null;
+      tipMood = (note != null && note.trim().isNotEmpty)
+          ? note.trim()
+          : _defaultTipForMood(moodHariIni);
+    });
+  }
+
+  Future<void> _loadHomepageAffirmationPreview() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final todayKey = _dateKey(DateTime.now());
+
+      final cachedDate = prefs.getString('homepage_afirmasi_date');
+      final cachedText = prefs.getString('homepage_afirmasi_text');
+      final cachedCategory = prefs.getString('homepage_afirmasi_category');
+
+      if (cachedDate == todayKey &&
+          cachedText != null &&
+          cachedText.trim().isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _affirmationPreview = cachedText;
+          _affirmationCategory = cachedCategory ?? 'Untuk hari ini';
+        });
+        return;
+      }
+
+      final items = await AfirmasiService.getAfirmasiByCategories(
+        _homepageAfirmasiCategories,
+      );
+
+      if (items.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _affirmationPreview =
+              'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
+          _affirmationCategory = 'Untuk hari ini';
+        });
+        return;
+      }
+
+      items.shuffle();
+      final picked = items.first;
+
+      final text = (picked['teks'] ?? '').trim();
+      final category = (picked['kategori'] ?? 'Untuk hari ini').trim();
+
+      await prefs.setString('homepage_afirmasi_date', todayKey);
+      await prefs.setString('homepage_afirmasi_text', text);
+      await prefs.setString('homepage_afirmasi_category', category);
+
+      if (!mounted) return;
+      setState(() {
+        _affirmationPreview = text.isNotEmpty
+            ? text
+            : 'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
+        _affirmationCategory = category.isNotEmpty ? category : 'Untuk hari ini';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _affirmationPreview =
+            'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
+        _affirmationCategory = 'Untuk hari ini';
+      });
+    }
   }
 
   static const Color _bg = Color(0xFFF5F8EC);
@@ -50,47 +282,30 @@ class _HomepageState extends State<Homepage> {
   static const Color _textSoft = Color(0xFF677164);
 
   List<BoxShadow> get _softShadow => const [
-        BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.10),
-          offset: Offset(0, 6),
-          blurRadius: 18,
-          spreadRadius: 0,
-        ),
-      ];
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.10),
+      offset: Offset(0, 6),
+      blurRadius: 18,
+      spreadRadius: 0,
+    ),
+  ];
 
   void _goToPage(Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   Future<void> _openMoodInput() async {
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const MoodInput()),
+      MaterialPageRoute(
+        builder: (_) => MoodInput(selectedDate: selectedDate),
+      ),
     );
 
     if (!mounted) return;
 
-    if (result is Map<String, dynamic>) {
-      setState(() {
-        final mood = result['mood'];
-        final tip = result['tip'];
-
-        if (mood is String && mood.trim().isNotEmpty) {
-          moodHariIni = mood.trim();
-        }
-
-        if (tip is String && tip.trim().isNotEmpty) {
-          tipMood = tip.trim();
-        }
-      });
-    } else if (result is String && result.trim().isNotEmpty) {
-      setState(() {
-        moodHariIni = result.trim();
-      });
-    }
+    await _loadSelectedDateMood();
+    await MoodlyNotificationService.instance.syncForCurrentUser();
   }
 
   Future<void> _openMoodCalendar() async {
@@ -107,7 +322,20 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> _pickDate() async {
-    await _openMoodCalendar();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(2030, 12, 31),
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      selectedDate = picked;
+    });
+
+    await _loadSelectedDateMood();
   }
 
   Future<void> _onNavbarTap(int index) async {
@@ -144,11 +372,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   void _onEmergencyTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tombol Darurat ditekan'),
-      ),
-    );
+    _goToPage(const EmergencySupportPage());
   }
 
   String _monthLabel(DateTime date) {
@@ -197,13 +421,7 @@ class _HomepageState extends State<Homepage> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Center(
-              child: Icon(
-                icon,
-                size: 22,
-                color: _greenDark,
-              ),
-            ),
+            Center(child: Icon(icon, size: 22, color: _greenDark)),
             if (showDot)
               Positioned(
                 right: 10,
@@ -224,6 +442,8 @@ class _HomepageState extends State<Homepage> {
   }
 
   Widget _profileAvatar() {
+    final badgeAsset = _moodBadgeAsset(moodHariIni);
+
     return SizedBox(
       width: 86,
       height: 86,
@@ -239,11 +459,7 @@ class _HomepageState extends State<Homepage> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF3CDD3), Color(0xFFEBDCC4)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: _profileGradientForMood(moodHariIni),
                 boxShadow: _softShadow,
               ),
               child: Container(
@@ -252,39 +468,41 @@ class _HomepageState extends State<Homepage> {
                   color: Colors.white,
                 ),
                 child: ClipOval(
-                  child: Image.asset(
-                    'assets/profile_pic/PP.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person,
-                      size: 34,
-                      color: Colors.brown,
-                    ),
+                  child: MoodlyUserAvatar(
+                    uid: FirebaseAuth.instance.currentUser?.uid,
+                    radius: 35,
+                    backgroundColor: Colors.transparent,
+                    borderWidth: 0,
+                    borderColor: Colors.transparent,
+                    placeholderAsset:
+                        'assets/profile_pic/PP_default.jpg', // <- placeholder homepage
                   ),
                 ),
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            bottom: 10,
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF06E7F),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: _softShadow,
-              ),
-              child: const Center(
-                child: Text(
-                  '☹',
-                  style: TextStyle(fontSize: 14),
+          if (badgeAsset != null)
+            Positioned(
+              left: 0,
+              bottom: 10,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: _moodBadgeBg(moodHariIni),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: _softShadow,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Image.asset(
+                    badgeAsset,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -305,10 +523,21 @@ class _HomepageState extends State<Homepage> {
                     onTap: () => _goToPage(const SettingsPage()),
                   ),
                   const SizedBox(width: 10),
-                  _glassIconButton(
-                    icon: Icons.notifications_rounded,
-                    onTap: () {},
-                    showDot: true,
+                  StreamBuilder<int>(
+                    stream: MoodlyNotificationService.instance.unreadCountStream(),
+                    builder: (context, snapshot) {
+                      final unread = (snapshot.data ?? 0) > 0;
+
+                      return _glassIconButton(
+                        icon: Icons.notifications_rounded,
+                        onTap: () async {
+                          await MoodlyNotificationService.instance.syncForCurrentUser();
+                          if (!mounted) return;
+                          _goToPage(const NotificationPage());
+                        },
+                        showDot: unread,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -515,11 +744,12 @@ class _HomepageState extends State<Homepage> {
                                         '$points poin',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: AppText.bodyAlt(context).copyWith(
-                                          fontSize: 15,
-                                          color: _greenDark,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                        style: AppText.bodyAlt(context)
+                                            .copyWith(
+                                              fontSize: 15,
+                                              color: _greenDark,
+                                              fontWeight: FontWeight.w800,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -529,9 +759,8 @@ class _HomepageState extends State<Homepage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => _goToPage(
-                                  RewardPage(totalPoints: points),
-                                ),
+                                onTap: () =>
+                                    _goToPage(RewardPage(totalPoints: points)),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -555,11 +784,12 @@ class _HomepageState extends State<Homepage> {
                                           'Gunakan poin',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: AppText.bodyAlt(context).copyWith(
-                                            fontSize: 11.5,
-                                            color: _textDark,
-                                            fontWeight: FontWeight.w800,
-                                          ),
+                                          style: AppText.bodyAlt(context)
+                                              .copyWith(
+                                                fontSize: 11.5,
+                                                color: _textDark,
+                                                fontWeight: FontWeight.w800,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -572,9 +802,7 @@ class _HomepageState extends State<Homepage> {
                       ),
                       const SizedBox(height: 10),
                       GestureDetector(
-                        onTap: () => _goToPage(
-                          RewardPage(totalPoints: points),
-                        ),
+                        onTap: () => _goToPage(RewardPage(totalPoints: points)),
                         child: Container(
                           height: 44,
                           decoration: BoxDecoration(
@@ -643,11 +871,11 @@ class _HomepageState extends State<Homepage> {
             children: [
               _navCircle(
                 icon: Icons.arrow_back_ios_new_rounded,
-                onTap: () {
+                onTap: () async {
                   setState(() {
-                    selectedDate =
-                        selectedDate.subtract(const Duration(days: 7));
+                    selectedDate = selectedDate.subtract(const Duration(days: 7));
                   });
+                  await _loadSelectedDateMood();
                 },
               ),
               const SizedBox(width: 10),
@@ -673,10 +901,11 @@ class _HomepageState extends State<Homepage> {
               const SizedBox(width: 10),
               _navCircle(
                 icon: Icons.arrow_forward_ios_rounded,
-                onTap: () {
+                onTap: () async {
                   setState(() {
                     selectedDate = selectedDate.add(const Duration(days: 7));
                   });
+                  await _loadSelectedDateMood();
                 },
               ),
               const SizedBox(width: 10),
@@ -747,10 +976,7 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
-  Widget _navCircle({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _navCircle({required IconData icon, required VoidCallback onTap}) {
     return Container(
       width: 42,
       height: 42,
@@ -762,22 +988,22 @@ class _HomepageState extends State<Homepage> {
       child: IconButton(
         padding: EdgeInsets.zero,
         onPressed: onTap,
-        icon: Icon(
-          icon,
-          size: 16,
-          color: Colors.white,
-        ),
+        icon: Icon(icon, size: 16, color: Colors.white),
       ),
     );
   }
 
   Widget _dayChip(DateTime date) {
-    final isSelected = date.year == selectedDate.year &&
+    final isSelected =
+        date.year == selectedDate.year &&
         date.month == selectedDate.month &&
         date.day == selectedDate.day;
 
     return GestureDetector(
-      onTap: () => setState(() => selectedDate = date),
+      onTap: () async {
+        setState(() => selectedDate = date);
+        await _loadSelectedDateMood();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -806,11 +1032,9 @@ class _HomepageState extends State<Homepage> {
   Widget _sectionHeader(String title) {
     return Text(
       title,
-      style: AppText.subtitle(context).copyWith(
-        fontSize: 20,
-        color: _textDark,
-        fontWeight: FontWeight.w800,
-      ),
+      style: AppText.subtitle(
+        context,
+      ).copyWith(fontSize: 20, color: _textDark, fontWeight: FontWeight.w800),
     );
   }
 
@@ -847,7 +1071,7 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Untuk hari ini',
+                        _affirmationCategory.isNotEmpty ? _affirmationCategory : 'Untuk hari ini',
                         style: AppText.bodyAlt(context).copyWith(
                           fontSize: 13,
                           color: _textDark,
@@ -856,12 +1080,10 @@ class _HomepageState extends State<Homepage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.',
-                        style: AppText.body(context).copyWith(
-                          fontSize: 12,
-                          color: _textSoft,
-                          height: 1.4,
-                        ),
+                        _affirmationPreview,
+                        style: AppText.body(
+                          context,
+                        ).copyWith(fontSize: 12, color: _textSoft, height: 1.4),
                       ),
                     ],
                   ),
@@ -944,10 +1166,7 @@ class _HomepageState extends State<Homepage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          flex: 11,
-          child: _bigMoodCard(),
-        ),
+        Expanded(flex: 11, child: _bigMoodCard()),
         const SizedBox(width: 12),
         Expanded(
           flex: 10,
@@ -964,6 +1183,8 @@ class _HomepageState extends State<Homepage> {
   }
 
   Widget _bigMoodCard() {
+    final isToday = _isSameDay(selectedDate, DateTime.now());
+
     return GestureDetector(
       onTap: _openMoodInput,
       child: Container(
@@ -991,24 +1212,27 @@ class _HomepageState extends State<Homepage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _hasSelectedMood
+                    isToday
                         ? 'Bagaimana harimu berjalan?'
-                        : 'Bagaimana harimu berjalan?',
+                        : 'Bagaimana harimu di $_selectedDateLabel()?',
                     style: AppText.subtitle(context).copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: _textDark,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Text(
                     _hasSelectedMood
-                        ? 'Ceritakan lebih lanjut, pelan-pelan saja.'
+                        ? tipMood
                         : 'Ceritakan pada kami, pelan-pelan saja.',
                     style: AppText.body(context).copyWith(
                       fontSize: 13,
                       color: const Color(0xFF6A6A6A),
+                      height: 1.45,
                     ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -1016,20 +1240,20 @@ class _HomepageState extends State<Homepage> {
             Positioned(
               left: 0,
               right: 0,
-              top: 98,
+              top: 114,
               child: Center(
                 child: Container(
-                  width: 88,
-                  height: 58,
+                  width: 74,
+                  height: 54,
                   decoration: BoxDecoration(
                     color: _green,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: _softShadow,
                   ),
                   child: const Icon(
                     Icons.add_rounded,
                     color: Colors.white,
-                    size: 34,
+                    size: 30,
                   ),
                 ),
               ),
@@ -1038,14 +1262,18 @@ class _HomepageState extends State<Homepage> {
               left: 18,
               bottom: 16,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.88),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  _hasSelectedMood ? 'Lanjut tulis mood' : 'Mulai tulis mood',
+                  _hasSelectedMood
+                      ? 'Edit mood $_selectedDateLabel()'
+                      : 'Isi mood $_selectedDateLabel()',
                   style: AppText.bodyAlt(context).copyWith(
                     fontSize: 11,
                     color: _textDark,
@@ -1079,11 +1307,7 @@ class _HomepageState extends State<Homepage> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFBFEFFF),
-            Color(0xFF6EDCFF),
-            Color(0xFFF2D47D),
-          ],
+          colors: [Color(0xFFBFEFFF), Color(0xFF6EDCFF), Color(0xFFF2D47D)],
         ),
       ),
       child: Stack(
@@ -1091,18 +1315,12 @@ class _HomepageState extends State<Homepage> {
           Positioned(
             left: 12,
             bottom: 14,
-            child: Text(
-              '🌴',
-              style: TextStyle(fontSize: 42),
-            ),
+            child: Text('🌴', style: TextStyle(fontSize: 42)),
           ),
           Positioned(
             right: 12,
             bottom: 18,
-            child: Text(
-              '🕶️',
-              style: TextStyle(fontSize: 26),
-            ),
+            child: Text('🕶️', style: TextStyle(fontSize: 26)),
           ),
         ],
       ),
@@ -1110,20 +1328,8 @@ class _HomepageState extends State<Homepage> {
   }
 
   Widget _moodGraphCard() {
-    final points = [
-      const Offset(0.10, 0.52),
-      const Offset(0.23, 0.56),
-      const Offset(0.37, 0.65),
-      const Offset(0.51, 0.76),
-      const Offset(0.66, 0.46),
-      const Offset(0.82, 0.58),
-      const Offset(0.92, 0.70),
-    ];
-
-    final labels = ['Kam', 'Jum', 'Sab', 'Min', 'Sen', 'Sel', 'Rab'];
-
     return GestureDetector(
-      onTap: _openMoodCalendar,
+      onTap: () => _goToPage(const MoodAnalysis()),
       child: Container(
         height: 156,
         decoration: BoxDecoration(
@@ -1142,77 +1348,71 @@ class _HomepageState extends State<Homepage> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  Text(
-                    'Mood Terakhir',
-                    style: AppText.bodyAlt(context).copyWith(
-                      fontSize: 13,
-                      color: _textDark,
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      'Lihat Analisa Mood Anda',
+                      style: AppText.bodyAlt(context).copyWith(
+                        fontSize: 12.5,
+                        color: _textDark,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
-                  const Text('🌼', style: TextStyle(fontSize: 18)),
+                  const Icon(
+                    Icons.insights_rounded,
+                    size: 18,
+                    color: _greenDark,
+                  ),
                 ],
               ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _LineChartPainter(
-                              points: points,
-                              color: const Color(0xFFC6C6C6),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Buka ringkasan mingguan dan bulanan mood-mu.',
+                      style: AppText.body(context).copyWith(
+                        fontSize: 12,
+                        color: const Color(0xFF6A6A6A),
+                        height: 1.4,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _greenMint,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            size: 14,
+                            color: _greenDark,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _monthLabel(selectedDate),
+                            style: AppText.bodyAlt(context).copyWith(
+                              fontSize: 11,
+                              color: _greenDark,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                        ),
-                        ...List.generate(points.length, (index) {
-                          final point = points[index];
-                          final left = constraints.maxWidth * point.dx - 11;
-                          final top = constraints.maxHeight * point.dy - 11;
-                          final emojis = ['🙂', '🙂', '🙂', '😡', '🙂', '🙂', '😡'];
-
-                          return Positioned(
-                            left: left,
-                            top: top,
-                            child: SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: Center(
-                                child: Text(
-                                  emojis[index],
-                                  style: const TextStyle(fontSize: 17),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: labels
-                                .map(
-                                  (e) => Text(
-                                    e,
-                                    style: AppText.body(context).copyWith(
-                                      fontSize: 10,
-                                      color: const Color(0xFF6A6A6A),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1220,6 +1420,18 @@ class _HomepageState extends State<Homepage> {
         ),
       ),
     );
+  }
+
+  String _diaryCardTitle() {
+    return _isSameDay(selectedDate, DateTime.now())
+        ? 'Diary Hari Ini'
+        : 'Diary ${_selectedDateLabel()}';
+  }
+
+  String _diaryCardText() {
+    return _isSameDay(selectedDate, DateTime.now())
+        ? 'Buka diary untuk menulis catatanmu hari ini.'
+        : 'Buka diary untuk melihat atau menulis catatan di tanggal ini.';
   }
 
   Widget _diaryReminderCard() {
@@ -1245,7 +1457,7 @@ class _HomepageState extends State<Homepage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Diary Hari Ini',
+                      _diaryCardTitle(),
                       style: AppText.bodyAlt(context).copyWith(
                         fontSize: 13,
                         color: _textDark,
@@ -1268,7 +1480,7 @@ class _HomepageState extends State<Homepage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Anda belum menulis diary hari ini. Tulis diary →',
+                        _diaryCardText(),
                         style: AppText.body(context).copyWith(
                           fontSize: 12,
                           color: const Color(0xFF555555),
@@ -1296,6 +1508,11 @@ class _HomepageState extends State<Homepage> {
 
   @override
   Widget build(BuildContext context) {
+
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const OnboardingPage();
+    }
+
     return Scaffold(
       backgroundColor: _bg,
       body: Stack(
@@ -1382,10 +1599,7 @@ class _LineChartPainter extends CustomPainter {
   final List<Offset> points;
   final Color color;
 
-  const _LineChartPainter({
-    required this.points,
-    required this.color,
-  });
+  const _LineChartPainter({required this.points, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1399,10 +1613,7 @@ class _LineChartPainter extends CustomPainter {
     final path = Path();
 
     for (int i = 0; i < points.length; i++) {
-      final p = Offset(
-        size.width * points[i].dx,
-        size.height * points[i].dy,
-      );
+      final p = Offset(size.width * points[i].dx, size.height * points[i].dy);
 
       if (i == 0) {
         path.moveTo(p.dx, p.dy);

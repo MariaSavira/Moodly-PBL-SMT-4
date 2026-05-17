@@ -210,6 +210,8 @@ class ChatService {
 
   Future<void> reportMessages({
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> messages,
+    required String reportTag,
+    required String reportReason,
   }) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -254,6 +256,8 @@ class ChatService {
           'isDeleted': data['isDeleted'],
         };
       }).toList(),
+      'reportTag': reportTag,
+      'reportReason': reportReason,
       'createdAt': FieldValue.serverTimestamp(),
       'status': 'pending',
     });

@@ -86,12 +86,25 @@ class RootPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    if (user != null) {
-      return const SplashScreenMoodly();
-    } else {
-      return const OnboardingPage();
-    }
+        final user = snapshot.data;
+
+        if (user == null) {
+          return const OnboardingPage();
+        }
+
+        return const SplashScreenMoodly();
+      },
+    );
   }
 }

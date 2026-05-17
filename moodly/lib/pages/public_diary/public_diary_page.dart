@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/diary_model.dart';
 import '../../services/firestore_diary_service.dart';
 import '../../services/report_diary_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../widgets/shared/moodly_user_avatar.dart';
 import 'comment_page.dart';
 
 class PublicDiaryPage extends StatefulWidget {
@@ -344,12 +346,11 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                         ),
                       ),
 
-                      const CircleAvatar(
+                      MoodlyUserAvatar(
+                        uid: FirebaseAuth.instance.currentUser?.uid,
                         radius: 24,
-
-                        backgroundImage: AssetImage(
-                          "assets/profile_pic/PP_2.png",
-                        ),
+                        placeholderAsset:
+                            'assets/profile_pic/PP_2.png', // <- GANTI PLACEHOLDER HEADER PUBLIC DIARY DI SINI
                       ),
                     ],
                   ),
@@ -473,12 +474,11 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
 
                               children: [
-                                const CircleAvatar(
+                                MoodlyUserAvatar(
+                                  username: diary.username,
                                   radius: 22,
-
-                                  backgroundImage: AssetImage(
-                                    "assets/profile_pic/PP_2.png",
-                                  ),
+                                  placeholderAsset:
+                                      'assets/profile_pic/PP_default.jpg', // <- placeholder item diary publik
                                 ),
 
                                 const SizedBox(width: 12),

@@ -6,8 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/services/chat_service.dart';
-import 'ruang_chat.dart';
-import 'homepage_chat_anonim.dart';
+import '../pages.dart';
 
 class MatchingPage extends StatefulWidget {
   const MatchingPage({super.key});

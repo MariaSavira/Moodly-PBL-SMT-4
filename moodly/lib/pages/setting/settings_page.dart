@@ -1,180 +1,113 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/styles/moodly_colors.dart';
+import '../../core/services/auth_service.dart';
+import '../../main.dart';
+import '../pages.dart';
 
-// pages
-import 'theme_page.dart';
-import 'language_page.dart';
-import 'notification_settings_page.dart';
-import 'report_history_page.dart';
+const Color _settingsBg = Color(0xFFF4F8EA);
+const Color _settingsCard = Colors.white;
+const Color _settingsGreen = Color(0xFF7BC25D);
+const Color _settingsGreenDark = Color(0xFF5E9E49);
+const Color _settingsGreenSoft = Color(0xFFDDEFCF);
+const Color _settingsMintSoft = Color(0xFFE9F7E8);
+const Color _settingsPinkSoft = Color(0xFFFFEEF2);
+const Color _settingsTextDark = Color(0xFF1F1F1F);
+const Color _settingsTextSoft = Color(0xFF6F746E);
+const Color _settingsBrand = Color(0xFFC65F59);
+
+List<BoxShadow> get _settingsShadow => const [
+  BoxShadow(
+    color: Color.fromRGBO(0, 0, 0, 0.08),
+    offset: Offset(0, 8),
+    blurRadius: 20,
+    spreadRadius: 0,
+  ),
+];
+
+TextStyle? _sh1(BuildContext context, {Color color = _settingsTextDark}) {
+  return Theme.of(context).textTheme.headlineLarge?.copyWith(color: color);
+}
+
+TextStyle? _sh2(BuildContext context, {Color color = _settingsTextDark}) {
+  return Theme.of(context).textTheme.titleMedium?.copyWith(color: color);
+}
+
+TextStyle? _sbody(BuildContext context, {Color color = _settingsTextSoft}) {
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(color: color);
+}
+
+TextStyle? _sbodyAlt(BuildContext context, {Color color = _settingsTextDark}) {
+  return Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
+}
+
+TextStyle? _sbutton(BuildContext context, {Color color = Colors.white}) {
+  return Theme.of(context).textTheme.labelLarge?.copyWith(color: color);
+}
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: MoodlyColors.bgLight,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final isSmall = width < 380;
-            final horizontalPadding = isSmall ? 24.0 : 32.0;
+  double _pageWidth(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return width > 430 ? 430 : width;
+  }
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: 16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Header(
-                    title: "Pengaturan",
-                    onBack: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(height: 36),
-
-                  Center(
-                    child: _ProfileCard(
-                      onEdit: () {
-                        Navigator.pushNamed(context, '/edit-profile');
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 34),
-
-                  _MainSettingsContainer(
-                    children: [
-                      _SectionTitle("PENGATURAN AKUN"),
-                      const SizedBox(height: 12),
-
-                      _SettingItem(
-                        icon: Icons.account_circle,
-                        iconColor: MoodlyColors.green,
-                        title: "Profil",
-                        onTap: () {
-                          Navigator.pushNamed(context, '/profile');
-                        },
-                      ),
-
-                      _SettingItem(
-                        icon: Icons.shield,
-                        iconColor: MoodlyColors.green,
-                        title: "Keamanan",
-                        onTap: () {
-                          Navigator.pushNamed(context, '/security');
-                        },
-                      ),
-
-                      _SettingItem(
-                        icon: Icons.error,
-                        iconColor: MoodlyColors.green,
-                        title: "Riwayat Pelapor",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ReportHistoryPage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 18),
-                      _SectionTitle("PREFERENSI APLIKASI"),
-                      const SizedBox(height: 12),
-
-                      _SettingItem(
-                        icon: Icons.notifications,
-                        iconColor: MoodlyColors.pinkAccent,
-                        title: "Notifikasi",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const NotificationSettingsPage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      _SettingItem(
-                        icon: Icons.palette,
-                        iconColor: MoodlyColors.pinkAccent,
-                        title: "Tema",
-                        subtitle: "Mode Terang",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ThemePage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      _SettingItem(
-                        icon: Icons.language,
-                        iconColor: MoodlyColors.pinkAccent,
-                        title: "Bahasa",
-                        subtitle: "Indonesia",
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LanguagePage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 18),
-                      _SectionTitle("TENTANG"),
-                      const SizedBox(height: 12),
-
-                      _SettingItem(
-                        icon: Icons.description,
-                        iconColor: Colors.grey,
-                        title: "Syarat & Ketentuan",
-                        trailing: const Icon(
-                          Icons.open_in_new,
-                          color: Colors.grey,
-                          size: 22,
-                        ),
-                        onTap: () {},
-                      ),
-
-                      _LogoutItem(
-                        onTap: () => _showLogoutDialog(context),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
-            );
-          },
+  Widget _background() {
+    return Stack(
+      children: [
+        Positioned(
+          top: -30,
+          right: -30,
+          child: Container(
+            width: 180,
+            height: 180,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _settingsPinkSoft.withOpacity(0.7),
+            ),
+          ),
         ),
-      ),
+        Positioned(
+          top: 250,
+          left: -70,
+          child: Container(
+            width: 170,
+            height: 170,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _settingsMintSoft.withOpacity(0.85),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 100,
+          right: -60,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _settingsGreenSoft.withOpacity(0.55),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
+      barrierColor: Colors.black.withOpacity(0.35),
       builder: (_) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 34),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          backgroundColor: MoodlyColors.bgLight,
+          backgroundColor: _settingsBg,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
             child: Column(
@@ -182,35 +115,53 @@ class SettingsPage extends StatelessWidget {
               children: [
                 const Icon(Icons.warning_rounded, color: Colors.red, size: 48),
                 const SizedBox(height: 14),
-                const Text(
-                  "Apakah Anda yakin ingin\nkeluar dari akun Anda?",
+                Text(
+                  'Apakah Anda yakin ingin\nkeluar dari akun Anda?',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
+                  style: _sh2(context, color: _settingsTextDark),
                 ),
                 const SizedBox(height: 26),
                 Row(
                   children: [
                     Expanded(
-                      child: _DialogButton(
-                        label: "Batal",
-                        color: MoodlyColors.greenLight,
-                        textColor: Colors.black,
+                      child: _SettingsDialogButton(
+                        label: 'Batal',
+                        color: _settingsGreenSoft,
+                        textColor: _settingsTextDark,
                         onTap: () => Navigator.pop(context),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _DialogButton(
-                        label: "Keluar",
-                        color: MoodlyColors.pinkAccent,
-                        textColor: Colors.black,
-                        onTap: () {
+                      child: _SettingsDialogButton(
+                        label: 'Keluar',
+                        color: const Color(0xFFFFD7DD),
+                        textColor: _settingsTextDark,
+                        onTap: () async {
                           Navigator.pop(context);
+
+                          try {
+                            await AuthService.instance.signOut();
+
+                            if (!context.mounted) return;
+
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const RootPage(),
+                              ),
+                              (route) => false,
+                            );
+                          } catch (_) {
+                            if (!context.mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Logout gagal. Coba lagi sebentar.',
+                                ),
+                              ),
+                            );
+                          }
                         },
                       ),
                     ),
@@ -223,16 +174,170 @@ class SettingsPage extends StatelessWidget {
       },
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageWidth = _pageWidth(context);
+
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const RootPage();
+    }
+
+    return Scaffold(
+      backgroundColor: _settingsBg,
+      body: Stack(
+        children: [
+          _background(),
+          SafeArea(
+            child: Center(
+              child: SizedBox(
+                width: pageWidth,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SettingsHeader(onBack: () => Navigator.pop(context)),
+                      const SizedBox(height: 22),
+                      _SettingsProfileCard(
+                        onEdit: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EditProfilePage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _SettingsSection(
+                        title: 'Pengaturan Akun',
+                        children: [
+                          _SettingsItem(
+                            icon: Icons.account_circle_rounded,
+                            iconColor: _settingsGreenDark,
+                            title: 'Profil',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ProfilePage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _SettingsItem(
+                            icon: Icons.shield_rounded,
+                            iconColor: _settingsGreenDark,
+                            title: 'Keamanan',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SecurityPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _SettingsItem(
+                            icon: Icons.error_outline_rounded,
+                            iconColor: _settingsGreenDark,
+                            title: 'Riwayat Pelapor',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ReportHistoryPage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _SettingsSection(
+                        title: 'Preferensi Aplikasi',
+                        children: [
+                          _SettingsItem(
+                            icon: Icons.notifications_rounded,
+                            iconColor: const Color(0xFFE08C9B),
+                            title: 'Notifikasi',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const NotificationSettingsPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _SettingsItem(
+                            icon: Icons.palette_outlined,
+                            iconColor: const Color(0xFFE08C9B),
+                            title: 'Tema',
+                            subtitle: 'Mode Terang',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ThemePage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _SettingsItem(
+                            icon: Icons.language_rounded,
+                            iconColor: const Color(0xFFE08C9B),
+                            title: 'Bahasa',
+                            subtitle: 'Indonesia',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LanguagePage(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _SettingsSection(
+                        title: 'Tentang',
+                        children: [
+                          _SettingsItem(
+                            icon: Icons.description_outlined,
+                            iconColor: _settingsTextSoft,
+                            title: 'Syarat & Ketentuan',
+                            trailing: const Icon(
+                              Icons.open_in_new_rounded,
+                              color: _settingsTextSoft,
+                              size: 20,
+                            ),
+                            onTap: () {},
+                          ),
+                          _SettingsLogoutItem(
+                            onTap: () => _showLogoutDialog(context),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _Header extends StatelessWidget {
-  final String title;
+class _SettingsHeader extends StatelessWidget {
   final VoidCallback onBack;
 
-  const _Header({
-    required this.title,
-    required this.onBack,
-  });
+  const _SettingsHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -241,100 +346,225 @@ class _Header extends StatelessWidget {
         GestureDetector(
           onTap: onBack,
           child: const Icon(
-            Icons.arrow_back,
-            color: MoodlyColors.green,
-            size: 22,
+            Icons.arrow_back_rounded,
+            color: _settingsGreenDark,
+            size: 26,
           ),
         ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: const TextStyle(
-            color: MoodlyColors.green,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const SizedBox(width: 10),
+        Text('Pengaturan', style: _sh2(context, color: _settingsGreenDark)),
         const Spacer(),
-        const Text(
-          "Moodly",
-          style: TextStyle(
-            color: Color(0xFFC65F59),
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1,
-          ),
-        ),
+        Text('Moodly', style: _sh1(context, color: _settingsBrand)),
       ],
     );
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class _SettingsProfileCard extends StatelessWidget {
   final VoidCallback onEdit;
 
-  const _ProfileCard({required this.onEdit});
+  const _SettingsProfileCard({required this.onEdit});
+
+  String _resolveName(Map<String, dynamic>? data, User? user) {
+    final fullName = (data?['fullName'] as String?)?.trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+
+    final displayName = user?.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
+
+    return 'Pengguna Moodly';
+  }
+
+  String _resolveSubtitle(Map<String, dynamic>? data, User? user) {
+    final email = (data?['email'] as String?)?.trim() ?? user?.email?.trim();
+    if (email != null && email.isNotEmpty) return email;
+
+    final role = (data?['role'] as String?)?.trim();
+    if (role != null && role.isNotEmpty) return role;
+
+    return 'Moodly Member';
+  }
+
+  String? _resolvePhotoUrl(Map<String, dynamic>? data, User? user) {
+    final photoUrl = (data?['photoUrl'] as String?)?.trim();
+    if (photoUrl != null && photoUrl.isNotEmpty) return photoUrl;
+
+    final authPhoto = user?.photoURL?.trim();
+    if (authPhoto != null && authPhoto.isNotEmpty) return authPhoto;
+
+    return null;
+  }
+
+  String? _resolveAvatarAsset(Map<String, dynamic>? data) {
+    final avatarId = (data?['avatarId'] as String?)?.trim();
+    if (avatarId != null && avatarId.isNotEmpty) return avatarId;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+
+    if (uid == null) {
+      return _SettingsProfileContent(
+        name: 'Pengguna Moodly',
+        subtitle: 'Belum login',
+        photoUrl: null,
+        avatarAsset: null,
+        onEdit: onEdit,
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data();
+        final avatarAsset = _resolveAvatarAsset(data);
+
+        return _SettingsProfileContent(
+          name: _resolveName(data, user),
+          subtitle: _resolveSubtitle(data, user),
+          photoUrl: _resolvePhotoUrl(data, user),
+          avatarAsset: avatarAsset,
+          onEdit: onEdit,
+        );
+      },
+    );
+  }
+}
+
+class _SettingsProfileContent extends StatelessWidget {
+  final String name;
+  final String subtitle;
+  final String? photoUrl;
+  final String? avatarAsset;
+  final VoidCallback onEdit;
+
+  const _SettingsProfileContent({
+    required this.name,
+    required this.subtitle,
+    required this.photoUrl,
+    required this.avatarAsset,
+    required this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        color: _settingsCard,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: _settingsShadow,
       ),
       child: Row(
         children: [
           Container(
-            width: 62,
-            height: 62,
+            width: 68,
+            height: 68,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: MoodlyColors.green, width: 5),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF92D373), Color(0xFFD9EDC5)],
+              ),
             ),
-            child: const Center(
-              child: Text("🧠", style: TextStyle(fontSize: 28)),
+            child: Container(
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: ClipOval(
+                child: photoUrl != null && photoUrl!.isNotEmpty
+                    ? Image.network(
+                        photoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) {
+                          if (avatarAsset != null && avatarAsset!.isNotEmpty) {
+                            return Image.asset(
+                              avatarAsset!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: _settingsTextDark,
+                                  size: 34,
+                                ),
+                              ),
+                            );
+                          }
+                          return const Center(
+                            child: Icon(
+                              Icons.person_rounded,
+                              color: _settingsTextDark,
+                              size: 34,
+                            ),
+                          );
+                        },
+                      )
+                    : (avatarAsset != null && avatarAsset!.isNotEmpty
+                          ? Image.asset(
+                              avatarAsset!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: _settingsTextDark,
+                                  size: 34,
+                                ),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: _settingsTextDark,
+                                size: 34,
+                              ),
+                            )),
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          const Expanded(
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Muhammad Yusuf",
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: _sh2(context, color: _settingsTextDark),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  "Premium Sanctuary Member",
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey, fontSize: 11),
+                  style: _sbody(context),
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: onEdit,
-            child: const Icon(
-              Icons.edit,
-              color: MoodlyColors.green,
-              size: 24,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _settingsPinkSoft,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.edit_rounded, color: _settingsGreenDark),
             ),
           ),
         ],
@@ -343,52 +573,35 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _MainSettingsContainer extends StatelessWidget {
+class _SettingsSection extends StatelessWidget {
+  final String title;
   final List<Widget> children;
 
-  const _MainSettingsContainer({required this.children});
+  const _SettingsSection({required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: MoodlyColors.greenLight.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: MoodlyColors.green.withValues(alpha: 0.18),
-          width: 1.5,
-        ),
+        color: _settingsCard,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: _settingsShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
+        children: [
+          Text(title, style: _sh2(context, color: _settingsGreenDark)),
+          const SizedBox(height: 14),
+          ...children,
+        ],
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-
-  const _SectionTitle(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: MoodlyColors.green,
-        fontSize: 15,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.4,
-      ),
-    );
-  }
-}
-
-class _SettingItem extends StatelessWidget {
+class _SettingsItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
@@ -396,7 +609,7 @@ class _SettingItem extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback onTap;
 
-  const _SettingItem({
+  const _SettingsItem({
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -412,60 +625,38 @@ class _SettingItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: subtitle == null ? 42 : 54,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            color: subtitle == null ? _settingsMintSoft : _settingsPinkSoft,
+            borderRadius: BorderRadius.circular(22),
           ),
           child: Row(
             children: [
-              Icon(icon, color: iconColor, size: 25),
-              const SizedBox(width: 14),
+              Icon(icon, color: iconColor, size: 22),
+              const SizedBox(width: 12),
               Expanded(
                 child: subtitle == null
                     ? Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: _sbodyAlt(context, color: _settingsTextDark),
                       )
                     : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: _sbodyAlt(context, color: _settingsTextDark),
                           ),
-                          Text(
-                            subtitle!,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                            ),
-                          ),
+                          const SizedBox(height: 2),
+                          Text(subtitle!, style: _sbody(context)),
                         ],
                       ),
               ),
               trailing ??
                   const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.black,
-                    size: 22,
+                    Icons.arrow_forward_ios_rounded,
+                    color: _settingsTextDark,
+                    size: 16,
                   ),
             ],
           ),
@@ -475,58 +666,45 @@ class _SettingItem extends StatelessWidget {
   }
 }
 
-class _LogoutItem extends StatelessWidget {
+class _SettingsLogoutItem extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _LogoutItem({required this.onTap});
+  const _SettingsLogoutItem({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEEF1),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.logout_rounded, color: Colors.red, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Keluar',
+                style: _sbodyAlt(context, color: Colors.red),
               ),
-            ],
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.logout, color: Colors.red, size: 27),
-              SizedBox(width: 14),
-              Text(
-                "Keluar",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _DialogButton extends StatelessWidget {
+class _SettingsDialogButton extends StatelessWidget {
   final String label;
   final Color color;
   final Color textColor;
   final VoidCallback onTap;
 
-  const _DialogButton({
+  const _SettingsDialogButton({
     required this.label,
     required this.color,
     required this.textColor,
@@ -544,14 +722,7 @@ class _DialogButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
         ),
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          child: Text(label, style: _sbutton(context, color: textColor)),
         ),
       ),
     );

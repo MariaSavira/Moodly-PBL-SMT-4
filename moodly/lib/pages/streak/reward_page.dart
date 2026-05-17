@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../core/services/reward_service.dart';
 import '../../widgets/streak/streak_feedback_popup.dart';
 
-class RewardPage extends StatelessWidget {
+class RewardPage extends StatefulWidget {
+  
   final int totalPoints;
 
   const RewardPage({
@@ -454,9 +456,19 @@ class RewardPage extends StatelessWidget {
       ],
     ),
   );
+  
 }
 }
+class _RewardPageState extends State<RewardPage> {
+  enum _RewardSectionTab { reguler, premium }
+  _RewardSectionTab _selectedTab = _RewardSectionTab.reguler;
+  final TextEditingController _giftUserIdController = TextEditingController();
 
+  @override
+  void dispose() {
+    _giftUserIdController.dispose();
+    super.dispose();
+  }
 class _RewardItem {
   final String title;
   final String subtitle;

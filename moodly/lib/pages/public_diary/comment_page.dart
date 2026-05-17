@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../widgets/shared/moodly_user_avatar.dart';
 
 import '../../models/diary_model.dart';
 import '../../services/report_comment_service.dart';
@@ -46,15 +48,11 @@ class _CommentPageState extends State<CommentPage> {
       if (replyingIndex != null) {
         comments[replyingIndex!]["replies"].add({
           "username": "Kamu",
-
+          "uid": FirebaseAuth.instance.currentUser?.uid,
           "reply": commentController.text,
-
-          "profile": "assets/profile_pic/PP_2.png",
-
+          "profile": "",
           "time": "Baru saja",
-
           "likes": 0,
-
           "isLiked": false,
         });
 
@@ -64,19 +62,13 @@ class _CommentPageState extends State<CommentPage> {
       } else {
         comments.add({
           "username": "Kamu",
-
+          "uid": FirebaseAuth.instance.currentUser?.uid,
           "comment": commentController.text,
-
-          "profile": "assets/profile_pic/PP_2.png",
-
+          "profile": "",
           "time": "Baru saja",
-
           "likes": 0,
-
           "isLiked": false,
-
           "showReplies": false,
-
           "replies": [],
         });
       }
@@ -457,12 +449,11 @@ class _CommentPageState extends State<CommentPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        const CircleAvatar(
+                        MoodlyUserAvatar(
+                          username: widget.diary.username,
                           radius: 24,
-
-                          backgroundImage: AssetImage(
-                            "assets/profile_pic/PP_2.png",
-                          ),
+                          placeholderAsset:
+                              'assets/profile_pic/PP_default.jpg', // <- GANTI PLACEHOLDER POST UTAMA KOMENTAR DI SINI
                         ),
 
                         const SizedBox(width: 12),
@@ -558,12 +549,15 @@ class _CommentPageState extends State<CommentPage> {
                                             CrossAxisAlignment.start,
 
                                         children: [
-                                          CircleAvatar(
+                                          MoodlyUserAvatar(
+                                            uid: comment["uid"] as String?,
+                                            username:
+                                                comment["username"] as String?,
+                                            avatarAsset:
+                                                comment["profile"] as String?,
                                             radius: 22,
-
-                                            backgroundImage: AssetImage(
-                                              comment["profile"],
-                                            ),
+                                            placeholderAsset:
+                                                'assets/profile_pic/PP_default.jpg', // <- placeholder komentar
                                           ),
 
                                           const SizedBox(width: 12),

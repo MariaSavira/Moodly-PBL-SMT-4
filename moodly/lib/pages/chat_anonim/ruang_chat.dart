@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'image_preview_page.dart';
 import 'dart:async';
 import '../afirmasi/widgets/cute_top_popup.dart';
-import 'homepage_chat_anonim.dart';
+import '../pages.dart';
 
 class ChatAnonimPage extends StatefulWidget {
   final String roomId;
@@ -141,6 +141,36 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
   final List<QueryDocumentSnapshot<Map<String, dynamic>>>
       selectedReportMessages = [];
+  
+  String? _selectedReportReason;
+  String? _selectedReportTag;
+
+  final List<Map<String, String>> _reportOptions = const [
+    {
+      'tag': 'Kata-kata kasar',
+      'reason': 'Pesan mengandung hinaan, makian, atau bahasa menyerang.',
+    },
+    {
+      'tag': 'SARA',
+      'reason': 'Pesan mengandung unsur suku, agama, ras, atau antargolongan.',
+    },
+    {
+      'tag': 'Spam',
+      'reason': 'Pesan dikirim berulang, mengganggu, atau tidak relevan.',
+    },
+    {
+      'tag': 'Konten seksual',
+      'reason': 'Pesan mengandung ajakan, unsur, atau konteks seksual yang tidak pantas.',
+    },
+    {
+      'tag': 'Ancaman',
+      'reason': 'Pesan mengandung ancaman, intimidasi, atau membuat tidak aman.',
+    },
+    {
+      'tag': 'Lainnya',
+      'reason': 'Konten bermasalah lain yang tidak masuk kategori di atas.',
+    },
+  ];
 
   Widget buildSystemMessage({
     required String prefix,
@@ -322,11 +352,16 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   Future<void> _confirmReportMessages() async {
     if (selectedReportMessages.isEmpty) return;
 
+    final pickedReason = await _showReportReasonSheet();
+    if (!pickedReason) return;
+
     final confirmed = await _showReportConfirmSheet();
     if (!confirmed) return;
 
     await _chatService.reportMessages(
       messages: selectedReportMessages,
+      reportTag: _selectedReportTag ?? 'Lainnya',
+      reportReason: _selectedReportReason ?? 'Konten bermasalah.',
     );
 
     if (!mounted) return;
@@ -335,6 +370,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       isSelectingReport = false;
       selectedReportMessageIds.clear();
       selectedReportMessages.clear();
+      _selectedReportTag = null;
+      _selectedReportReason = null;
     });
 
     _showTopInfo(
@@ -983,6 +1020,152 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         ),
       ),
     );
+  }
+
+  Future<bool> _showReportReasonSheet() async {
+    String? tempTag = _selectedReportTag;
+    String? tempReason = _selectedReportReason;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFCF8),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pilih alasan laporan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2B2B2B),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._reportOptions.map((item) {
+                    final tag = item['tag']!;
+                    final reason = item['reason']!;
+                    final isSelected = tempTag == tag;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setModalState(() {
+                          tempTag = tag;
+                          tempReason = reason;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFFDECEF)
+                              : const Color(0xFFF8F6F3),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFFE36A77)
+                                : Colors.transparent,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              isSelected
+                                  ? Icons.radio_button_checked_rounded
+                                  : Icons.radio_button_off_rounded,
+                              color: isSelected
+                                  ? const Color(0xFFE36A77)
+                                  : const Color(0xFFB9B0B4),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tag,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF2B2B2B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    reason,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      height: 1.45,
+                                      color: Color(0xFF666666),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: (tempTag == null || tempReason == null)
+                          ? null
+                          : () {
+                              _selectedReportTag = tempTag;
+                              _selectedReportReason = tempReason;
+                              Navigator.pop(context, true);
+                            },
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: const Color(0xFFE36A77),
+                        disabledBackgroundColor: const Color(0xFFF2C8CE),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Lanjutkan laporan',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    return result ?? false;
   }
 
   Future<bool> _showReportConfirmSheet() async {
