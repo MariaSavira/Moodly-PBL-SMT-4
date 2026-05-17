@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MoodStatisticPremium extends StatefulWidget {
   const MoodStatisticPremium({super.key});
@@ -9,49 +11,85 @@ class MoodStatisticPremium extends StatefulWidget {
 }
 
 class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
-  int _selectedIndex = 1; // Default ke Bulan (index 1) untuk non-premium
-  DateTime _selectedMonth = DateTime(2026, 3, 1);
-  int _selectedWeek = 1;
+  int _selectedIndex = 1;
+  DateTime _selectedMonth = DateTime.now();
+  late int _selectedWeek;
+  bool _isPremium = false;
+  bool _isLoading = true;
 
-  // ✅ PREMIUM STATUS - Ganti dengan logic real nanti
-  bool _isPremium = false; // Set true untuk test premium, false untuk free user
+  Map<String, String> _moodDatabase = {};
 
-  final Map<String, String> _moodDatabase = {
-    '2026-03-01': 'Senang',
-    '2026-03-02': 'Netral',
-    '2026-03-03': 'Senang',
-    '2026-03-04': 'Senang',
-    '2026-03-05': 'Netral',
-    '2026-03-06': 'Netral',
-    '2026-03-07': 'Sedih',
-    '2026-03-08': 'Senang',
-    '2026-03-09': 'Senang',
-    '2026-03-10': 'Sedih',
-    '2026-03-11': 'Sedih',
-    '2026-03-12': 'Marah',
-    '2026-03-13': 'Sedih',
-    '2026-03-14': 'Marah',
-    '2026-03-15': 'Marah',
-    '2026-03-16': 'Sedih',
-    '2026-03-17': 'Marah',
-    '2026-03-18': 'Senang',
-    '2026-03-19': 'Senang',
-    '2026-03-20': 'Senang',
-    '2026-03-21': 'Senang',
-    '2026-03-22': 'Netral',
-    '2026-03-23': 'Senang',
-    '2026-03-24': 'Netral',
-    '2026-03-25': 'Netral',
-    '2026-03-26': 'Senang',
-    '2026-03-27': 'Netral',
-    '2026-03-28': 'Sedih',
-    '2026-03-29': 'Senang',
-    '2026-03-30': 'Senang',
-    '2026-03-31': 'Senang',
-    '2026-04-01': 'Senang',
-    '2026-04-05': 'Netral',
-    '2026-04-10': 'Sedih',
-  };
+  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPremiumStatus();
+    _loadMoods();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month, 1);
+    _selectedWeek = _calculateWeekNumber(now);
+  }
+
+  Future<void> _loadMoods() async {
+    Map<String, String> moods = {};
+
+    try {
+      // Load dari SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
+      for (var key in keys) {
+        final dateKey = key.replaceFirst('mood_', '');
+        final mood = prefs.getString(key);
+        if (mood != null) {
+          moods[dateKey] = mood;
+        }
+      }
+
+      // Load dari Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('moods')
+          .doc(_documentId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+
+        entries.forEach((key, value) {
+          moods[key] = value.toString();
+        });
+
+        print("✅ Loaded ${entries.length} entries from Firestore for Statistics");
+      }
+
+      setState(() {
+        _moodDatabase = moods;
+        _isLoading = false;
+      });
+
+      print("📊 Total moods loaded for statistics: ${moods.length}");
+    } catch (e) {
+      print("❌ Error loading moods for statistics: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isPremium = prefs.getBool('isPremium') ?? false;
+
+    setState(() {
+      _isPremium = isPremium;
+    });
+  }
+
+  int _calculateWeekNumber(DateTime date) {
+    final firstDayOfMonth = DateTime(date.year, date.month, 1);
+    return ((date.day + firstDayOfMonth.weekday - 1) / 7).ceil();
+  }
 
   String _getEmoji(String mood) {
     switch (mood) {
@@ -75,7 +113,6 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
 
   List<Map<String, dynamic>> _getWeeklyData() {
     List<Map<String, dynamic>> data = [];
-    final firstDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
     final lastDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
 
     int daysBeforeWeek = (_selectedWeek - 1) * 7;
@@ -83,18 +120,21 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
 
     for (int i = 0; i < 7; i++) {
       int day = startDay + i;
-      if (day > lastDayOfMonth.day) break;
+      if (day > lastDayOfMonth.day || day < 1) continue;
 
       final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
       final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-      final mood = _moodDatabase[dateKey] ?? 'Netral';
+
+      final mood = _moodDatabase[dateKey];
+      final hasData = mood != null;
 
       data.add({
         'day': _getDayName(date.weekday),
         'date': day,
         'mood': mood,
-        'emoji': _getEmoji(mood),
-        'color': _getMoodColor(mood),
+        'emoji': hasData ? _getEmoji(mood) : '',
+        'color': hasData ? _getMoodColor(mood) : Colors.grey.shade100,
+        'hasData': hasData,
       });
     }
 
@@ -109,13 +149,27 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
       'Marah': 0,
     };
 
+    String prefix = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+
     _moodDatabase.forEach((key, mood) {
-      if (key.startsWith('${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}')) {
-        stats[mood] = (stats[mood] ?? 0) + 1;
+      if (key.startsWith(prefix)) {
+        if (stats.containsKey(mood)) {
+          stats[mood] = (stats[mood] ?? 0) + 1;
+        }
       }
     });
 
     return stats;
+  }
+
+  bool _hasDataInWeek() {
+    final weeklyData = _getWeeklyData();
+    return weeklyData.any((item) => item['hasData'] == true);
+  }
+
+  bool _hasDataInMonth() {
+    String prefix = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+    return _moodDatabase.keys.any((key) => key.startsWith(prefix));
   }
 
   String _getDayName(int weekday) {
@@ -156,7 +210,6 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
     });
   }
 
-  // ✅ SHOW UPGRADE DIALOG
   void _showUpgradeDialog() {
     showDialog(
       context: context,
@@ -234,13 +287,16 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // ✅ UPGRADE ACTION - Simulasi upgrade
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('isPremium', true);
+
               setState(() {
                 _isPremium = true;
-                _selectedIndex = 0; // Auto switch to Pekan
+                _selectedIndex = 0;
               });
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('🎉 Selamat! Anda sekarang Premium!'),
@@ -289,8 +345,72 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
     );
   }
 
+  Widget _buildEmptyState(String message) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.insert_chart_outlined,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Belum Ada Data',
+            style: GoogleFonts.fredoka(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.openSans(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FBE7),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Mood Analysis',
+            style: GoogleFonts.fredoka(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9FBE7),
       appBar: AppBar(
@@ -309,7 +429,6 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
           ),
         ),
         actions: [
-          // ✅ PREMIUM BADGE DI APPBAR
           if (!_isPremium)
             Container(
               margin: const EdgeInsets.only(right: 12),
@@ -335,6 +454,11 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
                 ],
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            onPressed: _loadMoods,
+            tooltip: 'Refresh data',
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -373,7 +497,6 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
       ),
       child: Row(
         children: [
-          // ✅ TAB PEKAN DENGAN PREMIUM BADGE
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -528,6 +651,13 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
 
   Widget _buildWeeklyChart() {
     final weeklyData = _getWeeklyData();
+    final hasData = _hasDataInWeek();
+
+    if (!hasData) {
+      return _buildEmptyState(
+        'Belum ada data mood untuk minggu ini.\nSilakan input mood Anda di kalender.',
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -571,6 +701,14 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
   }
 
   Widget _buildMonthlyStats() {
+    final hasData = _hasDataInMonth();
+
+    if (!hasData) {
+      return _buildEmptyState(
+        'Belum ada data mood untuk bulan ini.\nSilakan input mood Anda di kalender.',
+      );
+    }
+
     final stats = _getMonthlyStats();
 
     return Container(
@@ -666,6 +804,8 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
   }
 
   Widget _buildBar(Map<String, dynamic> item) {
+    final hasData = item['hasData'] ?? false;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -681,18 +821,20 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              Container(
-                width: 30,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: item['color'],
-                  borderRadius: BorderRadius.circular(8),
+              if (hasData)
+                Container(
+                  width: 30,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: item['color'],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              Text(
-                item['emoji'],
-                style: const TextStyle(fontSize: 24),
-              ),
+              if (hasData)
+                Text(
+                  item['emoji'],
+                  style: const TextStyle(fontSize: 24),
+                ),
             ],
           ),
         ),
