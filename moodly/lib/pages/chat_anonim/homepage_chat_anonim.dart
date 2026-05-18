@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:moodly/pages/chat_anonim/matching_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'profil_anonim.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'ruang_chat.dart';
-import '../auth/auth.dart';
+import '../../widgets/moodly_bottom_navbar.dart';
 import 'dart:math';
+import 'dart:async';
+import '../afirmasi/widgets/cute_top_popup.dart';
+import 'package:flutter/gestures.dart';
+import '../pages.dart';
 
 // App entry point.
 void main() {
@@ -34,6 +34,13 @@ class AnonymousChatHomePage extends StatefulWidget {
 }
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+    _userRoomSubscription;
+
+  String? _lastKnownRoomId;
+  bool _isOpeningRoom = false;
+  String? _lastHandledNoticeId;
+  bool _isMatchingPageOpen = false;
 
   @override
   void initState() {
@@ -56,8 +63,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       return;
     }
 
-    print('AUTH UID LOGIN: ${user.uid}');
-
     await loadProfileFromFirestoreOrLocal();
 
     if (!mounted) return;
@@ -67,22 +72,265 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         .doc(user.uid)
         .get();
 
-    final currentRoomId = userDoc.data()?['currentRoomId'];
+    final userData = userDoc.data();
+    final initialRoomId = userData?['currentRoomId'];
+    final initialNotice = userData?['chatNotice'];
+    final resolvedRoomId = initialRoomId is String && initialRoomId.isNotEmpty
+        ? initialRoomId
+        : null;
 
-    if (currentRoomId != null &&
-        currentRoomId is String &&
-        currentRoomId.isNotEmpty) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatAnonimPage(roomId: currentRoomId),
-        ),
-      );
+    _lastKnownRoomId = resolvedRoomId;
+
+    if (initialNotice is Map<String, dynamic>) {
+      await _consumeChatNotice(user.uid, initialNotice);
+    } else if (initialNotice is Map) {
+      await _consumeChatNotice(user.uid, Map<String, dynamic>.from(initialNotice));
+    }
+
+    _startUserRoomWatcher(user.uid);
+
+    if (resolvedRoomId != null) {
+      if (!_isMatchingPageOpen) {
+        await _openRoomIfNeeded(resolvedRoomId);
+      }
       return;
     }
 
     await syncUserProfileToFirestore();
-    print('SYNC PROFILE TO FIRESTORE SUCCESS');
+  }
+
+  @override
+  void dispose() {
+    _userRoomSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _showChatEndedPopup() {
+    if (!mounted) return;
+
+    showCuteTopPopup(
+      context,
+      title: 'Percakapan berakhir',
+      message: 'Teman chat telah mengakhiri percakapan atau room sudah ditutup.',
+      type: CutePopupType.warning,
+    );
+  }
+
+  CutePopupType _mapNoticeType(String? rawType) {
+    switch (rawType) {
+      case 'success':
+        return CutePopupType.success;
+      case 'error':
+        return CutePopupType.error;
+      case 'warning':
+        return CutePopupType.warning;
+      default:
+        return CutePopupType.info;
+    }
+  }
+
+  void _showRulesDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFCF8),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Peraturan Ruang Curhat',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                ),
+                const SizedBox(height: 14),
+                _ruleItem('Jaga privasi diri sendiri dan lawan bicara.'),
+                _ruleItem('Gunakan bahasa yang sopan dan tidak menyerang.'),
+                _ruleItem('Jangan meminta data pribadi seperti nomor, alamat, atau akun media sosial.'),
+                _ruleItem('Jangan membagikan isi chat, screenshot, atau rekaman percakapan ke media sosial atau platform apa pun demi menjaga privasi dan kenyamanan pengguna.'),
+                _ruleItem('Kalau merasa tidak nyaman, akhiri percakapan atau gunakan fitur laporan.'),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF84C76A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                    child: const Text(
+                      'Aku Mengerti',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _ruleItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: const BoxDecoration(
+              color: Color(0xFF84C76A),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _consumeChatNotice(
+    String uid,
+    Map<String, dynamic> notice,
+  ) async {
+    final noticeId = notice['id']?.toString();
+    if (noticeId == null || noticeId.isEmpty) return;
+    if (_lastHandledNoticeId == noticeId) return;
+
+    _lastHandledNoticeId = noticeId;
+
+    if (!mounted) return;
+
+    showCuteTopPopup(
+      context,
+      title: (notice['title']?.toString().isNotEmpty ?? false)
+          ? notice['title'].toString()
+          : 'Percakapan berakhir',
+      message: (notice['message']?.toString().isNotEmpty ?? false)
+          ? notice['message'].toString()
+          : 'Room chat telah selesai.',
+      type: _mapNoticeType(notice['type']?.toString()),
+    );
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'chatNotice': null,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _openRoomIfNeeded(String roomId) async {
+    if (_isOpeningRoom || !mounted) return;
+
+    _isOpeningRoom = true;
+
+    try {
+      final roomDoc = await FirebaseFirestore.instance
+          .collection('chat_rooms')
+          .doc(roomId)
+          .get();
+
+      if (!mounted) return;
+
+      if (!roomDoc.exists) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await FirebaseFirestore.instance.collection('users').doc(uid).set({
+            'currentRoomId': null,
+            'status': 'idle',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatAnonimPage(roomId: roomId),
+        ),
+      );
+    } finally {
+      _isOpeningRoom = false;
+    }
+  }
+
+  void _startUserRoomWatcher(String uid) {
+    _userRoomSubscription?.cancel();
+
+    _userRoomSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) async {
+      final data = doc.data();
+      final currentRoomId = data?['currentRoomId'];
+      final notice = data?['chatNotice'];
+
+      if (notice is Map<String, dynamic>) {
+        await _consumeChatNotice(uid, notice);
+      } else if (notice is Map) {
+        await _consumeChatNotice(uid, Map<String, dynamic>.from(notice));
+      }
+
+      final hasRoomNow =
+          currentRoomId is String && currentRoomId.trim().isNotEmpty;
+      final hadRoomBefore =
+          _lastKnownRoomId != null && _lastKnownRoomId!.trim().isNotEmpty;
+
+      if (hadRoomBefore && !hasRoomNow) {
+        _lastKnownRoomId = null;
+        return;
+      }
+
+      if (hasRoomNow) {
+        final roomId = currentRoomId as String;
+        _lastKnownRoomId = roomId;
+
+        if (!_isMatchingPageOpen) {
+          await _openRoomIfNeeded(roomId);
+        }
+      }
+    });
   }
 
   Future<void> syncUserProfileToFirestore() async {
@@ -108,7 +356,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   int selectedGenderIndex = 1;
-  int selectedNavIndex = 2;
+  int selectedNavIndex = 3;
 
   int? pressedGenderIndex;
   bool isProfilePressed = false;
@@ -117,7 +365,18 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   bool showProfileOverlay = false;
 
   String profileName = '';
-  String selectedProfileImage = 'assets/profile_pic/PP.png';
+  String selectedProfileImage = '';
+
+  // Avatar yang terbuka untuk user baru.
+// NANTI kalau sistem streak/reward sudah jadi, pindahkan kontrol unlock ke Firestore/user inventory di sini.
+final List<String> unlockedProfileAvatars = const [
+  'assets/profile_pic/PP.png',
+  'assets/profile_pic/PP_2.png',
+  'assets/profile_pic/PP_3.png',
+  'assets/profile_pic/PP_4.png',
+  'assets/profile_pic/PP_5.png',
+  'assets/profile_pic/PP_6.png',
+];
 
   final List<String> profileAvatars = const [
     'assets/profile_pic/PP.png',
@@ -142,29 +401,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     'assets/profile_pic/PP_20.png',
     'assets/profile_pic/PP_21.png',
     'assets/profile_pic/PP_22.png',
-  ];
-
-  final List<_NavItemData> navItems = const [
-    _NavItemData(
-      label: 'Beranda',
-      outlineIcon: Icons.home_outlined,
-      filledAsset: 'assets/icons/navbar/beranda_filled.svg',
-    ),
-    _NavItemData(
-      label: 'Diary',
-      outlineIcon: Icons.eco_outlined,
-      filledAsset: 'assets/icons/navbar/diary_filled.svg',
-    ),
-    _NavItemData(
-      label: 'Connect',
-      outlineIcon: Icons.forum_outlined,
-      filledAsset: 'assets/icons/navbar/connect_filled.svg',
-    ),
-    _NavItemData(
-      label: 'Afirmasi',
-      outlineIcon: Icons.local_florist_outlined,
-      filledAsset: 'assets/icons/navbar/affirmasi_filled.svg',
-    ),
   ];
 
   final List<_GenderOption> genders = const [
@@ -266,6 +502,11 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     return '$food $adjective';
   }
 
+  String generateRandomUnlockedAvatar() {
+    final random = Random();
+    return unlockedProfileAvatars[random.nextInt(unlockedProfileAvatars.length)];
+  }
+
   Future<void> loadProfileFromFirestoreOrLocal() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -308,9 +549,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             : generateRandomNickname();
 
     final resolvedAvatar =
-        firestoreAvatar != null && firestoreAvatar.isNotEmpty
-            ? firestoreAvatar
-            : 'assets/profile_pic/PP.png';
+      firestoreAvatar != null && firestoreAvatar.isNotEmpty
+          ? firestoreAvatar
+          : generateRandomUnlockedAvatar();
 
     await prefs.setString(nameKey, resolvedName);
     await prefs.setString(avatarKey, resolvedAvatar);
@@ -341,6 +582,56 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
     await prefs.setString(nameKey, profileName);
     await prefs.setString(avatarKey, selectedProfileImage);
+  }
+
+  void _onNavbarTap(int index) {
+    switch (index) {
+      case 0:
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const Homepage(),
+          ),
+          (route) => false,
+        );
+        break;
+
+      case 1:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MonthPage(),
+          ),
+        );
+        break;
+
+      case 3:
+        // Sudah di halaman Connect / Chat Anonim
+        if (selectedNavIndex != 3) {
+          setState(() {
+            selectedNavIndex = 3;
+          });
+        }
+        break;
+
+      case 4:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AfirmasiPage(),
+          ),
+        );
+        break;
+    }
+  }
+
+  void _onEmergencyTap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EmergencySupportPage(),
+      ),
+    );
   }
 
   @override
@@ -433,16 +724,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                   ),
                 ),
               ),
-
-              // FLOATING NAVBAR
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildFloatingBottomNav(),
-              ),
             ],
           ),
+        ),
+        bottomNavigationBar: MoodlyBottomNavbar(
+          currentIndex: selectedNavIndex,
+          onTap: _onNavbarTap,
+          onEmergencyTap: _onEmergencyTap,
         ),
       ),
     );
@@ -451,13 +739,30 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: 20,
-          color: Colors.black87,
+        GestureDetector(
+          onTap: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const Homepage(),
+              ),
+              (route) => false,
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20,
+              color: Colors.black87,
+            ),
+          ),
         ),
         const SizedBox(width: 6),
-        Text('Ruang Curhat', style: Theme.of(context).textTheme.headlineLarge),
+        Text(
+          'Ruang Curhat',
+          style: Theme.of(context).textTheme.headlineLarge,
+        ),
       ],
     );
   }
@@ -480,7 +785,12 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               ],
             ),
             child: ClipOval(
-              child: Image.asset(selectedProfileImage, fit: BoxFit.cover),
+              child: Image.asset(
+                selectedProfileImage.isNotEmpty
+                    ? selectedProfileImage
+                    : 'assets/profile_pic/PP.png', // <- placeholder sementara kalau state belum selesai load
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -526,8 +836,11 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             pageBuilder: (context, animation, secondaryAnimation) =>
                 ProfileOverlayPage(
                   profileName: profileName,
-                  selectedProfileImage: selectedProfileImage,
+                  selectedProfileImage: selectedProfileImage.isNotEmpty
+                      ? selectedProfileImage
+                      : unlockedProfileAvatars.first,
                   profileAvatars: profileAvatars,
+                  unlockedProfileAvatars: unlockedProfileAvatars,
                 ),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
@@ -742,12 +1055,22 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           isCtaPressed = false;
         });
       },
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        setState(() {
+          _isMatchingPageOpen = true;
+        });
+
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => const MatchingPage(),
           ),
         );
+
+        if (!mounted) return;
+
+        setState(() {
+          _isMatchingPageOpen = false;
+        });
       },
       child: AnimatedScale(
         scale: isCtaPressed ? 0.97 : 1.0,
@@ -774,154 +1097,22 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(height: 1.2, color: Colors.black87),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(height: 1.2, color: Colors.black87),
           children: [
             const TextSpan(text: 'Tolong hormati orang lain dan patuhi '),
             TextSpan(
               text: 'peraturan kami',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF7DCB66),
-                fontWeight: FontWeight.w900,
-              ),
+                    color: const Color(0xFF7DCB66),
+                    fontWeight: FontWeight.w900,
+                  ),
+              recognizer: TapGestureRecognizer()..onTap = _showRulesDialog,
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingBottomNav() {
-    const double navHeight = 84;
-    const double bubbleSize = 60;
-    const double outerBottom = 14;
-    const double horizontalMargin = 10;
-    const double navHorizontalPadding = 12;
-    const Duration animDuration = Duration(milliseconds: 260);
-
-    return SizedBox(
-      height: 126,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final double barWidth = constraints.maxWidth - (horizontalMargin * 2);
-          final double contentWidth = barWidth - (navHorizontalPadding * 2);
-          final double itemWidth = contentWidth / navItems.length;
-
-          final List<double> slotCenters = List.generate(
-            navItems.length,
-            (index) =>
-                navHorizontalPadding + (itemWidth * index) + (itemWidth / 2),
-          );
-
-          final double selectedCenterX = slotCenters[selectedNavIndex];
-          final double bubbleLeft =
-              horizontalMargin + selectedCenterX - (bubbleSize / 2);
-
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: horizontalMargin,
-                right: horizontalMargin,
-                bottom: outerBottom,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(end: selectedCenterX),
-                  duration: animDuration,
-                  curve: Curves.easeOutCubic,
-                  builder: (context, animatedCenterX, _) {
-                    return CustomPaint(
-                      painter: _NavBarNotchPainter(
-                        selectedCenterX: animatedCenterX,
-                      ),
-                      child: SizedBox(
-                        height: navHeight,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            navHorizontalPadding,
-                            8,
-                            navHorizontalPadding,
-                            10,
-                          ),
-                          child: Row(
-                            children: List.generate(navItems.length, (index) {
-                              final item = navItems[index];
-                              final isSelected = selectedNavIndex == index;
-
-                              return SizedBox(
-                                width: itemWidth,
-                                child: _BottomNavItem(
-                                  icon: item.outlineIcon,
-                                  label: item.label,
-                                  selected: isSelected,
-                                  filledAsset: item.filledAsset,
-                                  onTap: () {
-                                    if (selectedNavIndex == index) return;
-                                    setState(() {
-                                      selectedNavIndex = index;
-                                    });
-                                  },
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              AnimatedPositioned(
-                duration: animDuration,
-                curve: Curves.easeOutCubic,
-                left: bubbleLeft,
-                bottom: outerBottom + 56,
-                child: Container(
-                  width: bubbleSize,
-                  height: bubbleSize,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFF5F5F1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x4D000000),
-                        offset: Offset(0, 10),
-                        blurRadius: 20,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeOut,
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(
-                            scale: Tween<double>(
-                              begin: 0.92,
-                              end: 1.0,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: SvgPicture.asset(
-                        navItems[selectedNavIndex].filledAsset,
-                        key: ValueKey(navItems[selectedNavIndex].filledAsset),
-                        width: 24,
-                        height: 24,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -941,158 +1132,4 @@ class _GenderOption {
     required this.border,
     required this.iconColor,
   });
-}
-
-class _NavItemData {
-  final String label;
-  final IconData outlineIcon;
-  final String filledAsset;
-
-  const _NavItemData({
-    required this.label,
-    required this.outlineIcon,
-    required this.filledAsset,
-  });
-}
-
-class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final String filledAsset;
-  final VoidCallback onTap;
-
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.filledAsset,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const Color inactiveColor = Color(0xFFEBF4E6);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(top: selected ? 22 : 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 160),
-              opacity: selected ? 0.0 : 1.0,
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 160),
-                scale: selected ? 0.6 : 1.0,
-                child: Icon(icon, color: inactiveColor, size: 26),
-              ),
-            ),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              style: TextStyle(
-                color: selected ? Colors.white : inactiveColor,
-                fontSize: selected ? 13.0 : 12.0,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                letterSpacing: selected ? 0.2 : 0,
-              ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.visible),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavBarNotchPainter extends CustomPainter {
-  final double selectedCenterX;
-
-  _NavBarNotchPainter({required this.selectedCenterX});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint shadowPaint = Paint()
-      ..color = const Color(0x30000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-
-    final Paint fillPaint = Paint()..color = const Color(0xFFB5E0A6);
-
-    const double cornerRadius = 32.0;
-    const double notchDepth = 30.0;
-    const double notchHalfWidth = 44.0;
-    const double shoulderWidth = 22.0;
-
-    final double center = selectedCenterX.clamp(
-      notchHalfWidth + shoulderWidth + 12,
-      size.width - notchHalfWidth - shoulderWidth - 12,
-    );
-
-    final double leftShoulder = center - notchHalfWidth - shoulderWidth;
-    final double leftDipStart = center - notchHalfWidth;
-    final double rightDipEnd = center + notchHalfWidth;
-    final double rightShoulder = center + notchHalfWidth + shoulderWidth;
-
-    final Path path = Path()
-      ..moveTo(cornerRadius, 0)
-      ..lineTo(leftShoulder, 0)
-      ..cubicTo(
-        leftShoulder + shoulderWidth * 0.45,
-        0,
-        leftDipStart - shoulderWidth * 0.35,
-        notchDepth * 0.18,
-        leftDipStart,
-        notchDepth * 0.42,
-      )
-      ..cubicTo(
-        center - notchHalfWidth * 0.55,
-        notchDepth,
-        center + notchHalfWidth * 0.55,
-        notchDepth,
-        rightDipEnd,
-        notchDepth * 0.42,
-      )
-      ..cubicTo(
-        rightDipEnd + shoulderWidth * 0.35,
-        notchDepth * 0.18,
-        rightShoulder - shoulderWidth * 0.45,
-        0,
-        rightShoulder,
-        0,
-      )
-      ..lineTo(size.width - cornerRadius, 0)
-      ..quadraticBezierTo(size.width, 0, size.width, cornerRadius)
-      ..lineTo(size.width, size.height - cornerRadius)
-      ..quadraticBezierTo(
-        size.width,
-        size.height,
-        size.width - cornerRadius,
-        size.height,
-      )
-      ..lineTo(cornerRadius, size.height)
-      ..quadraticBezierTo(0, size.height, 0, size.height - cornerRadius)
-      ..lineTo(0, cornerRadius)
-      ..quadraticBezierTo(0, 0, cornerRadius, 0)
-      ..close();
-
-    canvas.save();
-    canvas.translate(0, 8);
-    canvas.drawPath(path, shadowPaint);
-    canvas.restore();
-
-    canvas.drawPath(path, fillPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _NavBarNotchPainter oldDelegate) {
-    return oldDelegate.selectedCenterX != selectedCenterX;
-  }
 }

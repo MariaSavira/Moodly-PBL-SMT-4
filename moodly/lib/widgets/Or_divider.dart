@@ -11,7 +11,7 @@ class OrDivider extends StatelessWidget {
         const Expanded(child: Divider(color: AppColors.divider, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('or continue with', style: AppTextStyles.dividerText),
+          child: Text('atau gunakan', style: AppTextStyles.dividerText),
         ),
         const Expanded(child: Divider(color: AppColors.divider, thickness: 1)),
       ],

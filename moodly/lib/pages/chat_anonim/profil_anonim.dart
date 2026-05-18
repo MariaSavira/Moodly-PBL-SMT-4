@@ -5,12 +5,14 @@ class ProfileOverlayPage extends StatefulWidget {
   final String profileName;
   final String selectedProfileImage;
   final List<String> profileAvatars;
+  final List<String> unlockedProfileAvatars;
 
   const ProfileOverlayPage({
     super.key,
     required this.profileName,
     required this.selectedProfileImage,
     required this.profileAvatars,
+    required this.unlockedProfileAvatars,
   });
 
   @override
@@ -194,8 +196,12 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
                               GestureDetector(
                                 onTap: () {
                                   FocusScope.of(context).unfocus();
+
+                                  final unlocked = widget.unlockedProfileAvatars;
+                                  final random = DateTime.now().millisecondsSinceEpoch % unlocked.length;
+
                                   setState(() {
-                                    showAvatarPicker = !showAvatarPicker;
+                                    selectedProfileImage = unlocked[random];
                                   });
                                 },
                                 child: Container(
@@ -303,31 +309,64 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
                           ),
                           itemBuilder: (context, index) {
                             final String avatar = widget.profileAvatars[index];
-                            final bool isSelected =
-                                avatar == selectedProfileImage;
+                            final bool isSelected = avatar == selectedProfileImage;
+                            final bool isUnlocked = widget.unlockedProfileAvatars.contains(avatar);
 
                             return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedProfileImage = avatar;
-                                });
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: const Color(0xFF84C76A),
-                                          width: 4,
-                                        )
-                                      : null,
-                                ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    avatar,
-                                    fit: BoxFit.cover,
+                              onTap: isUnlocked
+                                  ? () {
+                                      setState(() {
+                                        selectedProfileImage = avatar;
+                                      });
+                                    }
+                                  : null,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: isSelected
+                                          ? Border.all(
+                                              color: const Color(0xFF84C76A),
+                                              width: 4,
+                                            )
+                                          : null,
+                                    ),
+                                    child: ClipOval(
+                                      child: ColorFiltered(
+                                        colorFilter: isUnlocked
+                                            ? const ColorFilter.mode(
+                                                Colors.transparent,
+                                                BlendMode.dst,
+                                              )
+                                            : ColorFilter.mode(
+                                                Colors.black.withOpacity(0.35),
+                                                BlendMode.darken,
+                                              ),
+                                        child: Image.asset(
+                                          avatar,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  if (!isUnlocked)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.black.withOpacity(0.18),
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.lock_rounded,
+                                            color: Colors.white,
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             );
                           },

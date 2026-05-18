@@ -904,14 +904,14 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                   ),
                   child: Row(
                     children: [
-                      IconButton(
-                       onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 34,
-                        ),
-                      ),
+                     IconButton(
+  onPressed: () => Navigator.pop(context),
+  icon: const Icon(
+    Icons.arrow_back_ios_new,
+    color: Colors.white,
+    size: 34,
+  ),
+),
                       Expanded(
                         child: Center(
                           child: IntrinsicWidth(

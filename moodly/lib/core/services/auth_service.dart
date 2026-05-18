@@ -33,6 +33,17 @@ class AuthService {
     _isGoogleInitialized = true;
   }
 
+  Future<String> getCurrentUserRole() async {
+    final user = _auth.currentUser;
+    if (user == null) return 'user';
+
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    if (!doc.exists || doc.data() == null) return 'user';
+
+    final data = doc.data()!;
+    return (data['role'] as String?) ?? 'user';
+  }
+
   Future<AuthResult> signIn({
     required String email,
     required String password,
@@ -114,6 +125,7 @@ class AuthService {
         phoneNumber: cleanPhoneNumber,
         createdAt: DateTime.now(),
         isEmailVerified: firebaseUser.emailVerified,
+        role: 'user',
       );
 
       await _saveUserToFirestore(
@@ -177,6 +189,7 @@ class AuthService {
         photoUrl: firebaseUser.photoURL,
         createdAt: DateTime.now(),
         isEmailVerified: true,
+        role: 'user',
       );
 
       await _saveUserToFirestore(
@@ -257,6 +270,7 @@ class AuthService {
         photoUrl: firebaseUser.photoURL,
         createdAt: DateTime.now(),
         isEmailVerified: firebaseUser.emailVerified,
+        role: 'user',
       );
 
       await _saveUserToFirestore(
@@ -323,6 +337,7 @@ class AuthService {
           email: user.email ?? '',
           photoUrl: user.photoURL,
           isEmailVerified: user.emailVerified,
+          role: 'user',
         ),
       );
     } on FirebaseAuthException catch (e) {
@@ -432,11 +447,13 @@ class AuthService {
       'email': fallbackUser.email,
       'phoneNumber': phoneNumber ?? fallbackUser.phoneNumber,
       'photoUrl': fallbackUser.photoUrl,
-      'isEmailVerified': true,
+      'isEmailVerified':
+          firebaseUser.emailVerified || fallbackUser.isEmailVerified,
       'nickname': oldNickname,
       'avatarId': oldAvatarId,
       'status': oldStatus ?? 'idle',
       'currentRoomId': oldCurrentRoomId,
+      'role': oldData?['role'] ?? fallbackUser.role,
       'createdAt': oldData?['createdAt'] ?? DateTime.now().toIso8601String(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -457,6 +474,7 @@ class AuthService {
       email: firebaseUser?.email ?? '',
       photoUrl: firebaseUser?.photoURL,
       isEmailVerified: firebaseUser?.emailVerified ?? false,
+      role: 'user',
     );
   }
 

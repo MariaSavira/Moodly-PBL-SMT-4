@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../main.dart';
+
+import '../core/services/auth_service.dart';
+import 'admin/moderasi_admin.dart';
+import 'homepage.dart';
+import 'onboarding_page.dart';
 
 class SplashScreenMoodly extends StatefulWidget {
   const SplashScreenMoodly({super.key});
@@ -88,20 +93,45 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     _introController.forward();
 
     Timer(const Duration(milliseconds: 3600), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, __, ___) => MainMenuPage(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-        ),
-      );
+      _handleNavigation();
     });
+  }
+
+  Future<void> _handleNavigation() async {
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    Widget nextPage = const OnboardingPage();
+
+    if (user != null) {
+      String role = 'user';
+
+      try {
+        role = await AuthService.instance.getCurrentUserRole();
+      } catch (_) {
+        role = 'user';
+      }
+
+      if (!mounted) return;
+
+      nextPage =
+          role == 'admin'
+              ? const ModerasiAdminPage()
+              : const Homepage();
+    }
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (_, __, ___) => nextPage,
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   @override
@@ -157,37 +187,25 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
               Positioned(
                 top: -80,
                 left: -50,
-                child: _blob(
-                  size: 220,
-                  color: pinkSoft.withOpacity(0.35),
-                ),
+                child: _blob(size: 220, color: pinkSoft.withOpacity(0.35)),
               ),
 
               Positioned(
                 top: 110,
                 right: -40,
-                child: _blob(
-                  size: 170,
-                  color: greenSoft.withOpacity(0.28),
-                ),
+                child: _blob(size: 170, color: greenSoft.withOpacity(0.28)),
               ),
 
               Positioned(
                 bottom: 80,
                 left: -70,
-                child: _blob(
-                  size: 250,
-                  color: pinkSoft.withOpacity(0.20),
-                ),
+                child: _blob(size: 250, color: pinkSoft.withOpacity(0.20)),
               ),
 
               Positioned(
                 bottom: -20,
                 right: -50,
-                child: _blob(
-                  size: 220,
-                  color: greenSoft.withOpacity(0.22),
-                ),
+                child: _blob(size: 220, color: greenSoft.withOpacity(0.22)),
               ),
 
               Center(
@@ -311,7 +329,9 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
                       opacity: _titleFade,
                       child: SlideTransition(
                         position: _titleSlide,
-                        child: _AnimatedMoodlyTitle(controller: _introController),
+                        child: _AnimatedMoodlyTitle(
+                          controller: _introController,
+                        ),
                       ),
                     ),
 
@@ -377,26 +397,18 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 
   Widget _sparkle({required double size, required Color color}) {
-    return Icon(
-      Icons.auto_awesome_rounded,
-      size: size,
-      color: color,
-    );
+    return Icon(Icons.auto_awesome_rounded, size: size, color: color);
   }
 }
 
 class _AnimatedMoodlyTitle extends AnimatedWidget {
-  const _AnimatedMoodlyTitle({
-    required AnimationController controller,
-  }) : super(listenable: controller);
+  const _AnimatedMoodlyTitle({required AnimationController controller})
+      : super(listenable: controller);
 
   AnimationController get controller => listenable as AnimationController;
 
@@ -409,25 +421,23 @@ class _AnimatedMoodlyTitle extends AnimatedWidget {
       curve: const Interval(0.58, 0.88, curve: Curves.easeOut),
     ).value;
 
-    final double restOffsetY = Tween<double>(
-      begin: 10,
-      end: 0,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(0.58, 0.88, curve: Curves.easeOutCubic),
-      ),
-    ).value;
+    final double restOffsetY = Tween<double>(begin: 10, end: 0)
+        .animate(
+          CurvedAnimation(
+            parent: controller,
+            curve: const Interval(0.58, 0.88, curve: Curves.easeOutCubic),
+          ),
+        )
+        .value;
 
-    final double mScale = Tween<double>(
-      begin: 0.88,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: const Interval(0.42, 0.68, curve: Curves.easeOutBack),
-      ),
-    ).value;
+    final double mScale = Tween<double>(begin: 0.88, end: 1.0)
+        .animate(
+          CurvedAnimation(
+            parent: controller,
+            curve: const Interval(0.42, 0.68, curve: Curves.easeOutBack),
+          ),
+        )
+        .value;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
