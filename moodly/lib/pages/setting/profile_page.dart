@@ -1,7 +1,50 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../core/services/streak_service.dart';
 
-import '../../core/styles/moodly_colors.dart';
-import 'edit_profile_page.dart';
+import '../pages.dart';
+
+const Color _profileBg = Color(0xFFF4F8EA);
+const Color _profileCard = Colors.white;
+const Color _profileGreen = Color(0xFF7BC25D);
+const Color _profileGreenDark = Color(0xFF5E9E49);
+const Color _profileGreenSoft = Color(0xFFDDEFCF);
+const Color _profileMintSoft = Color(0xFFE9F7E8);
+const Color _profilePinkSoft = Color(0xFFFFEEF2);
+const Color _profilePeachSoft = Color(0xFFFFE9DD);
+const Color _profileTextDark = Color(0xFF1F1F1F);
+const Color _profileTextSoft = Color(0xFF6F746E);
+const Color _profileBrand = Color(0xFFC65F59);
+
+List<BoxShadow> get _profileShadow => const [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, 0.08),
+        offset: Offset(0, 8),
+        blurRadius: 20,
+        spreadRadius: 0,
+      ),
+    ];
+
+TextStyle? _h1(BuildContext context, {Color color = _profileTextDark}) {
+  return Theme.of(context).textTheme.headlineLarge?.copyWith(color: color);
+}
+
+TextStyle? _h2(BuildContext context, {Color color = _profileTextDark}) {
+  return Theme.of(context).textTheme.titleMedium?.copyWith(color: color);
+}
+
+TextStyle? _body(BuildContext context, {Color color = _profileTextSoft}) {
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(color: color);
+}
+
+TextStyle? _bodyAlt(BuildContext context, {Color color = _profileTextDark}) {
+  return Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
+}
+
+TextStyle? _button(BuildContext context, {Color color = Colors.white}) {
+  return Theme.of(context).textTheme.labelLarge?.copyWith(color: color);
+}
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -11,129 +54,307 @@ class ProfilePage extends StatelessWidget {
     return width > 430 ? 430 : width;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final maxWidth = _maxWidth(context);
+  String _badgeTitleFor(int streak) {
+    if (streak >= 120) return 'Tumbuh dengan Tenang';
+    if (streak >= 30) return 'Menjaga Diri dengan Setia';
+    if (streak >= 14) return 'Tumbuh Pelan-Pelan';
+    if (streak >= 7) return 'Teman Diri Sendiri';
+    if (streak >= 3) return 'Mulai Konsisten';
+    return 'Belum ada badge';
+  }
 
-    return Scaffold(
-      backgroundColor: MoodlyColors.bgLight,
-      body: SafeArea(
-        child: Center(
-          child: SizedBox(
-            width: maxWidth,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 16,
-              ),
-              child: Column(
-                children: [
-                  _Header(
-                    title: "Profile",
-                    onBack: () => Navigator.pop(context),
-                  ),
+  String _resolveName(Map<String, dynamic>? data, User? user) {
+    final fullName = (data?['fullName'] as String?)?.trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
 
-                  const SizedBox(height: 42),
+    final displayName = user?.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
 
-                  const _ProfileAvatar(),
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
 
-                  const SizedBox(height: 26),
+    return 'Pengguna Moodly';
+  }
 
-                  const Text(
-                    'Muhammad Yusuf',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                    ),
-                  ),
+  String _resolveEmail(Map<String, dynamic>? data, User? user) {
+    final email = (data?['email'] as String?)?.trim() ?? user?.email?.trim();
+    if (email != null && email.isNotEmpty) return email;
+    return '-';
+  }
 
-                  const SizedBox(height: 42),
+  String? _resolvePhotoUrl(Map<String, dynamic>? data, User? user) {
+    final photoUrl = (data?['photoUrl'] as String?)?.trim();
+    if (photoUrl != null && photoUrl.isNotEmpty) return photoUrl;
 
-                  Row(
-                    children: const [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.calendar_month_rounded,
-                          iconColor: Color(0xFF80C567),
-                          value: '124',
-                          label: 'Pencatatan',
-                        ),
-                      ),
-                      SizedBox(width: 18),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.local_fire_department_rounded,
-                          iconColor: Color(0xFFFFB7B7),
-                          value: '24',
-                          label: 'Rangkaian harian',
-                        ),
-                      ),
-                    ],
-                  ),
+    final authPhoto = user?.photoURL?.trim();
+    if (authPhoto != null && authPhoto.isNotEmpty) return authPhoto;
 
-                  const SizedBox(height: 24),
+    return null;
+  }
 
-                  const _LargeStatCard(),
+  String? _resolveAvatarAsset(Map<String, dynamic>? data) {
+    final avatarId = (data?['avatarId'] as String?)?.trim();
+    if (avatarId != null && avatarId.isNotEmpty) return avatarId;
+    return null;
+  }
 
-                  const SizedBox(height: 48),
+  String _resolvePhone(Map<String, dynamic>? data) {
+    final phone = (data?['phoneNumber'] as String?)?.trim();
+    if (phone != null && phone.isNotEmpty) return phone;
+    return 'Belum ditambahkan';
+  }
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const EditProfilePage(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: MoodlyColors.green,
-                        foregroundColor: Colors.white,
-                        elevation: 10,
-                        shadowColor: Colors.black.withOpacity(0.2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Ubah Profile',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Icon(Icons.arrow_forward_rounded),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  String _providerLabel(User? user) {
+    if (user == null) return '-';
+
+    final ids = user.providerData.map((e) => e.providerId).toList();
+
+    if (ids.contains('google.com')) return 'Google';
+    if (ids.contains('facebook.com')) return 'Facebook';
+    if (ids.contains('password')) return 'Email';
+    if (user.isAnonymous) return 'Anonim';
+
+    return 'Firebase';
+  }
+
+  DateTime? _parseCreatedAt(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Widget _background() {
+    return Stack(
+      children: [
+        Positioned(
+          top: -30,
+          right: -30,
+          child: Container(
+            width: 180,
+            height: 180,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _profilePinkSoft.withOpacity(0.7),
             ),
           ),
         ),
+        Positioned(
+          top: 240,
+          left: -70,
+          child: Container(
+            width: 170,
+            height: 170,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _profileMintSoft.withOpacity(0.85),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 90,
+          right: -60,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _profileGreenSoft.withOpacity(0.55),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = _maxWidth(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+
+    return Scaffold(
+      backgroundColor: _profileBg,
+      body: Stack(
+        children: [
+          _background(),
+          SafeArea(
+            child: Center(
+              child: SizedBox(
+                width: maxWidth,
+                child: uid == null
+                    ? Center(
+                        child: Text(
+                          'Tidak ada user yang sedang login.',
+                          style: _body(context),
+                        ),
+                      )
+                    : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(uid)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final data = snapshot.data?.data();
+
+                          final name = _resolveName(data, user);
+                          final email = _resolveEmail(data, user);
+                          final photoUrl = _resolvePhotoUrl(data, user);
+                          final avatarAsset = _resolveAvatarAsset(data);
+                          final phone = _resolvePhone(data);
+                          final isVerified =
+                              (data?['isEmailVerified'] as bool?) ??
+                                  (user?.emailVerified ?? false);
+                          final role =
+                              ((data?['role'] as String?) ?? 'user').trim();
+                          final createdAt = _parseCreatedAt(data?['createdAt']);
+                          final provider = _providerLabel(user);
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _ProfileHeader(
+                                  onBack: () => Navigator.pop(context),
+                                ),
+                                const SizedBox(height: 22),
+                                _ProfileHeroCard(
+                                  name: name,
+                                  email: email,
+                                  photoUrl: photoUrl,
+                                  avatarAsset: avatarAsset,
+                                  isVerified: isVerified,
+                                  provider: provider,
+                                  onEdit: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const EditProfilePage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+                                StreamBuilder<StreakState>(
+                                  stream: StreakService.instance.watchState(),
+                                  builder: (context, snapshot) {
+                                    final streak = snapshot.data ?? StreakState.initial();
+                                    final badgeTitle = _badgeTitleFor(streak.currentStreak);
+
+                                    return Container(
+                                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                                      decoration: BoxDecoration(
+                                        color: _profileCard,
+                                        borderRadius: BorderRadius.circular(24),
+                                        boxShadow: _profileShadow,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 52,
+                                            height: 52,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: _profilePinkSoft,
+                                            ),
+                                            child: const Icon(
+                                              Icons.workspace_premium_rounded,
+                                              color: _profileBrand,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Badge Milestone',
+                                                  style: _body(context),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  badgeTitle,
+                                                  style: _h2(context),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _MiniProfileCard(
+                                        icon: Icons.verified_user_rounded,
+                                        iconColor: _profileGreenDark,
+                                        value: isVerified ? 'Ya' : 'Tidak',
+                                        label: 'Status verifikasi',
+                                        bg: _profileMintSoft,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _MiniProfileCard(
+                                        icon: Icons.login_rounded,
+                                        iconColor: const Color(0xFFE08C9B),
+                                        value: provider,
+                                        label: 'Metode login',
+                                        bg: _profilePinkSoft,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _AccountSummaryCard(
+                                  joinedDate: _formatDate(createdAt),
+                                  role: role,
+                                  phone: phone,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Header extends StatelessWidget {
-  final String title;
+class _ProfileHeader extends StatelessWidget {
   final VoidCallback onBack;
 
-  const _Header({
-    required this.title,
-    required this.onBack,
-  });
+  const _ProfileHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -142,75 +363,238 @@ class _Header extends StatelessWidget {
         GestureDetector(
           onTap: onBack,
           child: const Icon(
-            Icons.arrow_back,
-            color: MoodlyColors.green,
-            size: 22,
+            Icons.arrow_back_rounded,
+            color: _profileGreenDark,
+            size: 26,
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 10),
         Text(
-          title,
-          style: const TextStyle(
-            color: MoodlyColors.green,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
+          'Profil',
+          style: _h2(context, color: _profileGreenDark),
         ),
         const Spacer(),
-        const Text(
-          "Moodly",
-          style: TextStyle(
-            color: Color(0xFFC65F59),
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1,
-          ),
+        Text(
+          'Moodly',
+          style: _h1(context, color: _profileBrand),
         ),
       ],
     );
   }
 }
 
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar();
+class _ProfileHeroCard extends StatelessWidget {
+  final String name;
+  final String email;
+  final String? photoUrl;
+  final String? avatarAsset;
+  final bool isVerified;
+  final String provider;
+  final VoidCallback onEdit;
+
+  const _ProfileHeroCard({
+    required this.name,
+    required this.email,
+    required this.photoUrl,
+    required this.avatarAsset,
+    required this.isVerified,
+    required this.provider,
+    required this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        color: _profileCard,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: _profileShadow,
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: onEdit,
+            child: _ProfileAvatar(
+              photoUrl: photoUrl,
+              avatarAsset: avatarAsset,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: _h1(context),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            email,
+            textAlign: TextAlign.center,
+            style: _body(context),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              _InfoChip(
+                icon: Icons.verified_rounded,
+                label: isVerified
+                    ? 'Email terverifikasi'
+                    : 'Email belum verifikasi',
+                bg: _profileGreenSoft,
+                fg: _profileGreenDark,
+              ),
+              _InfoChip(
+                icon: Icons.login_rounded,
+                label: provider,
+                bg: _profilePinkSoft,
+                fg: const Color(0xFFB56E7B),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: onEdit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _profileGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Ubah Profil',
+                    style: _button(context),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.arrow_forward_rounded),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final String? avatarAsset;
+
+  const _ProfileAvatar({
+    required this.photoUrl,
+    required this.avatarAsset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      child = Image.network(
+        photoUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          if (avatarAsset != null && avatarAsset!.isNotEmpty) {
+            return Image.asset(
+              avatarAsset!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.person_rounded,
+                size: 86,
+                color: _profileTextDark,
+              ),
+            );
+          }
+          return const Icon(
+            Icons.person_rounded,
+            size: 86,
+            color: _profileTextDark,
+          );
+        },
+      );
+    } else if (avatarAsset != null && avatarAsset!.isNotEmpty) {
+      child = Image.asset(
+        avatarAsset!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.person_rounded,
+          size: 86,
+          color: _profileTextDark,
+        ),
+      );
+    } else {
+      child = const Icon(
+        Icons.person_rounded,
+        size: 86,
+        color: _profileTextDark,
+      );
+    }
+
     return SizedBox(
-      width: 170,
-      height: 170,
+      width: 148,
+      height: 148,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 170,
-            height: 170,
+            width: 148,
+            height: 148,
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: MoodlyColors.green,
-                width: 10,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF92D373), Color(0xFFD9EDC5)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.10),
+                  offset: Offset(0, 10),
+                  blurRadius: 20,
+                ),
+              ],
             ),
-            child: const Icon(
-              Icons.person,
-              size: 110,
-              color: Colors.black,
+            child: Container(
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: ClipOval(child: child),
             ),
           ),
           Positioned(
-            right: 8,
-            bottom: 4,
+            right: 6,
+            bottom: 6,
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFC8C8),
-                borderRadius: BorderRadius.circular(14),
+                color: _profilePinkSoft,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.08),
+                    offset: Offset(0, 6),
+                    blurRadius: 14,
+                  ),
+                ],
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.edit_rounded,
-                color: MoodlyColors.green,
+                color: _profileGreenDark,
                 size: 24,
               ),
             ),
@@ -221,107 +605,194 @@ class _ProfileAvatar extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _InfoChip extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
-  final String value;
   final String label;
+  final Color bg;
+  final Color fg;
 
-  const _StatCard({
+  const _InfoChip({
     required this.icon,
-    required this.iconColor,
-    required this.value,
     required this.label,
+    required this.bg,
+    required this.fg,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 190,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.14),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 40,
-            color: iconColor,
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 42,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
+          Icon(icon, size: 16, color: fg),
+          const SizedBox(width: 6),
           Text(
             label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-            ),
+            style: _bodyAlt(context, color: fg),
           ),
-          const Spacer(),
         ],
       ),
     );
   }
 }
 
-class _LargeStatCard extends StatelessWidget {
-  const _LargeStatCard();
+class _MiniProfileCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+  final Color bg;
+
+  const _MiniProfileCard({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    required this.label,
+    required this.bg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 136,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: _profileShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 30),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: _h1(context),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: _body(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountSummaryCard extends StatelessWidget {
+  final String joinedDate;
+  final String role;
+  final String phone;
+
+  const _AccountSummaryCard({
+    required this.joinedDate,
+    required this.role,
+    required this.phone,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 28,
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.14),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
+        color: _profileCard,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: _profileShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _profileGreenSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.badge_rounded,
+                  color: _profileGreenDark,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Ringkasan Akun',
+                  style: _h1(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _SummaryRow(
+            title: 'Bergabung sejak',
+            value: joinedDate,
+            tint: _profilePeachSoft,
+          ),
+          const SizedBox(height: 10),
+          _SummaryRow(
+            title: 'Role akun',
+            value: role,
+            tint: _profileMintSoft,
+          ),
+          const SizedBox(height: 10),
+          _SummaryRow(
+            title: 'Nomor telepon',
+            value: phone,
+            tint: _profilePinkSoft,
           ),
         ],
       ),
-      child: const Column(
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color tint;
+
+  const _SummaryRow({
+    required this.title,
+    required this.value,
+    required this.tint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
         children: [
-          Icon(
-            Icons.bar_chart_rounded,
-            size: 44,
-            color: Color(0xFF80C567),
-          ),
-          SizedBox(height: 18),
-          Text(
-            '84%',
-            style: TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.w900,
+          Expanded(
+            child: Text(
+              title,
+              style: _body(context),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'Analisis mood',
-            style: TextStyle(
-              fontSize: 18,
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: _h2(context),
             ),
           ),
         ],

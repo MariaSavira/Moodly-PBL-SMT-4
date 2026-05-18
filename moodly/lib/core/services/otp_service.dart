@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -15,21 +17,43 @@ class OtpService {
   }) async {
     final url = Uri.parse('$baseUrl/send-register-otp');
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'fullName': fullName.trim(),
-        'email': email.trim().toLowerCase(),
-      }),
-    );
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'fullName': fullName.trim(),
+              'email': email.trim().toLowerCase(),
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final dynamic decodedBody =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(data['message'] ?? 'Gagal mengirim OTP.');
+      final message = decodedBody is Map<String, dynamic>
+          ? decodedBody['message']?.toString()
+          : null;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          message ??
+              'Gagal mengirim OTP. [HTTP ${response.statusCode}] ${response.body}',
+        );
+      }
+    } on SocketException {
+      throw Exception(
+        'Tidak bisa terhubung ke server OTP. Pastikan HP dan laptop satu Wi-Fi, server aktif, dan IP baseUrl benar.',
+      );
+    } on TimeoutException {
+      throw Exception('Server OTP terlalu lama merespons.');
+    } on FormatException {
+      throw Exception(
+        'Respons server OTP bukan JSON yang valid. Cek backend /send-register-otp.',
+      );
     }
   }
 
@@ -42,24 +66,46 @@ class OtpService {
   }) async {
     final url = Uri.parse('$baseUrl/verify-register-otp');
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'fullName': fullName.trim(),
-        'email': email.trim().toLowerCase(),
-        'phoneNumber': phoneNumber.trim(),
-        'password': password,
-        'otp': otp.trim(),
-      }),
-    );
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'fullName': fullName.trim(),
+              'email': email.trim().toLowerCase(),
+              'phoneNumber': phoneNumber.trim(),
+              'password': password,
+              'otp': otp.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final dynamic decodedBody =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(data['message'] ?? 'Gagal memverifikasi OTP.');
+      final message = decodedBody is Map<String, dynamic>
+          ? decodedBody['message']?.toString()
+          : null;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          message ??
+              'Gagal memverifikasi OTP. [HTTP ${response.statusCode}] ${response.body}',
+        );
+      }
+    } on SocketException {
+      throw Exception(
+        'Tidak bisa terhubung ke server OTP. Pastikan server aktif dan alamat baseUrl benar.',
+      );
+    } on TimeoutException {
+      throw Exception('Server OTP terlalu lama merespons.');
+    } on FormatException {
+      throw Exception(
+        'Respons server verifikasi OTP bukan JSON yang valid.',
+      );
     }
   }
 }

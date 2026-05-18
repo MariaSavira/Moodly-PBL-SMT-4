@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/styles/moodly_colors.dart';
-import 'change_password_page.dart';
+import '../pages.dart';
 
 class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
@@ -107,10 +107,7 @@ class _Header extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
 
-  const _Header({
-    required this.title,
-    required this.onBack,
-  });
+  const _Header({required this.title, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -170,9 +167,7 @@ class _SectionTitle extends StatelessWidget {
 class _PasswordCard extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _PasswordCard({
-    required this.onTap,
-  });
+  const _PasswordCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -181,10 +176,7 @@ class _PasswordCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(28),
@@ -251,19 +243,14 @@ class _TwoFactorCard extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const _TwoFactorCard({
-    required this.value,
-    required this.onChanged,
-  });
+  const _TwoFactorCard({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
     return Container(
-      constraints: const BoxConstraints(
-        minHeight: 110,
-      ),
+      constraints: const BoxConstraints(minHeight: 110),
       padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -378,11 +365,7 @@ class _DeviceCard extends StatelessWidget {
               color: MoodlyColors.greenLight,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              icon,
-              color: MoodlyColors.green,
-              size: 30,
-            ),
+            child: Icon(icon, color: MoodlyColors.green, size: 30),
           ),
 
           const SizedBox(width: 16),
@@ -436,10 +419,7 @@ class _DeviceCard extends StatelessWidget {
                 Text(
                   subtitle,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.black),
                 ),
               ],
             ),

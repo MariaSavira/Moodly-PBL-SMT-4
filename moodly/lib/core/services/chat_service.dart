@@ -9,6 +9,20 @@ class ChatService {
 
   User? get currentUser => _auth.currentUser;
 
+  Map<String, dynamic> _buildChatNotice({
+    required String title,
+    required String message,
+    String type = 'warning',
+  }) {
+    return {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'title': title,
+      'message': message,
+      'type': type,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+  }
+
   Future<String> ensureDebugRoom() async {
     const String roomId = 'debug_room_1';
     final user = _auth.currentUser;
@@ -196,6 +210,8 @@ class ChatService {
 
   Future<void> reportMessages({
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> messages,
+    required String reportTag,
+    required String reportReason,
   }) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -240,6 +256,8 @@ class ChatService {
           'isDeleted': data['isDeleted'],
         };
       }).toList(),
+      'reportTag': reportTag,
+      'reportReason': reportReason,
       'createdAt': FieldValue.serverTimestamp(),
       'status': 'pending',
     });
@@ -322,12 +340,23 @@ class ChatService {
 
     if (participants is List) {
       for (final uid in participants) {
+        final userRef = _firestore.collection('users').doc(uid);
+
+        final isInitiator = uid == user.uid;
+
         batch.set(
-          _firestore.collection('users').doc(uid),
+          userRef,
           {
             'status': 'idle',
             'currentRoomId': null,
             'updatedAt': FieldValue.serverTimestamp(),
+            'chatNotice': _buildChatNotice(
+              title: 'Percakapan berakhir',
+              message: isInitiator
+                  ? 'Kamu telah mengakhiri percakapan.'
+                  : 'Teman chat telah mengakhiri percakapan.',
+              type: isInitiator ? 'info' : 'warning',
+            ),
           },
           SetOptions(merge: true),
         );
@@ -345,51 +374,65 @@ class ChatService {
 
     final waitingRef = _firestore.collection('waiting_users');
 
-    // ambil 1 user lain
     final snapshot = await waitingRef
         .orderBy('createdAt')
-        .limit(1)
+        .limit(10)
         .get();
 
-    if (snapshot.docs.isNotEmpty &&
-        snapshot.docs.first.id != user.uid) {
-      
-      final otherUserDoc = snapshot.docs.first;
+    QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
+
+    for (final doc in snapshot.docs) {
+      if (doc.id != user.uid) {
+        otherUserDoc = doc;
+        break;
+      }
+    }
+
+    if (otherUserDoc != null) {
       final otherUid = otherUserDoc.id;
-
-      // ❌ hapus dari queue
-      await waitingRef.doc(otherUid).delete();
-
-      // 🔥 buat room baru
       final roomRef = _firestore.collection('chat_rooms').doc();
 
-      await roomRef.set({
+      final batch = _firestore.batch();
+
+      batch.delete(waitingRef.doc(otherUid));
+      batch.delete(waitingRef.doc(user.uid));
+
+      batch.set(roomRef, {
         'roomId': roomRef.id,
         'participants': [user.uid, otherUid],
         'status': 'active',
         'createdAt': FieldValue.serverTimestamp(),
+        'lastActivityAt': FieldValue.serverTimestamp(),
       });
 
-      // update user A
-      await _firestore.collection('users').doc(user.uid).set({
-        'currentRoomId': roomRef.id,
-        'status': 'chatting',
-      }, SetOptions(merge: true));
+      batch.set(
+        _firestore.collection('users').doc(user.uid),
+        {
+          'currentRoomId': roomRef.id,
+          'status': 'chatting',
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
-      // update user B
-      await _firestore.collection('users').doc(otherUid).set({
-        'currentRoomId': roomRef.id,
-        'status': 'chatting',
-      }, SetOptions(merge: true));
+      batch.set(
+        _firestore.collection('users').doc(otherUid),
+        {
+          'currentRoomId': roomRef.id,
+          'status': 'chatting',
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
+      await batch.commit();
       return roomRef.id;
     }
 
-    // ❌ belum ada pasangan → masuk queue
     await waitingRef.doc(user.uid).set({
       'uid': user.uid,
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
 
     return null;
   }
@@ -415,7 +458,6 @@ class ChatService {
 
       final lastActivityTime = lastActivityAt.toDate();
       final now = DateTime.now();
-
       final idleDuration = now.difference(lastActivityTime);
 
       if (idleDuration < idleLimit) return;
@@ -430,6 +472,12 @@ class ChatService {
               'status': 'idle',
               'currentRoomId': null,
               'updatedAt': FieldValue.serverTimestamp(),
+              'chatNotice': _buildChatNotice(
+                title: 'Room ditutup otomatis',
+                message:
+                    'Percakapan berakhir karena tidak ada aktivitas selama 5 menit.',
+                type: 'warning',
+              ),
             },
             SetOptions(merge: true),
           );
