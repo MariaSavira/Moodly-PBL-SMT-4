@@ -19,6 +19,17 @@ class StreakPage extends StatelessWidget {
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
 
+  List<BoxShadow> get _softShadow => const [
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, 0.10),
+          offset: Offset(0, 3),
+          blurRadius: 10,
+          spreadRadius: 0,
+        ),
+      ];
+
+  static const List<int> _milestones = [3, 7, 14, 30, 120];
+
   List<_RewardPreview> get _rewardPreviews => const [
         _RewardPreview(
           title: 'Avatar Anonim',
@@ -28,7 +39,7 @@ class StreakPage extends StatelessWidget {
           iconColor: Color(0xFFE58696),
         ),
         _RewardPreview(
-          title: 'Frame Avatar',
+          title: 'Bingkai Avatar',
           subtitle: 'Mulai 90 poin',
           icon: Icons.auto_awesome_rounded,
           accent: Color(0xFFE5F3D7),
@@ -47,15 +58,6 @@ class StreakPage extends StatelessWidget {
           icon: Icons.workspace_premium_rounded,
           accent: Color(0xFFF5EAFB),
           iconColor: Color(0xFF9A76B3),
-        ),
-      ];
-
-  List<BoxShadow> get _softShadow => const [
-        BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.10),
-          offset: Offset(0, 3),
-          blurRadius: 10,
-          spreadRadius: 0,
         ),
       ];
 
@@ -169,12 +171,6 @@ class StreakPage extends StatelessWidget {
         !state.comboDoneToday;
   }
 
-  bool _freezeRiskTomorrow(StreakState state) {
-    return !state.moodDoneToday;
-  }
-
-  static const List<int> _milestones = [3, 7, 14, 30, 120];
-
   int _nextMilestoneFor(int streak) {
     for (final m in _milestones) {
       if (streak < m) return m;
@@ -206,38 +202,6 @@ class StreakPage extends StatelessWidget {
     if (streak < 30) return 'Menjaga Diri dengan Setia';
     if (streak < 120) return 'Tumbuh dengan Tenang';
     return 'Semua badge terbuka';
-  }
-
-  String _freezeStatusLabel(StreakState state) {
-    if (state.moodDoneToday) return 'Hari ini aman';
-    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
-      return 'Freeze siap melindungi';
-    }
-    return 'Besok streak rawan putus';
-  }
-
-  Color _freezeStatusBg(StreakState state) {
-    if (state.moodDoneToday) return _greenPastel;
-    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
-      return const Color(0xFFFFF0D9);
-    }
-    return const Color(0xFFFFE6EA);
-  }
-
-  Color _freezeStatusBorder(StreakState state) {
-    if (state.moodDoneToday) return const Color(0xFFB8E0A7);
-    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
-      return const Color(0xFFE7B35C);
-    }
-    return const Color(0xFFE48A98);
-  }
-
-  IconData _freezeStatusIcon(StreakState state) {
-    if (state.moodDoneToday) return Icons.check_circle_rounded;
-    if ((state.freezeEnabled || state.autoUseFreeze) && state.freezeOwned > 0) {
-      return Icons.shield_moon_rounded;
-    }
-    return Icons.warning_amber_rounded;
   }
 
   Future<void> _handleMissionAction(
@@ -334,241 +298,6 @@ class StreakPage extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return StreamBuilder<StreakState>(
-    stream: StreakService.instance.watchState(),
-    builder: (context, snapshot) {
-      final state = snapshot.data ?? StreakState.initial();
-
-        return Scaffold(
-          backgroundColor: _bg,
-          body: SafeArea(
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 120,
-                  right: -60,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _greenSoft.withOpacity(0.35),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 460,
-                  left: -70,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _pinkSoft.withOpacity(0.45),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -90,
-                  right: 20,
-                  child: Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _greenSoft.withOpacity(0.25),
-                    ),
-                  ),
-                ),
-                CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                        child: _buildHeader(context, state),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: _buildSummaryCard(context, state),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: _buildMissionHeader(context, state),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                      sliver: SliverList.separated(
-                        itemCount: _buildSections(state).length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 14),
-                        itemBuilder: (context, index) {
-                          final section = _buildSections(state)[index];
-                          return _buildMissionCard(context, section, state);
-                        },
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
-                        child: _buildRewardSection(context, state),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, StreakState state){
-    final textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.70),
-              shape: BoxShape.circle,
-              boxShadow: _softShadow,
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 18,
-              color: _textDark,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Streak',
-            style: textTheme.headlineLarge?.copyWith(
-              fontSize: 28,
-              color: _textDark,
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () => _showStreakWalkthrough(context, state),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.72),
-              shape: BoxShape.circle,
-              boxShadow: _softShadow,
-            ),
-            child: const Icon(
-              Icons.question_mark_rounded,
-              size: 20,
-              color: _textDark,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopInfoChip(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color bgColor,
-    required Color iconColor,
-    Color textColor = _textDark,
-    VoidCallback? onTap,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: textTheme.bodyMedium?.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: textColor,
-              ),
-            ),
-            if (onTap != null) ...[
-              const SizedBox(width: 6),
-              Icon(
-                Icons.open_in_new_rounded,
-                size: 14,
-                color: textColor.withOpacity(0.72),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryActionButton(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    VoidCallback? onTap,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: _green,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: _softShadow,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: textTheme.bodyMedium?.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildProgressBar({
     required double value,
     required Color fillColor,
@@ -585,164 +314,185 @@ class StreakPage extends StatelessWidget {
     );
   }
 
-  void _showStreakWalkthrough(BuildContext context, StreakState state) {
-    final textTheme = Theme.of(context).textTheme;
+  void _showStreakWalkthrough(BuildContext context) {
+    final steps = const [
+      _WalkthroughStep(
+        title: 'Streak Aktif',
+        desc: 'Angka ini naik saat kamu isi mood harian. Ini pemicu utamanya.',
+      ),
+      _WalkthroughStep(
+        title: 'Freeze Streak',
+        desc: 'Freeze melindungi streak saat kamu bolong, sesuai mode yang kamu pilih.',
+      ),
+      _WalkthroughStep(
+        title: 'Misi Harian',
+        desc: 'Mood, diary, afirmasi, dan bonus combo memberimu poin tambahan.',
+      ),
+      _WalkthroughStep(
+        title: 'Poin & Hadiah',
+        desc: 'Poin bisa ditukar untuk hadiah reguler atau premium.',
+      ),
+    ];
 
-    showDialog(
+    int currentStep = 0;
+
+    showGeneralDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
-      builder: (_) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-            decoration: BoxDecoration(
-              color: _card,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: _softShadow,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Tentang Halaman Streak',
-                  textAlign: TextAlign.center,
-                  style: textTheme.headlineLarge?.copyWith(
-                    fontSize: 24,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _walkthroughItem(
-                  context,
-                  title: 'Streak Aktif',
-                  desc: 'Naik saat kamu isi mood harian. Ini trigger utamanya.',
-                ),
-                _walkthroughItem(
-                  context,
-                  title: 'Freeze Streak',
-                  desc: 'Melindungi streak saat kamu bolong, sesuai mode proteksi yang dipilih.',
-                ),
-                _walkthroughItem(
-                  context,
-                  title: 'Misi Harian',
-                  desc: 'Mood, diary, afirmasi, dan bonus combo memberi poin tambahan.',
-                ),
-                _walkthroughItem(
-                  context,
-                  title: 'Poin & Reward',
-                  desc: 'Poin bisa ditukar untuk reward reguler atau premium.',
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _green,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+      barrierDismissible: true,
+      barrierLabel: 'Walkthrough Streak',
+      barrierColor: Colors.black.withOpacity(0.62),
+      pageBuilder: (_, __, ___) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final textTheme = Theme.of(context).textTheme;
+            final item = steps[currentStep];
+
+            return Material(
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  Positioned.fill(child: Container(color: Colors.transparent)),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(18, 18, 18, 26),
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: _softShadow,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: textTheme.headlineLarge?.copyWith(
+                              fontSize: 24,
+                              color: _textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            item.desc,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: _textSoft,
+                              height: 1.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: List.generate(
+                              steps.length,
+                              (index) => Expanded(
+                                child: Container(
+                                  margin: EdgeInsets.only(
+                                    right: index == steps.length - 1 ? 0 : 6,
+                                  ),
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: index <= currentStep
+                                        ? _green
+                                        : const Color(0xFFE5E9DB),
+                                    borderRadius: BorderRadius.circular(99),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              if (currentStep > 0)
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        currentStep -= 1;
+                                      });
+                                    },
+                                    child: const Text('Kembali'),
+                                  ),
+                                ),
+                              if (currentStep > 0) const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    if (currentStep == steps.length - 1) {
+                                      Navigator.pop(context);
+                                    } else {
+                                      setDialogState(() {
+                                        currentStep += 1;
+                                      });
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _green,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  child: Text(
+                                    currentStep == steps.length - 1
+                                        ? 'Selesai'
+                                        : 'Lanjut',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Text(
-                      'Mengerti',
-                      style: textTheme.labelLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
-    );
-  }
-
-  Widget _walkthroughItem(
-    BuildContext context, {
-    required String title,
-    required String desc,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: textTheme.bodyMedium?.copyWith(
-                fontSize: 13,
-                color: _textDark,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              desc,
-              style: textTheme.bodySmall?.copyWith(
-                fontSize: 12,
-                color: _textSoft,
-                fontWeight: FontWeight.w700,
-                height: 1.45,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showStreakUpPopup(BuildContext context, StreakState state) {
-    showStreakFeedbackPopup(
-      context,
-      title: 'Streak terjaga!',
-      message:
-          'Kamu berhasil menjaga konsistensimu hari ini. Langkah kecilmu tetap berarti.',
-      icon: Icons.local_fire_department_rounded,
-      accent: const Color(0xFFE58696),
-      chipLabel: '+10 poin',
-      secondaryChipLabel: '${state.currentStreak} hari',
-      buttonLabel: 'Lanjutkan',
-    );
-  }
-
-  void _showBadgeUnlockedPopup(BuildContext context, StreakState state) {
-    final badgeTitle = _currentBadgeTitleFor(state.currentStreak);
-
-    showStreakFeedbackPopup(
-      context,
-      title: 'Badge baru terbuka',
-      message:
-          badgeTitle == 'Belum ada badge'
-              ? 'Terus jaga streak-mu. Badge pertamamu akan terbuka di hari ke-3.'
-              : 'Kamu berhasil membuka badge baru karena tetap hadir untuk dirimu sendiri.',
-      icon: Icons.workspace_premium_rounded,
-      accent: const Color(0xFF9A76B3),
-      chipLabel: badgeTitle,
-      secondaryChipLabel:
-          badgeTitle == 'Belum ada badge' ? 'Menuju 3 hari' : 'Milestone tercapai',
-      buttonLabel: 'Lihat Badge',
     );
   }
 
   void _showFreezeInfoSheet(BuildContext context, StreakState state) {
     bool previewEnabled = state.freezeEnabled;
     bool previewAutoUse = state.autoUseFreeze;
+
+    String modalStatusLabel() {
+      if (state.moodDoneToday) return 'Hari ini aman';
+      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
+        return 'Freeze siap melindungi';
+      }
+      return 'Besok streak rawan putus';
+    }
+
+    Color modalStatusBg() {
+      if (state.moodDoneToday) return _greenPastel;
+      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
+        return const Color(0xFFFFF0D9);
+      }
+      return const Color(0xFFFFE6EA);
+    }
+
+    Color modalStatusBorder() {
+      if (state.moodDoneToday) return const Color(0xFFB8E0A7);
+      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
+        return const Color(0xFFE7B35C);
+      }
+      return const Color(0xFFE48A98);
+    }
+
+    IconData modalStatusIcon() {
+      if (state.moodDoneToday) return Icons.check_circle_rounded;
+      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
+        return Icons.shield_moon_rounded;
+      }
+      return Icons.warning_amber_rounded;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -787,7 +537,7 @@ class StreakPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Freeze melindungi streak-mu saat kamu bolong. Kamu bisa memilih mode proteksi aktif atau auto-use.',
+                      'Freeze melindungi streak-mu saat kamu bolong. Kamu bisa memilih mode proteksi aktif atau pakai otomatis.',
                       style: textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
                         height: 1.5,
@@ -796,7 +546,6 @@ class StreakPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
@@ -825,7 +574,9 @@ class StreakPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  previewEnabled ? 'Proteksi sedang aktif' : 'Proteksi belum aktif',
+                                  previewEnabled
+                                      ? 'Proteksi sedang aktif'
+                                      : 'Proteksi belum aktif',
                                   style: textTheme.bodyMedium?.copyWith(
                                     fontSize: 13,
                                     color: _textDark,
@@ -848,16 +599,23 @@ class StreakPage extends StatelessWidget {
                             value: previewEnabled,
                             activeColor: _green,
                             onChanged: (value) async {
-                              setModalState(() => previewEnabled = value);
+                              setModalState(() {
+                                previewEnabled = value;
+                                if (!value) {
+                                  previewAutoUse = false;
+                                }
+                              });
+
                               await StreakService.instance.toggleFreeze(value);
+                              if (!value) {
+                                await StreakService.instance.toggleAutoUseFreeze(false);
+                              }
                             },
                           ),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -875,17 +633,24 @@ class StreakPage extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
                     Row(
                       children: [
                         Expanded(
                           child: GestureDetector(
                             onTap: () async {
                               final next = !previewAutoUse;
-                              setModalState(() => previewAutoUse = next);
+                              setModalState(() {
+                                previewAutoUse = next;
+                                if (next) {
+                                  previewEnabled = true;
+                                }
+                              });
+
                               await StreakService.instance.toggleAutoUseFreeze(next);
+                              if (next) {
+                                await StreakService.instance.toggleFreeze(true);
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
@@ -897,7 +662,6 @@ class StreakPage extends StatelessWidget {
                                 border: Border.all(
                                   color: const Color(0xFF9A76B3),
                                   width: 1.3,
-                                  strokeAlign: BorderSide.strokeAlignInside,
                                 ),
                               ),
                               child: Row(
@@ -930,24 +694,24 @@ class StreakPage extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                             decoration: BoxDecoration(
-                              color: _freezeStatusBg(state),
+                              color: modalStatusBg(),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: _freezeStatusBorder(state),
+                                color: modalStatusBorder(),
                                 width: 1.3,
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  _freezeStatusIcon(state),
-                                  color: _freezeStatusBorder(state),
+                                  modalStatusIcon(),
+                                  color: modalStatusBorder(),
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    _freezeStatusLabel(state),
+                                    modalStatusLabel(),
                                     style: textTheme.bodySmall?.copyWith(
                                       fontSize: 11,
                                       color: _textDark,
@@ -1011,7 +775,7 @@ class StreakPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Milestone Badge',
+                  'Badge Milestone',
                   style: textTheme.headlineLarge?.copyWith(
                     fontSize: 24,
                     color: _textDark,
@@ -1114,169 +878,133 @@ class StreakPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMilestoneTeaserCard(BuildContext context, StreakState state) {
+  Widget _buildHeader(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final currentBadge = _currentBadgeTitleFor(state.currentStreak);
-    final nextBadge = _nextBadgeTitleFor(state.currentStreak);
 
-    return GestureDetector(
-      onTap: () => _showBadgeUnlockedPopup(context, state),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        decoration: BoxDecoration(
-          color: _mintSoft,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: _softShadow,
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.70),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 18,
+              color: _textDark,
+            ),
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFD8F2EA),
-              ),
-              child: const Icon(
-                Icons.workspace_premium_rounded,
-                color: Color(0xFF63B8A2),
-                size: 24,
-              ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Streak',
+            style: textTheme.headlineLarge?.copyWith(
+              fontSize: 28,
+              color: _textDark,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Badge Milestonemu',
-                    style: textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      color: _textSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currentBadge,
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontSize: 13,
-                      color: _textDark,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    state.currentStreak >= _milestones.last
-                        ? 'Semua badge sudah terbuka'
-                        : 'Badge berikutnya: $nextBadge',
-                    style: textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      color: _textSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () => _showMilestoneSheet(context, state),
-              child: const Icon(
-                Icons.open_in_new_rounded,
-                color: _textDark,
-                size: 18,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        GestureDetector(
+          onTap: () => _showStreakWalkthrough(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.72),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: const Icon(
+              Icons.question_mark_rounded,
+              size: 20,
+              color: _textDark,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMissionInfoChip(
+  Widget _buildTopInfoChip(
     BuildContext context, {
+    required IconData icon,
     required String label,
     required Color bgColor,
-    required Color textColor,
-    IconData? icon,
+    required Color iconColor,
+    Color textColor = _textDark,
+    VoidCallback? onTap,
   }) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: textColor),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            label,
-            style: textTheme.bodyMedium?.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: textColor,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
             ),
-          ),
-        ],
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 14,
+                color: textColor.withOpacity(0.72),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildComboBanner(BuildContext context, StreakState state) {
+  Widget _buildSummaryActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
     final textTheme = Theme.of(context).textTheme;
-    final comboReady = _comboReady(state);
 
     return GestureDetector(
-      onTap: () => _handleComboTap(context),
+      onTap: onTap,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFFFFF0F3),
-              Color(0xFFEFF8E5),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
+          color: _green,
+          borderRadius: BorderRadius.circular(16),
           boxShadow: _softShadow,
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFFFD6DE),
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: Color(0xFFE58696),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                state.comboDoneToday
-                    ? 'Bonus combo hari ini sudah berhasil diklaim 🌷'
-                    : comboReady
-                        ? 'Mood, diary, dan afirmasi sudah lengkap. Tekan untuk klaim bonus combo hari ini.'
-                        : 'Selesaikan Mood + Diary + Afirmasi untuk membuka bonus combo hari ini.',
-                style: textTheme.bodyMedium?.copyWith(
-                  fontSize: 12,
-                  height: 1.45,
-                  color: _textDark,
-                  fontWeight: FontWeight.w700,
-                ),
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
             ),
           ],
@@ -1317,7 +1045,7 @@ class StreakPage extends StatelessWidget {
               ),
               _buildSummaryActionButton(
                 context,
-                label: 'Reward',
+                label: 'Hadiah',
                 icon: Icons.redeem_rounded,
                 onTap: () {
                   Navigator.push(
@@ -1428,7 +1156,7 @@ class StreakPage extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Progress ke milestone berikutnya',
+                        'Progres ke milestone berikutnya',
                         style: textTheme.bodySmall?.copyWith(
                           fontSize: 12,
                           color: _textSoft,
@@ -1482,66 +1210,6 @@ class StreakPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWeeklyRewardItem(
-    BuildContext context,
-    _WeeklyReward item,
-    StreakState state,
-  ) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: item.isToday ? () => _showStreakUpPopup(context, state) : null,
-      child: Column(
-        children: [
-          Text(
-            item.dayLabel,
-            style: textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-              color: _textDark,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            width: item.isToday ? 58 : 52,
-            height: item.isToday ? 58 : 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: item.isToday ? _pink : _pink.withOpacity(0.72),
-              boxShadow: item.isToday
-                  ? [
-                      ..._softShadow,
-                      BoxShadow(
-                        color: _pink.withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : _softShadow,
-              border: item.isToday
-                  ? Border.all(
-                      color: Colors.white,
-                      width: 2.2,
-                    )
-                  : null,
-            ),
-            child: Center(
-              child: Text(
-                item.pointLabel,
-                style: textTheme.bodySmall?.copyWith(
-                  fontSize: item.isToday ? 12 : 11,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildWeeklyRewardsGrid(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
@@ -1557,7 +1225,7 @@ class StreakPage extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Progress Mingguan',
+                'Progres Mingguan',
                 style: textTheme.bodySmall?.copyWith(
                   fontSize: 12,
                   color: _textSoft,
@@ -1626,6 +1294,97 @@ class StreakPage extends StatelessWidget {
     );
   }
 
+  Widget _buildMissionInfoChip(
+    BuildContext context, {
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+    IconData? icon,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: textColor),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComboBanner(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final comboReady = _comboReady(state);
+
+    return GestureDetector(
+      onTap: () => _handleComboTap(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFF0F3),
+              Color(0xFFEFF8E5),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFFFD6DE),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Color(0xFFE58696),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                state.comboDoneToday
+                    ? 'Bonus combo hari ini sudah berhasil diklaim 🌷'
+                    : comboReady
+                        ? 'Mood, diary, dan afirmasi sudah lengkap. Tekan untuk klaim bonus combo hari ini.'
+                        : 'Selesaikan Mood + Diary + Afirmasi untuk membuka bonus combo hari ini.',
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMissionHeader(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
     const totalTasks = 4;
@@ -1655,8 +1414,7 @@ class StreakPage extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F0EE),
                   borderRadius: BorderRadius.circular(16),
@@ -1711,7 +1469,7 @@ class StreakPage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Progress harian',
+                  'Progres harian',
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: _textSoft,
@@ -1736,6 +1494,42 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _buildComboBanner(context, state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskTile(BuildContext context, _MissionTask task) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.90),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: _softShadow,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              task.title,
+              style: textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                color: _textDark,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            task.isDone
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: task.isDone ? _green : const Color(0xFFD8D8D2),
+            size: 24,
+          ),
         ],
       ),
     );
@@ -1772,8 +1566,7 @@ class StreakPage extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: section.chipColor,
                       borderRadius: BorderRadius.circular(14),
@@ -1789,8 +1582,7 @@ class StreakPage extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.78),
                       borderRadius: BorderRadius.circular(14),
@@ -1861,12 +1653,14 @@ class StreakPage extends StatelessWidget {
                     Expanded(
                       child: Column(
                         children: section.tasks
+                            .asMap()
+                            .entries
                             .map(
-                              (task) => Padding(
+                              (entry) => Padding(
                                 padding: EdgeInsets.only(
-                                  bottom: task == section.tasks.last ? 0 : 10,
+                                  bottom: entry.key == section.tasks.length - 1 ? 0 : 10,
                                 ),
-                                child: _buildTaskTile(context, task),
+                                child: _buildTaskTile(context, entry.value),
                               ),
                             )
                             .toList(),
@@ -1880,8 +1674,7 @@ class StreakPage extends StatelessWidget {
                 onTap: () => _handleMissionAction(context, section.action),
                 child: Container(
                   width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.88),
                     borderRadius: BorderRadius.circular(16),
@@ -1919,6 +1712,103 @@ class StreakPage extends StatelessWidget {
     );
   }
 
+  Widget _buildRewardPreviewCard(
+    BuildContext context,
+    _RewardPreview item,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: 126,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: _softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: item.accent,
+            ),
+            child: Icon(
+              item.icon,
+              color: item.iconColor,
+              size: 22,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            item.title,
+            style: textTheme.bodyMedium?.copyWith(
+              fontSize: 13,
+              color: _textDark,
+              fontWeight: FontWeight.w800,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.subtitle,
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: _textSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Color bgColor,
+    required Color textColor,
+    VoidCallback? onTap,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: textColor),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRewardSection(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
 
@@ -1932,22 +1822,16 @@ class StreakPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Poin & Reward',
-                  style: textTheme.headlineLarge?.copyWith(
-                    fontSize: 24,
-                    color: _textDark,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Poin & Hadiah',
+            style: textTheme.headlineLarge?.copyWith(
+              fontSize: 24,
+              color: _textDark,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Poinmu bisa ditukar untuk reward kecil yang menyenangkan, atau disimpan untuk hadiah besar.',
+            'Poinmu bisa ditukar untuk hadiah kecil yang menyenangkan, atau disimpan untuk hadiah besar.',
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 13,
               height: 1.5,
@@ -1956,8 +1840,6 @@ class StreakPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _buildPointsHeroCard(context, state),
-          const SizedBox(height: 12),
           _buildMilestoneTeaserCard(context, state),
           const SizedBox(height: 14),
           SizedBox(
@@ -1975,13 +1857,13 @@ class StreakPage extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _buildBottomActionButton(
                   context,
-                  label: 'Redeem Premium',
+                  label: 'Tukar Premium',
                   icon: Icons.workspace_premium_rounded,
                   bgColor: _green,
                   textColor: Colors.white,
@@ -2001,7 +1883,7 @@ class StreakPage extends StatelessWidget {
               Expanded(
                 child: _buildBottomActionButton(
                   context,
-                  label: 'Belanja Reward',
+                  label: 'Tukar Hadiah',
                   icon: Icons.redeem_rounded,
                   bgColor: _pinkSoft,
                   textColor: _textDark,
@@ -2024,261 +1906,204 @@ class StreakPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPointsHeroCard(BuildContext context, StreakState state) {
+  Widget _buildMilestoneTeaserCard(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
+    final currentBadge = _currentBadgeTitleFor(state.currentStreak);
+    final nextBadge = _nextBadgeTitleFor(state.currentStreak);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFFF2F5),
-            Color(0xFFEFF8E8),
+    return GestureDetector(
+      onTap: () => _showMilestoneSheet(context, state),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: _mintSoft,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: _softShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFD8F2EA),
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Color(0xFF63B8A2),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Badge Milestonemu',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    currentBadge,
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontSize: 13,
+                      color: _textDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.currentStreak >= _milestones.last
+                        ? 'Semua badge sudah terbuka'
+                        : 'Badge berikutnya: $nextBadge',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: _textSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.open_in_new_rounded,
+              color: _textDark,
+              size: 18,
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: _softShadow,
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFFFD8DF),
-            ),
-            child: const Icon(
-              Icons.stars_rounded,
-              size: 26,
-              color: Color(0xFFE58696),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<StreakState>(
+      stream: StreakService.instance.watchState(),
+      builder: (context, snapshot) {
+        final state = snapshot.data ?? StreakState.initial();
+        final sections = _buildSections(state);
+
+        return Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
+            child: Stack(
               children: [
-                Text(
-                  'Total poinmu',
-                  style: textTheme.bodySmall?.copyWith(
-                    fontSize: 12,
-                    color: _textSoft,
-                    fontWeight: FontWeight.w700,
+                Positioned(
+                  top: 120,
+                  right: -60,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _greenSoft.withOpacity(0.35),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${state.totalPoints} poin',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontSize: 22,
-                    color: _textDark,
-                    fontWeight: FontWeight.w800,
+                Positioned(
+                  top: 460,
+                  left: -70,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _pinkSoft.withOpacity(0.45),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Sedikit lagi menuju reward yang lebih besar.',
-                  style: textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    color: _textSoft,
-                    fontWeight: FontWeight.w700,
+                Positioned(
+                  bottom: -90,
+                  right: 20,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _greenSoft.withOpacity(0.25),
+                    ),
                   ),
+                ),
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                        child: _buildHeader(context),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildSummaryCard(context, state),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildMissionHeader(context, state),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                        child: Column(
+                          children: sections
+                              .asMap()
+                              .entries
+                              .map(
+                                (entry) => Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: entry.key == sections.length - 1 ? 0 : 14,
+                                  ),
+                                  child: _buildMissionCard(
+                                    context,
+                                    entry.value,
+                                    state,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
+                        child: _buildRewardSection(context, state),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRewardPreviewCard(
-    BuildContext context,
-    _RewardPreview item,
-  ) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      width: 138,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: _softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: item.accent,
-            ),
-            child: Icon(
-              item.icon,
-              size: 22,
-              color: item.iconColor,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodyMedium?.copyWith(
-              fontSize: 13,
-              color: _textDark,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            item.subtitle,
-            style: textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-              color: _textSoft,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniRuleChip(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required Color bgColor,
-    required Color iconColor,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: iconColor),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              label,
-              style: textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-                color: _textDark,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomActionButton(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required Color bgColor,
-    required Color textColor,
-    VoidCallback? onTap,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: _softShadow,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 17, color: textColor),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontSize: 12,
-                  color: textColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTaskTile(BuildContext context, _MissionTask task) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 180),
-      opacity: task.isMuted ? 0.55 : 1,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.90),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: _softShadow,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                task.title,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontSize: 13,
-                  color: _textDark,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: task.isDone ? _green : const Color(0xFFE6E6E1),
-              ),
-              child: Icon(
-                task.isDone ? Icons.check_rounded : Icons.circle_outlined,
-                size: 18,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _WeeklyReward {
-  final String dayLabel;
-  final String pointLabel;
-  final bool isToday;
+enum _MissionAction { mood, diary, affirmation }
 
-  const _WeeklyReward({
-    required this.dayLabel,
-    required this.pointLabel,
-    this.isToday = false,
+class _MissionTask {
+  final String title;
+  final bool isDone;
+
+  const _MissionTask({
+    required this.title,
+    required this.isDone,
   });
 }
 
@@ -2314,18 +2139,6 @@ class _MissionSection {
   });
 }
 
-class _MissionTask {
-  final String title;
-  final bool isDone;
-  final bool isMuted;
-
-  const _MissionTask({
-    required this.title,
-    required this.isDone,
-    this.isMuted = false,
-  });
-}
-
 class _RewardPreview {
   final String title;
   final String subtitle;
@@ -2339,6 +2152,18 @@ class _RewardPreview {
     required this.icon,
     required this.accent,
     required this.iconColor,
+  });
+}
+
+class _WeeklyReward {
+  final String dayLabel;
+  final String pointLabel;
+  final bool isToday;
+
+  const _WeeklyReward({
+    required this.dayLabel,
+    required this.pointLabel,
+    this.isToday = false,
   });
 }
 
@@ -2356,10 +2181,10 @@ class _BadgePill extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      width: 145,
+      width: 132,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF4F6),
+        color: const Color(0xFFFFF2F5),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -2373,12 +2198,12 @@ class _BadgePill extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             title,
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 12,
-              color: const Color(0xFF2A2A2A),
+              color: const Color(0xFF222222),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -2388,8 +2213,12 @@ class _BadgePill extends StatelessWidget {
   }
 }
 
-enum _MissionAction {
-  mood,
-  diary,
-  affirmation,
+class _WalkthroughStep {
+  final String title;
+  final String desc;
+
+  const _WalkthroughStep({
+    required this.title,
+    required this.desc,
+  });
 }
