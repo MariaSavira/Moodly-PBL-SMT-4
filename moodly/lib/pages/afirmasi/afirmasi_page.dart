@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
@@ -11,6 +12,13 @@ class AfirmasiPage extends StatefulWidget {
 }
 
 class _AfirmasiPageState extends State<AfirmasiPage> {
+   @override
+  void initState() {
+    super.initState();
+    _checkSavedCategories();
+  }
+  static const String _selectedCategoriesKey =
+    'selected_afirmasi_categories';
   final List<Map<String, dynamic>> kategoriAfirmasi = [
     {
       'label': 'Rasa Syukur',
@@ -40,7 +48,25 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
   ];
 
   final List<String> selectedCategories = [];
+  Future<void> _checkSavedCategories() async {
+  final prefs = await SharedPreferences.getInstance();
 
+  final savedCategories =
+      prefs.getStringList(_selectedCategoriesKey) ?? [];
+
+  if (savedCategories.isNotEmpty) {
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailAfirmasiPage(
+          selectedCategories: savedCategories,
+        ),
+      ),
+    );
+  }
+}
   void toggleCategory(String kategori) {
     setState(() {
       if (selectedCategories.contains(kategori)) {
@@ -60,7 +86,7 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
     });
   }
 
-  void goToDetailPage() {
+ Future<void> goToDetailPage() async {
     if (selectedCategories.isEmpty) {
       showCuteTopPopup(
         context,
@@ -70,7 +96,12 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
       );
       return;
     }
+final prefs = await SharedPreferences.getInstance();
 
+await prefs.setStringList(
+  _selectedCategoriesKey,
+  selectedCategories,
+);
     Navigator.push(
       context,
       MaterialPageRoute(

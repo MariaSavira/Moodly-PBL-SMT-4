@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
-
+import 'package:moodly/pages/afirmasi/afirmasi_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -545,14 +546,26 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _popupItem(
-                          icon: Icons.refresh_rounded,
-                          title: 'Atur ulang kategori afirmasi',
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                          },
-                        ),
+                       _popupItem(
+  icon: Icons.refresh_rounded,
+  title: 'Atur ulang kategori afirmasi',
+  onTap: () async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove('selected_afirmasi_categories');
+
+    if (!mounted) return;
+
+    Navigator.pop(context);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AfirmasiPage(),
+      ),
+    );
+  },
+),
                         const SizedBox(height: 8),
                         _popupItem(
                           icon: Icons.widgets_outlined,
@@ -892,7 +905,7 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                       onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.arrow_back_ios_new,
                           color: Colors.white,
