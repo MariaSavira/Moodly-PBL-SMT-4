@@ -57,14 +57,16 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
   if (savedCategories.isNotEmpty) {
     if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DetailAfirmasiPage(
-          selectedCategories: savedCategories,
-        ),
-      ),
-    );
+   Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(
+    builder: (_) => DetailAfirmasiPage(
+      selectedCategories: savedCategories,
+    ),
+  ),
+  (route) => route.isFirst,
+);
+  
   }
 }
   void toggleCategory(String kategori) {
@@ -102,14 +104,14 @@ await prefs.setStringList(
   _selectedCategoriesKey,
   selectedCategories,
 );
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DetailAfirmasiPage(
-          selectedCategories: List<String>.from(selectedCategories),
-        ),
-      ),
-    );
+    Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (_) => DetailAfirmasiPage(
+      selectedCategories: List<String>.from(selectedCategories),
+    ),
+  ),
+);
   }
 
   @override

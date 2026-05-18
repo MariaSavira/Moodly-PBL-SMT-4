@@ -3,21 +3,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'moderasi_admin.dart';
 
-class tinjau_moderasi_admin extends StatefulWidget {
+class TinjauModerasiAdmin extends StatefulWidget {
   final ModerasiModel moderasi;
 
-  const tinjau_moderasi_admin({super.key, required this.moderasi});
+  const TinjauModerasiAdmin({super.key, required this.moderasi});
 
   @override
-  State<tinjau_moderasi_admin> createState() =>
-      _TinjauModerasiAdmin();
+  State<TinjauModerasiAdmin> createState() => _TinjauModerasiAdminState();
 }
 
-class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
+class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
   bool? _aksiDipilih;
-
   String? _durasiDipilih;
-
   bool _isLoading = false;
 
   final List<String> _durasiOptions = [
@@ -40,14 +37,19 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
     setState(() => _isLoading = true);
 
     try {
+      // ✅ Update ke collection yang benar
       await FirebaseFirestore.instance
-          .collection('moderasi')
-          .doc(widget.moderasi.id)
+          .collection('reportedUserInfo')
+          .doc(widget.moderasi.uid)
           .update({
-        'status': 'diproses',
-        'aksi': _aksiDipilih! ? 'ban_sementara' : 'batasi_akses',
-        'durasi': _durasiDipilih,
-        'updatedAt': FieldValue.serverTimestamp(),
+        'userData.hasWarning': true,
+        'userData.warningMessage': _aksiDipilih!
+            ? 'Akun Anda dibanned sementara selama $_durasiDipilih'
+            : 'Akses Anda dibatasi selama $_durasiDipilih',
+        'userData.warningUpdatedAt': FieldValue.serverTimestamp(),
+        'userData.chatNotice': _aksiDipilih!
+            ? 'Akun Anda dibanned sementara. Harap perhatikan aturan komunitas.'
+            : 'Akses Anda dibatasi. Harap berhati-hati dalam berkomunikasi.',
       });
 
       if (!mounted) return;
@@ -80,7 +82,6 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
               const SizedBox(height: 20),
               _buildProfileCard(),
               const SizedBox(height: 20),
-
               if (_aksiDipilih == null) ...[
                 _buildAksiSection(),
               ] else ...[
@@ -118,8 +119,8 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
             color: Color(0xFFFFC4D7),
             shape: BoxShape.circle,
           ),
-          child:
-          const Center(child: Text('👩🏻‍💻', style: TextStyle(fontSize: 20))),
+          child: const Center(
+              child: Text('👩🏻‍💻', style: TextStyle(fontSize: 20))),
         ),
         const SizedBox(width: 7),
         Text(
@@ -177,7 +178,6 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
       ),
       child: Column(
         children: [
-          // avatar
           Container(
             width: 90,
             height: 90,
@@ -186,16 +186,15 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
-              child: m.avatarTerlapor.isNotEmpty
+              child: m.avatarId.isNotEmpty
                   ? ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Image.asset(
-                  m.avatarTerlapor,
+                  m.avatarId,
                   width: 74,
                   height: 74,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      _defaultAvatarLarge(),
+                  errorBuilder: (_, __, ___) => _defaultAvatarLarge(),
                 ),
               )
                   : _defaultAvatarLarge(),
@@ -203,7 +202,7 @@ class _TinjauModerasiAdmin extends State<tinjau_moderasi_admin> {
           ),
           const SizedBox(height: 10),
           Text(
-            m.namaTerlapor,
+            m.nickname,
             style: GoogleFonts.openSans(
               fontSize: 14,
               fontWeight: FontWeight.w600,
