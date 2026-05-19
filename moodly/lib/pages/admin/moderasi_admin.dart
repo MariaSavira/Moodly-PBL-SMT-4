@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/admin_bottom_navbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'tinjau_moderasi_admin.dart';
@@ -525,6 +526,28 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
             );
           },
         ),
+      ),
+
+      bottomNavigationBar: AdminBottomNavbar(
+        currentIndex: 1,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-dashboard',
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-laporan',
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-banding',
+            );
+          }
+        },
       ),
     );
   }
