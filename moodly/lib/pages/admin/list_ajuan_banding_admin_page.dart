@@ -1,4 +1,5 @@
 import 'profil_admin_page.dart';
+import '../../widgets/admin_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -308,6 +309,7 @@ void _showNotifPopup() {
                     ],
                   ),
                 ),
+                
                 Positioned(
                   right: 4,
                   top: _customScrollbarTop(constraints.maxHeight),
@@ -325,9 +327,29 @@ void _showNotifPopup() {
           },
         ),
       ),
+      bottomNavigationBar: AdminBottomNavbar(
+        currentIndex: 3,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-dashboard',
+            );
+          } else if (index == 1) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-moderasi',
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/admin-laporan',
+            );
+          }
+        },
+      ),
     );
   }
-
   Widget _buildTopBar() {
     return Row(
       children: [

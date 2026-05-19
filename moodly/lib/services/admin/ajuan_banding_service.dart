@@ -14,15 +14,15 @@ class AjuanBandingService {
   }
 
   Future<void> updateStatusAjuanBanding({
-    required String documentId,
-    required AjuanBandingStatus status,
-    String? catatanAdmin,
-    TindakanUser? tindakanDipilih,
-  }) async {
-    await _firestore.collection('reports').doc(documentId).update({
-      'status': status.value,
-      if (catatanAdmin != null) 'catatanAdmin': catatanAdmin,
-      if (tindakanDipilih != null) 'tindakanDipilih': tindakanDipilih.value,
-    });
-  }
+  required String documentId,
+  required AjuanBandingStatus status,
+  String? catatanAdmin,
+  TindakanUser? tindakanDipilih,
+}) async {
+  await _firestore.collection('reports').doc(documentId).update({
+    'statusBanding': status.value,
+    if (catatanAdmin != null) 'catatanAdmin': catatanAdmin,
+    if (tindakanDipilih != null) 'tindakanDipilih': tindakanDipilih.value,
+  });
+}
 }

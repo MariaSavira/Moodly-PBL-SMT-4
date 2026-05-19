@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'pages/admin/moderasi_admin.dart';
+import 'pages/admin/list_laporan_user_admin_page.dart';
+import 'pages/admin/list_ajuan_banding_admin_page.dart';
 
 // firebase
 import 'package:firebase_auth/firebase_auth.dart';
@@ -77,7 +80,13 @@ class MoodlyApp extends StatelessWidget {
         ),
       ),
       home: const RootPage(),
+      routes: {
+      '/admin-moderasi': (context) => const ModerasiAdminPage(),
+      '/admin-laporan': (context) => const ListLaporanUserAdminPage(),
+      '/admin-banding': (context) => const ListAjuanBandingAdminPage(),
+},
     );
+    
   }
 }
 

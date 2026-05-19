@@ -33,6 +33,7 @@ class _TinjauAjuanBandingUserAdminPageState
           documentId: '',
           id: 'BD-0001',
           username: 'UserXyz',
+          userId: 'USER-001',
           jenisBan: 'Ban Sementara',
           alasanBanding: 'Tidak sengaja, aku hanya berbagi cerita pribadi....',
           tanggal: DateTime(2026, 4, 10),

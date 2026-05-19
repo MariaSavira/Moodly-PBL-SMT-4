@@ -93,6 +93,7 @@ class AjuanBandingModel {
   final String documentId;
   final String id;
   final String username;
+  final String userId;
   final String jenisBan;
   final String alasanTindakan;
   final TindakanUser tindakanSaatIni;
@@ -105,6 +106,7 @@ class AjuanBandingModel {
     required this.documentId,
     required this.id,
     required this.username,
+    required this.userId,
     required this.jenisBan,
     required this.alasanBanding,
     required this.tanggal,
@@ -123,12 +125,16 @@ class AjuanBandingModel {
       documentId: doc.id,
       id: data['id'] ?? doc.id,
       username: data['username'] ?? data['reportedUserName'] ?? 'User tidak diketahui',
+      userId: data['reportedUid'] ?? 
+    data['reportedUserInfo']?['uid'] ?? '',
       jenisBan: data['jenisBan'] ?? data['tindakanSaatIni'] ?? 'Belum ada tindakan',
       alasanBanding: data['alasanBanding'] ?? 'Belum ada alasan banding',
       tanggal: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
-      status: ajuanBandingStatusFromString(data['status'] ?? 'pending'),
+      status: ajuanBandingStatusFromString(
+  data['statusBanding'] ?? data['status'] ?? 'pending',
+),
       catatanAdmin: data['catatanAdmin'] ?? '',
 alasanTindakan: data['alasanTindakan'] ?? '',
 tindakanSaatIni: tindakanUserFromString(
@@ -141,6 +147,7 @@ tindakanSaatIni: tindakanUserFromString(
     return {
       'id': id,
       'username': username,
+      'userId': userId,
       'jenisBan': jenisBan,
       'alasanBanding': alasanBanding,
       'tanggal': Timestamp.fromDate(tanggal),

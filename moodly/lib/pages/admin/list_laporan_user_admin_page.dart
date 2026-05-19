@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/admin_bottom_navbar.dart';
 import 'profil_admin_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tinjau_laporan_user_admin_page.dart';
@@ -280,54 +281,67 @@ Widget _notifItem({
     final filteredLaporan = _filteredLaporan;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1FBD8),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Stack(
-              children: [
-                SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTopBar(),
-                      const SizedBox(height: 20),
-                      _buildTitleSection(),
-                      const SizedBox(height: 14),
-                      _buildSearchBar(),
-                      const SizedBox(height: 10),
-                      _buildFilterRow(),
-                      const SizedBox(height: 18),
-                      _buildTabs(),
-                      const SizedBox(height: 18),
-                      if (filteredLaporan.isEmpty)
-                        _buildEmptyState()
-                      else
-                        ...filteredLaporan.map(_buildReportCard),
-                    ],
-                  ),
-                ),
+  backgroundColor: const Color(0xFFF1FBD8),
 
-                // Scrollbar custom kecil sesuai Figma
-                Positioned(
-                  right: 4,
-                  top: _customScrollbarTop(constraints.maxHeight),
-                  child: Container(
-                    width: 5,
-                    height: 45,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9D9D9),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
+  body: SafeArea(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTopBar(),
+                  const SizedBox(height: 20),
+                  _buildTitleSection(),
+                  const SizedBox(height: 14),
+                  _buildSearchBar(),
+                  const SizedBox(height: 10),
+                  _buildFilterRow(),
+                  const SizedBox(height: 18),
+                  _buildTabs(),
+                  const SizedBox(height: 18),
+                  if (filteredLaporan.isEmpty)
+                    _buildEmptyState()
+                  else
+                    ...filteredLaporan.map(_buildReportCard),
+                ],
+              ),
+            ),
+
+            Positioned(
+              right: 4,
+              top: _customScrollbarTop(constraints.maxHeight),
+              child: Container(
+                width: 5,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-            );
-          },
-        ),
-      ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  ),
+
+  bottomNavigationBar: AdminBottomNavbar(
+    currentIndex: 2,
+    onTap: (index) {
+      if (index == 0) {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      } else if (index == 1) {
+        Navigator.pushReplacementNamed(context, '/admin-moderasi');
+      } else if (index == 3) {
+        Navigator.pushReplacementNamed(context, '/admin-banding');
+      }
+    },
+  ),
     );
   }
 
