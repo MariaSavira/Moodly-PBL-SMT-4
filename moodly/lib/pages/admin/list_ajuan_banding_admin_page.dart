@@ -21,7 +21,7 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   final ScrollController _scrollController = ScrollController();
 
   int _jumlahNotif = 0;
-
+  bool _isLoading = true;
   List<AjuanBandingModel> _ajuanBandingList = [];
   String _selectedTab = 'Semua';
   String _selectedTanggal = 'Tanggal';
@@ -42,14 +42,19 @@ class _ListAjuanBandingAdminPageState extends State<ListAjuanBandingAdminPage> {
   }
 
   Future<void> _loadAjuanBanding() async {
-    final data = await _ajuanBandingService.getAjuanBanding();
-    if (!mounted) return;
+  setState(() {
+    _isLoading = true;
+  });
 
-    setState(() {
-      _ajuanBandingList = data;
-    });
-  }
+  final data = await _ajuanBandingService.getAjuanBanding();
 
+  if (!mounted) return;
+
+  setState(() {
+    _ajuanBandingList = data;
+    _isLoading = false;
+  });
+}
 Future<void> _loadJumlahNotif() async {
   final data = await _ajuanBandingService.getAjuanBanding();
 
@@ -302,10 +307,17 @@ void _showNotifPopup() {
                       const SizedBox(height: 18),
                       _buildTabs(),
                       const SizedBox(height: 18),
-                      if (filteredAjuan.isEmpty)
-                        _buildEmptyState()
-                      else
-                        ...filteredAjuan.map(_buildAjuanCard),
+                      if (_isLoading)
+  const Center(
+    child: Padding(
+      padding: EdgeInsets.only(top: 40),
+      child: CircularProgressIndicator(),
+    ),
+  )
+else if (filteredAjuan.isEmpty)
+  _buildEmptyState()
+else
+  ...filteredAjuan.map(_buildAjuanCard),
                     ],
                   ),
                 ),

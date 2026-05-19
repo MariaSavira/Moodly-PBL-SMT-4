@@ -69,7 +69,27 @@ Future<void> _ubahStatus(
   if (!mounted) return;
   Navigator.pop(context, true);
 }
+Future<bool> _showConfirmDialog(String title) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: const Text('Tindakan ini akan menyimpan keputusan admin.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Ya'),
+        ),
+      ],
+    ),
+  );
 
+  return result ?? false;
+}
 void _showPilihTindakanSheet() {
   showModalBottomSheet(
     context: context,
@@ -105,13 +125,20 @@ void _showPilihTindakanSheet() {
 
 Widget _tindakanOption(TindakanUser tindakan) {
   return GestureDetector(
-    onTap: () {
-      Navigator.pop(context);
-      _ubahStatus(
-        AjuanBandingStatus.disetujui,
-        tindakanDipilih: tindakan,
-      );
-    },
+    onTap: () async {
+  Navigator.pop(context);
+
+  final confirm = await _showConfirmDialog(
+    'Terima banding dengan tindakan ${tindakan.label}?',
+  );
+
+  if (!confirm) return;
+
+  _ubahStatus(
+    AjuanBandingStatus.disetujui,
+    tindakanDipilih: tindakan,
+  );
+},
     child: Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
@@ -317,7 +344,12 @@ Widget _tindakanOption(TindakanUser tindakan) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _boldText(_ajuan.username),
+                   _boldText(
+                      _placeholder(
+                        _ajuan.username,
+                        'Data user belum tersedia',
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     _normalText('ID User: 091283'),
                     const SizedBox(height: 6),
@@ -359,7 +391,10 @@ Widget _tindakanOption(TindakanUser tindakan) {
             'Keputusan',
             null,
             child: _pinkBox(
-              text: _ajuan.jenisBan,
+              text: _placeholder(
+                _ajuan.jenisBan,
+                'Tindakan belum dipilih',
+              ),
               width: 140,
               height: 35,
               light: false,
@@ -389,7 +424,10 @@ Widget _tindakanOption(TindakanUser tindakan) {
               border: Border.all(color: const Color(0xFFAEDB9A)),
             ),
             child: Text(
-              '“${_ajuan.alasanBanding}”',
+              '“${_placeholder(
+  _ajuan.alasanBanding,
+  'Alasan banding belum diajukan',
+)}”',
               style: GoogleFonts.openSans(
                 fontSize: 10,
                 height: 1.8,
@@ -464,7 +502,12 @@ Widget _tindakanOption(TindakanUser tindakan) {
             label: 'Tolak Banding',
             icon: Icons.cancel_rounded,
             color: const Color(0xFFFF7474),
-            onTap: () => _ubahStatus(AjuanBandingStatus.ditolak),
+            onTap: () async {
+  final confirm = await _showConfirmDialog('Tolak banding ini?');
+  if (!confirm) return;
+
+  _ubahStatus(AjuanBandingStatus.ditolak);
+},
           ),
           const SizedBox(height: 12),
           _buildActionButton(
@@ -593,7 +636,9 @@ Widget _tindakanOption(TindakanUser tindakan) {
       ),
     );
   }
-
+String _placeholder(String value, String placeholder) {
+  return value.trim().isEmpty ? placeholder : value;
+}
   Widget _buildActionButton({
     required String label,
     required Color color,
