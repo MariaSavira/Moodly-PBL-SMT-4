@@ -73,8 +73,18 @@ class _HomepageState extends State<Homepage> {
 
   String _selectedDateLabel() {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     return '${selectedDate.day} ${months[selectedDate.month - 1]}';
   }
@@ -198,7 +208,9 @@ class _HomepageState extends State<Homepage> {
     if (!mounted) return;
 
     setState(() {
-      moodHariIni = (mood != null && mood.trim().isNotEmpty) ? mood.trim() : null;
+      moodHariIni = (mood != null && mood.trim().isNotEmpty)
+          ? mood.trim()
+          : null;
       tipMood = (note != null && note.trim().isNotEmpty)
           ? note.trim()
           : _defaultTipForMood(moodHariIni);
@@ -254,7 +266,9 @@ class _HomepageState extends State<Homepage> {
         _affirmationPreview = text.isNotEmpty
             ? text
             : 'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
-        _affirmationCategory = category.isNotEmpty ? category : 'Untuk hari ini';
+        _affirmationCategory = category.isNotEmpty
+            ? category
+            : 'Untuk hari ini';
       });
     } catch (_) {
       if (!mounted) return;
@@ -297,9 +311,7 @@ class _HomepageState extends State<Homepage> {
   Future<void> _openMoodInput() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => MoodInput(selectedDate: selectedDate),
-      ),
+      MaterialPageRoute(builder: (_) => MoodInput(selectedDate: selectedDate)),
     );
 
     if (!mounted) return;
@@ -350,7 +362,7 @@ class _HomepageState extends State<Homepage> {
 
     switch (index) {
       case 1:
-        targetPage = const MonthPage();
+        targetPage = const SelectedDiaryPage();
         break;
       case 3:
         targetPage = const HomeChatAnonim();
@@ -496,10 +508,7 @@ class _HomepageState extends State<Homepage> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(5),
-                  child: Image.asset(
-                    badgeAsset,
-                    fit: BoxFit.contain,
-                  ),
+                  child: Image.asset(badgeAsset, fit: BoxFit.contain),
                 ),
               ),
             ),
@@ -524,14 +533,16 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(width: 10),
                   StreamBuilder<int>(
-                    stream: MoodlyNotificationService.instance.unreadCountStream(),
+                    stream: MoodlyNotificationService.instance
+                        .unreadCountStream(),
                     builder: (context, snapshot) {
                       final unread = (snapshot.data ?? 0) > 0;
 
                       return _glassIconButton(
                         icon: Icons.notifications_rounded,
                         onTap: () async {
-                          await MoodlyNotificationService.instance.syncForCurrentUser();
+                          await MoodlyNotificationService.instance
+                              .syncForCurrentUser();
                           if (!mounted) return;
                           _goToPage(const NotificationPage());
                         },
@@ -873,7 +884,9 @@ class _HomepageState extends State<Homepage> {
                 icon: Icons.arrow_back_ios_new_rounded,
                 onTap: () async {
                   setState(() {
-                    selectedDate = selectedDate.subtract(const Duration(days: 7));
+                    selectedDate = selectedDate.subtract(
+                      const Duration(days: 7),
+                    );
                   });
                   await _loadSelectedDateMood();
                 },
@@ -1071,7 +1084,9 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _affirmationCategory.isNotEmpty ? _affirmationCategory : 'Untuk hari ini',
+                        _affirmationCategory.isNotEmpty
+                            ? _affirmationCategory
+                            : 'Untuk hari ini',
                         style: AppText.bodyAlt(context).copyWith(
                           fontSize: 13,
                           color: _textDark,
@@ -1508,7 +1523,6 @@ class _HomepageState extends State<Homepage> {
 
   @override
   Widget build(BuildContext context) {
-
     if (FirebaseAuth.instance.currentUser == null) {
       return const OnboardingPage();
     }

@@ -6,77 +6,11 @@ class FirestoreDiaryService {
 
   static final CollectionReference diaryRef = _db.collection("diaries");
 
-  /// ================= ADD DIARY =================
-  static Future<void> addDiary({
-    required String title,
-    required String content,
-    required bool isPublic,
-  }) async {
-    final now = DateTime.now();
-
-    const monthMap = {
-      1: "JAN",
-      2: "FEB",
-      3: "MAR",
-      4: "APR",
-      5: "MEI",
-      6: "JUN",
-      7: "JUL",
-      8: "AGS",
-      9: "SEP",
-      10: "OKT",
-      11: "NOV",
-      12: "DES",
-    };
-
-    await diaryRef.add({
-      "title": title,
-
-      "content": content,
-
-      "time":
-          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}",
-
-      "date": now.day,
-
-      "month": monthMap[now.month],
-
-      "year": now.year,
-
-      "isPublic": isPublic,
-
-      "username": "User",
-
-      "createdAt": FieldValue.serverTimestamp(),
-
-      // SOFT DELETE
-      "isDeleted": false,
-    });
-  }
-
-  /// ================= WEEK DIARY =================
-  Stream<List<DiaryModel>> getWeekDiaries() {
-    return diaryRef.where("isPublic", isEqualTo: false).snapshots().map((
-      snapshot,
-    ) {
-      return snapshot.docs
-          .where((doc) => doc.data() != null)
-          .map(
-            (doc) => DiaryModel.fromFirestore(
-              doc.id,
-              doc.data() as Map<String, dynamic>,
-            ),
-          )
-          .toList();
-    });
-  }
-
-  /// ================= PRIVATE DIARY =================
-  Stream<List<DiaryModel>> getPrivateDiaries(String month, int year) {
+  /// ================= PUBLIC DIARY =================
+  static Stream<List<DiaryModel>> getPublicDiaries() {
     return diaryRef
-        .where("month", isEqualTo: month)
-        .where("year", isEqualTo: year)
-        .where("isPublic", isEqualTo: false)
+        .where("isPublic", isEqualTo: true)
+        .orderBy("createdAt", descending: true)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) {
@@ -88,17 +22,129 @@ class FirestoreDiaryService {
         });
   }
 
-  /// ================= PUBLIC DIARY =================
-  Stream<List<DiaryModel>> getPublicDiaries() {
-    return diaryRef.where("isPublic", isEqualTo: true).snapshots().map((
-      snapshot,
-    ) {
-      return snapshot.docs.map((doc) {
-        return DiaryModel.fromFirestore(
-          doc.id,
-          doc.data() as Map<String, dynamic>,
-        );
-      }).toList();
+  /// ================= PRIVATE DIARY =================
+  Stream<List<DiaryModel>> getPrivateDiaries(String month, int year) {
+    return diaryRef
+        .where("isPublic", isEqualTo: false)
+        .where("month", isEqualTo: month)
+        .where("year", isEqualTo: year)
+        .orderBy("date", descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            return DiaryModel.fromFirestore(
+              doc.id,
+              doc.data() as Map<String, dynamic>,
+            );
+          }).toList();
+        });
+  }
+
+  /// ================= WEEK / BULAN DIARY =================
+  static Stream<List<DiaryModel>> getWeekDiaries() {
+    final now = DateTime.now();
+
+    return diaryRef
+        .where("isPublic", isEqualTo: false)
+        .where("month", isEqualTo: _getMonth(now.month))
+        .where("year", isEqualTo: now.year)
+        .orderBy("date", descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            return DiaryModel.fromFirestore(
+              doc.id,
+              doc.data() as Map<String, dynamic>,
+            );
+          }).toList();
+        });
+  }
+
+  /// ================= TOGGLE LIKE =================
+  static Future<void> toggleDiaryLike({
+    required String diaryId,
+    required String userId,
+  }) async {
+    final doc = diaryRef.doc(diaryId);
+
+    final snapshot = await doc.get();
+
+    final data = snapshot.data() as Map<String, dynamic>;
+
+    List likedBy = data["likedBy"] ?? [];
+
+    if (likedBy.contains(userId)) {
+      await doc.update({
+        "likedBy": FieldValue.arrayRemove([userId]),
+        "likes": FieldValue.increment(-1),
+      });
+    } else {
+      await doc.update({
+        "likedBy": FieldValue.arrayUnion([userId]),
+        "likes": FieldValue.increment(1),
+      });
+    }
+  }
+
+  /// ================= COMMENT COUNT =================
+  static Future<void> updateCommentCount({
+    required String diaryId,
+    required int total,
+  }) async {
+    await diaryRef.doc(diaryId).update({"comments": total});
+  }
+
+  /// ================= ADD DIARY =================
+  static Future<void> addDiary({
+    required String title,
+    required String content,
+    required String time,
+    required int date,
+    required String month,
+    required int year,
+    required bool isPublic,
+    required String username,
+    required String profileImage,
+  }) async {
+    await diaryRef.add({
+      "title": title,
+      "content": content,
+
+      "time": time,
+      "date": date,
+      "month": month,
+      "year": year,
+
+      "isPublic": isPublic,
+
+      "username": username,
+      "profileImage": profileImage,
+
+      "likes": 0,
+      "comments": 0,
+      "likedBy": [],
+
+      "createdAt": FieldValue.serverTimestamp(),
     });
+  }
+
+  /// ================= MONTH FORMAT =================
+  static String _getMonth(int month) {
+    const months = [
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MEI",
+      "JUN",
+      "JUL",
+      "AGS",
+      "SEP",
+      "OKT",
+      "NOV",
+      "DES",
+    ];
+
+    return months[month - 1];
   }
 }

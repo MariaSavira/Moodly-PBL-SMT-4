@@ -5,8 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/firestore_diary_service.dart';
+import '../../core/styles/moodly_colors.dart';
 
 class AddDiaryPage extends StatefulWidget {
   const AddDiaryPage({super.key});
@@ -30,6 +32,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   bool isPressed = false;
 
+  DateTime selectedDate = DateTime.now();
+
   @override
   void dispose() {
     titleController.dispose();
@@ -43,7 +47,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   Future<void> requestPermission() async {
     await Permission.camera.request();
     await Permission.photos.request();
-    await Permission.storage.request();
   }
 
   /// ================= PICK IMAGE =================
@@ -92,23 +95,27 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   Future<void> _cropImage(XFile? picked) async {
     if (picked == null) return;
 
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Atur Gambar',
-          toolbarColor: Colors.pink,
-          toolbarWidgetColor: Colors.white,
-        ),
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Atur Gambar',
+            toolbarColor: Colors.green,
+            toolbarWidgetColor: Colors.white,
+          ),
 
-        IOSUiSettings(title: 'Atur Gambar'),
-      ],
-    );
+          IOSUiSettings(title: 'Atur Gambar'),
+        ],
+      );
 
-    if (cropped != null) {
-      setState(() {
-        _image = File(cropped.path);
-      });
+      if (cropped != null) {
+        setState(() {
+          _image = File(cropped.path);
+        });
+      }
+    } catch (e) {
+      debugPrint("Crop error: $e");
     }
   }
 
@@ -120,16 +127,49 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
     if (title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Judul dan isi diary wajib diisi")),
+        const SnackBar(content: Text("Judul dan isi wajib diisi")),
       );
 
       return;
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+
+    final monthList = [
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MEI",
+      "JUN",
+      "JUL",
+      "AGS",
+      "SEP",
+      "OKT",
+      "NOV",
+      "DES",
+    ];
+
     await FirestoreDiaryService.addDiary(
       title: title,
       content: content,
+
+      /// DATE
+      time: "${selectedDate.hour}:${selectedDate.minute}",
+
+      date: selectedDate.day,
+
+      month: monthList[selectedDate.month - 1],
+
+      year: selectedDate.year,
+
+      /// TYPE
       isPublic: isPublic,
+
+      /// USER
+      username: user?.displayName ?? "Moodly User",
+
+      profileImage: user?.photoURL ?? "",
     );
 
     if (!mounted) return;
@@ -137,26 +177,31 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     Navigator.pop(context);
   }
 
-  /// ================= POPUP PILIH PUBLIC/PRIVATE =================
+  /// ================= SAVE OPTIONS =================
   void showSaveOptions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFDCE3C1),
+      backgroundColor: MoodlyColors.bgLight,
+
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
+
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.all(20),
+
           child: Column(
             mainAxisSize: MainAxisSize.min,
+
             children: [
               Text(
                 "Simpan Diary",
-                style: Theme.of(context).textTheme.headlineSmall,
+
+                style: Theme.of(context).textTheme.titleMedium,
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 20),
 
               Row(
                 children: [
@@ -167,29 +212,30 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                         await saveDiary(false);
                       },
+
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: const EdgeInsets.all(16),
+
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4B6C2),
+                          color: MoodlyColors.pinkAccent,
+
                           borderRadius: BorderRadius.circular(20),
                         ),
+
                         child: const Column(
                           children: [
                             Icon(Icons.lock),
 
-                            SizedBox(height: 8),
+                            SizedBox(height: 5),
 
-                            Text(
-                              "Private",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            Text("Private"),
                           ],
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 10),
 
                   Expanded(
                     child: GestureDetector(
@@ -198,22 +244,23 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                         await saveDiary(true);
                       },
+
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: const EdgeInsets.all(16),
+
                         decoration: BoxDecoration(
-                          color: const Color(0xFFB7DEA2),
+                          color: MoodlyColors.greenLight,
+
                           borderRadius: BorderRadius.circular(20),
                         ),
+
                         child: const Column(
                           children: [
                             Icon(Icons.public),
 
-                            SizedBox(height: 8),
+                            SizedBox(height: 5),
 
-                            Text(
-                              "Public",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            Text("Public"),
                           ],
                         ),
                       ),
@@ -221,8 +268,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   ),
                 ],
               ),
-
-              const SizedBox(height: 20),
             ],
           ),
         );
@@ -230,43 +275,63 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     );
   }
 
+  /// ================= DATE PICKER =================
+  Future<void> pickDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2030),
+    );
+
+    if (date != null) {
+      setState(() {
+        selectedDate = date;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFDCE3C1),
+      backgroundColor: MoodlyColors.bgLight,
 
       floatingActionButton: isKeyboardOpen
           ? null
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 70),
+          : GestureDetector(
+              onTapDown: (_) => setState(() {
+                isPressed = true;
+              }),
 
-              child: GestureDetector(
-                onTapDown: (_) => setState(() => isPressed = true),
+              onTapUp: (_) {
+                setState(() {
+                  isPressed = false;
+                });
 
-                onTapUp: (_) {
-                  setState(() => isPressed = false);
+                showSaveOptions();
+              },
 
-                  showSaveOptions();
-                },
+              onTapCancel: () => setState(() {
+                isPressed = false;
+              }),
 
-                onTapCancel: () => setState(() => isPressed = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
 
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
+                width: 55,
+                height: 55,
 
-                  width: 55,
-                  height: 55,
+                decoration: BoxDecoration(
+                  color: isPressed
+                      ? MoodlyColors.green
+                      : MoodlyColors.pinkAccent,
 
-                  decoration: BoxDecoration(
-                    color: isPressed ? Colors.green : const Color(0xFFF8BBD0),
-
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-
-                  child: const Icon(Icons.check, color: Colors.black),
+                  borderRadius: BorderRadius.circular(18),
                 ),
+
+                child: const Icon(Icons.check),
               ),
             ),
 
@@ -291,12 +356,30 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                   Text(
                     "Buat Diary",
-                    style: Theme.of(context).textTheme.headlineLarge,
+
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
+
+              /// DATE PICKER
+              Align(
+                alignment: Alignment.centerLeft,
+
+                child: TextButton.icon(
+                  onPressed: pickDate,
+
+                  icon: const Icon(Icons.calendar_today),
+
+                  label: Text(
+                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
 
               /// IMAGE
               GestureDetector(
@@ -308,6 +391,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
+
                     borderRadius: BorderRadius.circular(20),
                   ),
 
@@ -317,19 +401,20 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                           child: Image.file(_image!, fit: BoxFit.cover),
                         )
-                      : const Center(child: Icon(Icons.image, size: 40)),
+                      : const Center(child: Icon(Icons.image)),
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
 
-              /// EDITOR
+              /// CONTENT
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(15),
 
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: Colors.white,
+
                     borderRadius: BorderRadius.circular(20),
                   ),
 
@@ -340,6 +425,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
                         decoration: const InputDecoration(
                           hintText: "Judul",
+
                           border: InputBorder.none,
                         ),
                       ),
@@ -349,7 +435,9 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                       Expanded(
                         child: quill.QuillEditor.basic(
                           controller: _controller,
+
                           focusNode: _focusNode,
+
                           scrollController: _scrollController,
                         ),
                       ),
@@ -357,8 +445,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 10),
             ],
           ),
         ),

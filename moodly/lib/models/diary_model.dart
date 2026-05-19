@@ -1,60 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class DiaryModel {
   final String id;
 
   final String title;
-
   final String content;
 
   final String time;
-
   final int date;
-
   final String month;
-
   final int year;
 
   final bool isPublic;
 
   final String username;
-
-  // PROFILE
   final String profileImage;
 
   // LIKE & COMMENT
   int likes;
-
   int comments;
 
-  bool isLiked;
+  // NEW SYSTEM
+  final List<String> likedBy;
+
+  // NEW
+  final DateTime createdAt;
 
   DiaryModel({
     required this.id,
-
     required this.title,
-
     required this.content,
-
     required this.time,
-
     required this.date,
-
     required this.month,
-
     required this.year,
-
     required this.isPublic,
-
     required this.username,
-
-    // PROFILE
     required this.profileImage,
 
-    // LIKE & COMMENT
+    required this.createdAt,
+
     this.likes = 0,
-
     this.comments = 0,
-
-    this.isLiked = false,
+    this.likedBy = const [],
   });
 
   factory DiaryModel.fromFirestore(String id, Map<String, dynamic> data) {
@@ -62,7 +50,6 @@ class DiaryModel {
       id: id,
 
       title: data["title"] ?? "",
-
       content: data["content"] ?? "",
 
       time: data["time"] ?? "",
@@ -81,15 +68,15 @@ class DiaryModel {
 
       username: data["username"] ?? "Unknown",
 
-      // PROFILE
       profileImage: data["profileImage"] ?? "",
 
-      // LIKE & COMMENT
       likes: data["likes"] ?? 0,
 
       comments: data["comments"] ?? 0,
 
-      isLiked: false,
+      likedBy: List<String>.from(data["likedBy"] ?? []),
+
+      createdAt: (data["createdAt"] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }

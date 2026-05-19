@@ -1,10 +1,16 @@
+// ===============================
+// COMMENT PAGE FINAL REALTIME
+// ===============================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../widgets/shared/moodly_user_avatar.dart';
 
+import '../../core/styles/moodly_colors.dart';
 import '../../models/diary_model.dart';
+import '../../services/comment_service.dart';
 import '../../services/report_comment_service.dart';
+import '../../widgets/shared/moodly_user_avatar.dart';
 
 class CommentPage extends StatefulWidget {
   final DiaryModel diary;
@@ -18,10 +24,6 @@ class CommentPage extends StatefulWidget {
 class _CommentPageState extends State<CommentPage> {
   final TextEditingController commentController = TextEditingController();
 
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-  int? replyingIndex;
-
   final List<String> reportCategories = [
     "Spam",
     "Kata Kasar",
@@ -29,208 +31,60 @@ class _CommentPageState extends State<CommentPage> {
     "Bullying",
   ];
 
-  // =========================
-  // COMMENTS
-  // =========================
-
-  List<Map<String, dynamic>> comments = [];
+  String? replyingCommentId;
 
   // =========================
-  // ADD COMMENT
+  // ADD COMMENT / REPLY
   // =========================
 
-  void addComment() {
-    if (commentController.text.trim().isEmpty) {
-      return;
+  Future<void> sendComment() async {
+    if (commentController.text.trim().isEmpty) return;
+
+    final text = commentController.text.trim();
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (replyingCommentId != null) {
+      await CommentService.addReply(
+        diaryId: widget.diary.id,
+        commentId: replyingCommentId!,
+        username: "Kamu",
+        profileImage: "",
+        reply: text,
+      );
+
+      replyingCommentId = null;
+    } else {
+      await CommentService.addComment(
+        diaryId: widget.diary.id,
+        username: "Kamu",
+        profileImage: "",
+        comment: text,
+      );
     }
 
-    setState(() {
-      if (replyingIndex != null) {
-        comments[replyingIndex!]["replies"].add({
-          "username": "Kamu",
-          "uid": FirebaseAuth.instance.currentUser?.uid,
-          "reply": commentController.text,
-          "profile": "",
-          "time": "Baru saja",
-          "likes": 0,
-          "isLiked": false,
-        });
-
-        comments[replyingIndex!]["showReplies"] = true;
-
-        replyingIndex = null;
-      } else {
-        comments.add({
-          "username": "Kamu",
-          "uid": FirebaseAuth.instance.currentUser?.uid,
-          "comment": commentController.text,
-          "profile": "",
-          "time": "Baru saja",
-          "likes": 0,
-          "isLiked": false,
-          "showReplies": false,
-          "replies": [],
-        });
-      }
-    });
-
     commentController.clear();
-  }
-
-  // =========================
-  // LIKE COMMENT
-  // =========================
-
-  void toggleLikeComment(int index) {
-    setState(() {
-      comments[index]["isLiked"] = !comments[index]["isLiked"];
-
-      if (comments[index]["isLiked"]) {
-        comments[index]["likes"]++;
-      } else {
-        comments[index]["likes"]--;
-      }
-    });
-  }
-
-  // =========================
-  // LIKE REPLY
-  // =========================
-
-  void toggleLikeReply(int commentIndex, int replyIndex) {
-    setState(() {
-      comments[commentIndex]["replies"][replyIndex]["isLiked"] =
-          !comments[commentIndex]["replies"][replyIndex]["isLiked"];
-
-      if (comments[commentIndex]["replies"][replyIndex]["isLiked"]) {
-        comments[commentIndex]["replies"][replyIndex]["likes"]++;
-      } else {
-        comments[commentIndex]["replies"][replyIndex]["likes"]--;
-      }
-    });
-  }
-
-  // =========================
-  // TOGGLE REPLIES
-  // =========================
-
-  void toggleReplies(int index) {
-    setState(() {
-      comments[index]["showReplies"] = !comments[index]["showReplies"];
-    });
-  }
-
-  // =========================
-  // SUCCESS DIALOG
-  // =========================
-
-  void showSuccessDialog() {
-    showDialog(
-      context: context,
-
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFFDDE6B8),
-
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-
-              children: [
-                Container(
-                  height: 70,
-                  width: 70,
-
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1D1D7),
-                    shape: BoxShape.circle,
-                  ),
-
-                  child: const Icon(Icons.check, size: 40),
-                ),
-
-                const SizedBox(height: 18),
-
-                const Text(
-                  "Laporan Terkirim",
-
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 8),
-
-                const Text(
-                  "Laporan akan diproses admin",
-
-                  textAlign: TextAlign.center,
-
-                  style: TextStyle(fontSize: 12),
-                ),
-
-                const SizedBox(height: 18),
-
-                SizedBox(
-                  width: double.infinity,
-
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF1D1D7),
-
-                      foregroundColor: Colors.black,
-
-                      elevation: 0,
-
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-
-                    child: const Text("OK"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   // =========================
   // REPORT COMMENT
   // =========================
 
-  void showReportDialog(Map<String, dynamic> commentData) {
+  void showReportDialog(Map<String, dynamic> comment, String commentId) {
     showModalBottomSheet(
       context: context,
-
-      backgroundColor: const Color(0xFFDDE6B8),
-
+      backgroundColor: MoodlyColors.greenLight,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.all(20),
-
           child: Column(
             mainAxisSize: MainAxisSize.min,
-
             children: [
               const Text(
                 "Laporkan Komentar",
-
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
 
@@ -241,7 +95,7 @@ class _CommentPageState extends State<CommentPage> {
                   margin: const EdgeInsets.only(bottom: 12),
 
                   child: Material(
-                    color: const Color(0xFFF1D1D7),
+                    color: MoodlyColors.pinkLight,
 
                     borderRadius: BorderRadius.circular(18),
 
@@ -250,24 +104,25 @@ class _CommentPageState extends State<CommentPage> {
 
                       onTap: () async {
                         await ReportCommentService.createReport(
-                          reportedUser: commentData["username"],
-
-                          reportedProfile: commentData["profile"],
-
+                          reportedUser: comment["username"],
+                          reportedProfile: comment["profile_image"] ?? "",
                           reportCategory: category,
-
-                          commentText: commentData["comment"],
-
-                          reportedBy: "USER_LOGIN_ID",
-
+                          commentText: comment["comment"],
+                          reportedBy:
+                              FirebaseAuth.instance.currentUser?.uid ?? "",
                           diaryId: widget.diary.id,
-
-                          commentId: "comment_id",
+                          commentId: commentId,
                         );
 
-                        Navigator.pop(context);
+                        if (context.mounted) {
+                          Navigator.pop(context);
 
-                        showSuccessDialog();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Laporan berhasil dikirim"),
+                            ),
+                          );
+                        }
                       },
 
                       child: Padding(
@@ -282,106 +137,7 @@ class _CommentPageState extends State<CommentPage> {
 
                             const SizedBox(width: 10),
 
-                            Text(
-                              category,
-
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // =========================
-  // REPORT REPLY
-  // =========================
-
-  void showReplyReportDialog(Map<String, dynamic> replyData) {
-    showModalBottomSheet(
-      context: context,
-
-      backgroundColor: const Color(0xFFDDE6B8),
-
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-
-            children: [
-              const Text(
-                "Laporkan Balasan",
-
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 20),
-
-              ...reportCategories.map((category) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-
-                  child: Material(
-                    color: const Color(0xFFF1D1D7),
-
-                    borderRadius: BorderRadius.circular(18),
-
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-
-                      onTap: () async {
-                        await ReportCommentService.createReport(
-                          reportedUser: replyData["username"],
-
-                          reportedProfile: replyData["profile"],
-
-                          reportCategory: category,
-
-                          commentText: replyData["reply"],
-
-                          reportedBy: "USER_LOGIN_ID",
-
-                          diaryId: widget.diary.id,
-
-                          commentId: "reply_comment",
-                        );
-
-                        Navigator.pop(context);
-
-                        showSuccessDialog();
-                      },
-
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                          horizontal: 15,
-                        ),
-
-                        child: Row(
-                          children: [
-                            const Icon(Icons.flag_rounded),
-
-                            const SizedBox(width: 10),
-
-                            Text(
-                              category,
-
-                              style: const TextStyle(fontSize: 13),
-                            ),
+                            Text(category),
                           ],
                         ),
                       ),
@@ -399,13 +155,14 @@ class _CommentPageState extends State<CommentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8EBCF),
+      backgroundColor: MoodlyColors.bgLight,
 
       body: SafeArea(
         child: Column(
           children: [
+            // ================= HEADER =================
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
 
               child: Row(
                 children: [
@@ -414,15 +171,21 @@ class _CommentPageState extends State<CommentPage> {
                       Navigator.pop(context);
                     },
 
-                    child: const Icon(Icons.arrow_back, size: 26),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      color: MoodlyColors.green,
+                    ),
                   ),
 
                   const Spacer(),
 
                   const Text(
                     "Komentar",
-
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: MoodlyColors.textDark,
+                    ),
                   ),
 
                   const Spacer(),
@@ -430,335 +193,271 @@ class _CommentPageState extends State<CommentPage> {
               ),
             ),
 
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+            // ================= POST =================
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
 
-                padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
 
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDDE6B8),
+              decoration: BoxDecoration(
+                color: MoodlyColors.greenLight,
 
-                  borderRadius: BorderRadius.circular(28),
-                ),
+                borderRadius: BorderRadius.circular(28),
+              ),
 
-                child: Column(
-                  children: [
-                    // POST
-                    Row(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+                  MoodlyUserAvatar(
+                    username: widget.diary.username,
+                    radius: 24,
+                    placeholderAsset: 'assets/profile_pic/PP_default.jpg',
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        MoodlyUserAvatar(
-                          username: widget.diary.username,
-                          radius: 24,
-                          placeholderAsset:
-                              'assets/profile_pic/PP_default.jpg', // <- GANTI PLACEHOLDER POST UTAMA KOMENTAR DI SINI
+                        Text(
+                          widget.diary.username,
+
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
 
-                        const SizedBox(width: 12),
+                        const SizedBox(height: 6),
 
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Text(
+                          widget.diary.content,
 
-                            children: [
-                              Text(
-                                widget.diary.username,
-
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 4),
-
-                              Text(
-                                widget.diary.content,
-
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  height: 1.7,
-                                ),
-                              ),
-                            ],
-                          ),
+                          style: const TextStyle(fontSize: 13, height: 1.7),
                         ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+            ),
 
-                    const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-                    Divider(color: Colors.black.withOpacity(0.4)),
+            // ================= COMMENTS =================
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: CommentService.getComments(widget.diary.id),
 
-                    const SizedBox(height: 12),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                    // ================= COMMENTS =================
-                    Expanded(
-                      child: comments.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                  final docs = snapshot.data!.docs;
 
-                                children: [
-                                  Icon(
-                                    Icons.mode_comment_outlined,
-                                    size: 55,
-                                    color: Colors.grey.shade600,
-                                  ),
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "Belum ada komentar",
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    );
+                  }
 
-                                  const SizedBox(height: 14),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
 
-                                  Text(
-                                    "Belum ada komentar",
+                    itemCount: docs.length,
 
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
+                    itemBuilder: (context, index) {
+                      final comment =
+                          docs[index].data() as Map<String, dynamic>;
 
-                                  const SizedBox(height: 6),
+                      final commentId = docs[index].id;
 
-                                  Text(
-                                    "Jadilah yang pertama berkomentar ✨",
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
 
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: comments.length,
+                        padding: const EdgeInsets.all(16),
 
-                              itemBuilder: (context, index) {
-                                final comment = comments[index];
+                        decoration: BoxDecoration(
+                          color: MoodlyColors.greenLight,
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 22),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
 
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+
+                              children: [
+                                MoodlyUserAvatar(
+                                  username: comment["username"],
+                                  radius: 22,
+                                  placeholderAsset:
+                                      'assets/profile_pic/PP_default.jpg',
+                                ),
+
+                                const SizedBox(width: 12),
+
+                                Expanded(
                                   child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+
                                     children: [
                                       Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
 
                                         children: [
-                                          MoodlyUserAvatar(
-                                            uid: comment["uid"] as String?,
-                                            username:
-                                                comment["username"] as String?,
-                                            avatarAsset:
-                                                comment["profile"] as String?,
-                                            radius: 22,
-                                            placeholderAsset:
-                                                'assets/profile_pic/PP_default.jpg', // <- placeholder komentar
-                                          ),
-
-                                          const SizedBox(width: 12),
-
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                            child: Text(
+                                              comment["username"],
 
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+
+                                          PopupMenuButton(
+                                            itemBuilder: (context) {
+                                              return const [
+                                                PopupMenuItem(
+                                                  value: "report",
+                                                  child: Text("Laporkan"),
+                                                ),
+                                              ];
+                                            },
+
+                                            onSelected: (value) {
+                                              if (value == "report") {
+                                                showReportDialog(
+                                                  comment,
+                                                  commentId,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 6),
+
+                                      Text(
+                                        comment["comment"],
+
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          height: 1.7,
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 10),
+
+                                      Row(
+                                        children: [
+                                          InkWell(
+                                            onTap: () async {
+                                              await CommentService.likeComment(
+                                                diaryId: widget.diary.id,
+                                                commentId: commentId,
+                                                isLiked: false,
+                                              );
+                                            },
+
+                                            child: Row(
                                               children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        comment["username"],
-
-                                                        style: const TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-
-                                                    PopupMenuButton(
-                                                      icon: const Icon(
-                                                        Icons.more_horiz,
-                                                      ),
-
-                                                      itemBuilder: (context) {
-                                                        return [
-                                                          const PopupMenuItem(
-                                                            value: "report",
-                                                            child: Text(
-                                                              "Laporkan",
-                                                            ),
-                                                          ),
-                                                        ];
-                                                      },
-
-                                                      onSelected: (value) {
-                                                        if (value == "report") {
-                                                          showReportDialog(
-                                                            comment,
-                                                          );
-                                                        }
-                                                      },
-                                                    ),
-                                                  ],
+                                                Icon(
+                                                  Icons.favorite_border,
+                                                  size: 20,
+                                                  color: MoodlyColors.textDark,
                                                 ),
 
-                                                const SizedBox(height: 4),
+                                                const SizedBox(width: 4),
 
                                                 Text(
-                                                  comment["comment"],
-
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    height: 1.7,
-                                                  ),
-                                                ),
-
-                                                const SizedBox(height: 10),
-
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      comment["time"],
-
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                        color: Colors
-                                                            .grey
-                                                            .shade700,
-                                                      ),
-                                                    ),
-
-                                                    const SizedBox(width: 18),
-
-                                                    InkWell(
-                                                      onTap: () {
-                                                        setState(() {
-                                                          replyingIndex = index;
-                                                        });
-
-                                                        commentController.text =
-                                                            "@${comment["username"]} ";
-                                                      },
-
-                                                      child: Text(
-                                                        "Balas",
-
-                                                        style: TextStyle(
-                                                          fontSize: 10,
-                                                          color: Colors
-                                                              .grey
-                                                              .shade700,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                  "${comment["likes"] ?? 0}",
                                                 ),
                                               ],
                                             ),
                                           ),
 
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 30,
-                                            ),
+                                          const SizedBox(width: 20),
 
-                                            child: Column(
-                                              children: [
-                                                InkWell(
-                                                  onTap: () {
-                                                    toggleLikeComment(index);
-                                                  },
+                                          InkWell(
+                                            onTap: () {
+                                              replyingCommentId = commentId;
 
-                                                  child: Icon(
-                                                    comment["isLiked"]
-                                                        ? Icons.favorite
-                                                        : Icons.favorite_border,
+                                              commentController.text =
+                                                  "@${comment["username"]} ";
+                                            },
 
-                                                    color: comment["isLiked"]
-                                                        ? Colors.red
-                                                        : Colors.black,
-
-                                                    size: 20,
-                                                  ),
-                                                ),
-
-                                                const SizedBox(height: 4),
-
-                                                Text(
-                                                  "${comment["likes"]}",
-
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    color: Colors.grey.shade700,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
+                                            child: const Text("Balas"),
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                );
-                              },
+                                ),
+                              ],
                             ),
-                    ),
-
-                    // INPUT
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1D1D7),
-
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: commentController,
-
-                              style: const TextStyle(fontSize: 12),
-
-                              decoration: InputDecoration(
-                                hintText: replyingIndex != null
-                                    ? "Balas komentar..."
-                                    : "Tambahkan Komentar....",
-
-                                hintStyle: const TextStyle(fontSize: 12),
-
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-
-                          IconButton(
-                            onPressed: addComment,
-
-                            icon: const Icon(Icons.send, size: 22),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
 
-            const SizedBox(height: 18),
+            // ================= INPUT =================
+            Container(
+              margin: const EdgeInsets.all(16),
+
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+
+              decoration: BoxDecoration(
+                color: MoodlyColors.greenLight,
+
+                borderRadius: BorderRadius.circular(30),
+              ),
+
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: commentController,
+
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+
+                        hintText: replyingCommentId != null
+                            ? "Balas komentar..."
+                            : "Tambahkan komentar...",
+                      ),
+                    ),
+                  ),
+
+                  IconButton(
+                    onPressed: sendComment,
+
+                    icon: const Icon(
+                      Icons.send_rounded,
+                      color: MoodlyColors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
