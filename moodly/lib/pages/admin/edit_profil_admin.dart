@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class EditProfilAdminPage extends StatefulWidget {
-  const EditProfilAdminPage({super.key});
+class EditProfilAdmin extends StatefulWidget {
+  const EditProfilAdmin({super.key});
 
   @override
-  State<EditProfilAdminPage> createState() => _EditProfilAdminPageState();
+  State<EditProfilAdmin> createState() => _EditProfilAdminState();
 }
 
-class _EditProfilAdminPageState extends State<EditProfilAdminPage> {
+class _EditProfilAdminState extends State<EditProfilAdmin> {
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController(text: 'Admin Moodly');
   final _emailController = TextEditingController(text: 'admin@moodly.app');
