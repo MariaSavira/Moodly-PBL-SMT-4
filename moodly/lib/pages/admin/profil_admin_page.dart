@@ -1,4 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/services/auth_service.dart';
+import 'login_admin.dart';
+import 'edit_profil_admin.dart';
+import 'keamanan_akun_admin.dart';
+import 'notifikasi_admin.dart';
+import 'bantuan_admin.dart';
 
 class ProfilAdminPage extends StatelessWidget {
   const ProfilAdminPage({super.key});
@@ -32,11 +41,8 @@ class ProfilAdminPage extends StatelessWidget {
             children: [
               _buildProfileCard(),
               const SizedBox(height: 24),
-
               _buildMenuList(context),
-
               const SizedBox(height: 32),
-
               _buildFooter(),
             ],
           ),
@@ -93,7 +99,6 @@ class ProfilAdminPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
           const Text(
             'Admin Moodly',
             style: TextStyle(
@@ -119,7 +124,6 @@ class ProfilAdminPage extends StatelessWidget {
             ),
           ),
           const Divider(height: 32, thickness: 1, color: Color(0xFFEEEEEE)),
-
           _buildInfoRow(Icons.email_outlined, 'admin@moodly.app'),
           const SizedBox(height: 12),
           _buildInfoRow(Icons.badge_outlined, 'ID Admin: ADM-0001'),
@@ -173,28 +177,40 @@ class ProfilAdminPage extends StatelessWidget {
             context,
             icon: Icons.person_outline,
             title: 'Edit Profil',
-            onTap: () => _navigateToDummy(context, 'Edit Profil'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfilAdmin()),
+            ),
           ),
           _buildDivider(),
           _buildMenuItem(
             context,
             icon: Icons.shield_outlined,
             title: 'Keamanan Akun',
-            onTap: () => _navigateToDummy(context, 'Keamanan Akun'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const KeamananAkunAdmin()),
+            ),
           ),
           _buildDivider(),
           _buildMenuItem(
             context,
             icon: Icons.notifications_none_outlined,
             title: 'Notifikasi',
-            onTap: () => _navigateToDummy(context, 'Notifikasi'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotifikasiAdmin()),
+            ),
           ),
           _buildDivider(),
           _buildMenuItem(
             context,
             icon: Icons.help_outline,
             title: 'Bantuan',
-            onTap: () => _navigateToDummy(context, 'Bantuan'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BantuanAdmin()),
+            ),
           ),
           _buildDivider(),
           _buildMenuItem(
@@ -293,50 +309,143 @@ class ProfilAdminPage extends StatelessWidget {
     );
   }
 
-  void _navigateToDummy(BuildContext context, String pageTitle) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: Text(pageTitle),
-            backgroundColor: const Color(0xFF4A6B5D),
-            foregroundColor: Colors.white,
-          ),
-          body: Center(
-            child: Text(
-              'Halaman $pageTitle sedang dalam pengembangan.',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
+  // 🚪 LOGOUT DIALOG (Upgraded dengan AuthService)
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Konfirmasi Keluar'),
-        content: const Text('Apakah Anda yakin ingin keluar dari akun admin?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (_) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 34),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD32F2F),
+          backgroundColor: const Color(0xFFF1FBD8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.admin_panel_settings_rounded,
+                    color: Color(0xFFFF8EA4), size: 48),
+                const SizedBox(height: 14),
+                Text(
+                  'Keluar dari Akun Admin?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.fredoka(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF486253),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Anda akan kembali ke halaman login admin.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.openSans(
+                    fontSize: 13,
+                    color: const Color(0xFF6B6B6B),
+                  ),
+                ),
+                const SizedBox(height: 26),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DialogButton(
+                        label: 'Batal',
+                        color: const Color(0xFFDDF5C5),
+                        textColor: const Color(0xFF486253),
+                        onTap: () => Navigator.pop(context),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DialogButton(
+                        label: 'Keluar',
+                        color: const Color(0xFFFFD7DD),
+                        textColor: const Color(0xFF721C24),
+                        onTap: () async {
+                          Navigator.pop(context);
+
+                          try {
+                            await AuthService.instance.signOut();
+
+                            if (!context.mounted) return;
+
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const AdminLoginPage(),
+                              ),
+                                  (route) => false,
+                            );
+                          } catch (e) {
+                            debugPrint('❌ Admin logout error: $e');
+
+                            if (!context.mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Logout gagal: ${e.toString()}',
+                                  style: GoogleFonts.openSans(color: Colors.white),
+                                ),
+                                backgroundColor: const Color(0xFF721C24),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            child: const Text('Keluar'),
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+// 🎨 DIALOG BUTTON WIDGET
+class _DialogButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _DialogButton({
+    required this.label,
+    required this.color,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: textColor.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.openSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ),
       ),
     );
   }

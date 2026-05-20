@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class BantuanAdminPage extends StatefulWidget {
-  const BantuanAdminPage({super.key});
+class BantuanAdmin extends StatefulWidget {
+  const BantuanAdmin({super.key});
 
   @override
-  State<BantuanAdminPage> createState() => _BantuanAdminPageState();
+  State<BantuanAdmin> createState() => _BantuanAdminState();
 }
 
-class _BantuanAdminPageState extends State<BantuanAdminPage> {
+class _BantuanAdminState extends State<BantuanAdmin> {
   final _searchController = TextEditingController();
   bool _expandedIndex0 = false;
   bool _expandedIndex1 = false;

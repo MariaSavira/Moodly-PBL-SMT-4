@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class NotifikasiAdminPage extends StatefulWidget {
-  const NotifikasiAdminPage({super.key});
+class NotifikasiAdmin extends StatefulWidget {
+  const NotifikasiAdmin({super.key});
 
   @override
-  State<NotifikasiAdminPage> createState() => _NotifikasiAdminPageState();
+  State<NotifikasiAdmin> createState() => _NotifikasiAdminState();
 }
 
-class _NotifikasiAdminPageState extends State<NotifikasiAdminPage> {
+class _NotifikasiAdminState extends State<NotifikasiAdmin> {
   bool _notifLaporanBaru = true;
   bool _notifBandingBaru = true;
   bool _notifUserBaru = true;
