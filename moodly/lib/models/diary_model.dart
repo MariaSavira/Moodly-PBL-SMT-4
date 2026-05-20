@@ -1,7 +1,12 @@
+// lib/models/diary_model.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DiaryModel {
   final String id;
+
+  // ================= UID =================
+  final String uid;
 
   final String title;
   final String content;
@@ -16,67 +21,101 @@ class DiaryModel {
   final String username;
   final String profileImage;
 
-  // LIKE & COMMENT
+  final DateTime createdAt;
+
+  final List likedBy;
+
   int likes;
   int comments;
-
-  // NEW SYSTEM
-  final List<String> likedBy;
-
-  // NEW
-  final DateTime createdAt;
+  bool isLiked;
 
   DiaryModel({
     required this.id,
+
+    // ================= FIX =================
+    this.uid = '',
+
     required this.title,
     required this.content,
+
     required this.time,
     required this.date,
     required this.month,
     required this.year,
+
     required this.isPublic,
+
     required this.username,
     required this.profileImage,
 
     required this.createdAt,
+    required this.likedBy,
 
     this.likes = 0,
     this.comments = 0,
-    this.likedBy = const [],
+    this.isLiked = false,
   });
 
   factory DiaryModel.fromFirestore(String id, Map<String, dynamic> data) {
     return DiaryModel(
       id: id,
 
-      title: data["title"] ?? "",
-      content: data["content"] ?? "",
+      // ================= UID =================
+      uid: data['uid']?.toString() ?? '',
 
-      time: data["time"] ?? "",
+      title: data['title']?.toString() ?? '',
+      content: data['content']?.toString() ?? '',
 
-      date: (data["date"] ?? 1) is int
-          ? data["date"]
-          : int.tryParse(data["date"].toString()) ?? 1,
+      time: data['time']?.toString() ?? '',
 
-      month: data["month"] ?? "",
+      date: data['date'] ?? 1,
 
-      year: (data["year"] ?? DateTime.now().year) is int
-          ? data["year"]
-          : int.tryParse(data["year"].toString()) ?? DateTime.now().year,
+      month: data['month']?.toString() ?? '',
 
-      isPublic: data["isPublic"] ?? false,
+      year: data['year'] ?? 2025,
 
-      username: data["username"] ?? "Unknown",
+      isPublic: data['isPublic'] ?? false,
 
-      profileImage: data["profileImage"] ?? "",
+      username: data['username']?.toString() ?? 'Anonymous',
 
-      likes: data["likes"] ?? 0,
+      profileImage: data['profileImage']?.toString() ?? '',
 
-      comments: data["comments"] ?? 0,
+      likes: data['likes'] ?? 0,
 
-      likedBy: List<String>.from(data["likedBy"] ?? []),
+      comments: data['comments'] ?? 0,
 
-      createdAt: (data["createdAt"] as Timestamp?)?.toDate() ?? DateTime.now(),
+      likedBy: data['likedBy'] ?? [],
+
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
+  }
+
+  // ================= OPTIONAL =================
+
+  Map<String, dynamic> toMap() {
+    return {
+      "id": id,
+      "uid": uid,
+
+      "title": title,
+      "content": content,
+
+      "time": time,
+      "date": date,
+      "month": month,
+      "year": year,
+
+      "isPublic": isPublic,
+
+      "username": username,
+      "profileImage": profileImage,
+
+      "likes": likes,
+      "comments": comments,
+
+      "likedBy": likedBy,
+
+      "createdAt": createdAt,
+    };
   }
 }

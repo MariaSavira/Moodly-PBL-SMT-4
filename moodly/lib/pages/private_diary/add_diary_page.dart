@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/firestore_diary_service.dart';
 import '../../core/styles/moodly_colors.dart';
@@ -40,6 +39,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     _controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
+
     super.dispose();
   }
 
@@ -55,12 +55,15 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
     showModalBottomSheet(
       context: context,
+
       builder: (_) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
               leading: const Icon(Icons.camera),
+
               title: const Text("Kamera"),
+
               onTap: () async {
                 Navigator.pop(context);
 
@@ -74,7 +77,9 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
             ListTile(
               leading: const Icon(Icons.photo),
+
               title: const Text("Galeri"),
+
               onTap: () async {
                 Navigator.pop(context);
 
@@ -98,6 +103,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     try {
       final cropped = await ImageCropper().cropImage(
         sourcePath: picked.path,
+
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Atur Gambar',
@@ -133,8 +139,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
-
     final monthList = [
       "JAN",
       "FEB",
@@ -165,11 +169,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
       /// TYPE
       isPublic: isPublic,
-
-      /// USER
-      username: user?.displayName ?? "Moodly User",
-
-      profileImage: user?.photoURL ?? "",
     );
 
     if (!mounted) return;

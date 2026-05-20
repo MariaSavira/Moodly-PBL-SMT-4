@@ -22,6 +22,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
   List<DiaryModel> allDiaries = [];
   List<DiaryModel> filteredDiaries = [];
 
+  bool newestFirst = false;
+
   final List<String> reportCategories = [
     "Spam",
     "Kata Kasar",
@@ -29,20 +31,36 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     "Bullying",
   ];
 
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  // ================= SEARCH =================
+
   void searchDiary(String value) {
     final keyword = value.toLowerCase();
 
     setState(() {
       filteredDiaries = allDiaries.where((diary) {
-        return diary.username.toLowerCase().contains(keyword) ||
-            diary.content.toLowerCase().contains(keyword) ||
-            diary.title.toLowerCase().contains(keyword);
+        return (diary.username).toLowerCase().contains(keyword) ||
+            (diary.content).toLowerCase().contains(keyword) ||
+            (diary.title).toLowerCase().contains(keyword);
       }).toList();
+
+      if (newestFirst) {
+        filteredDiaries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
     });
   }
 
+  // ================= FILTER =================
+
   void filterNewest() {
     setState(() {
+      newestFirst = true;
+
       filteredDiaries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     });
   }
@@ -57,11 +75,9 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.all(24),
-
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               Text(
                 "Filter Diary",
@@ -75,9 +91,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                   Icons.access_time_rounded,
                   color: MoodlyColors.green,
                 ),
-
                 title: const Text("Terbaru"),
-
                 onTap: () {
                   Navigator.pop(context);
                   filterNewest();
@@ -90,6 +104,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
     );
   }
 
+  // ================= REPORT DIARY =================
+
   void showReportDialog(DiaryModel diary) {
     final List<String> selectedCategories = [];
 
@@ -99,11 +115,9 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: MoodlyColors.greenLight,
-
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -114,10 +128,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                 top: 24,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-
                 children: [
                   Text(
                     "Laporkan Diary",
@@ -126,16 +138,14 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 20),
 
+                  // ================= CATEGORY =================
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-
                     children: reportCategories.map((category) {
                       return FilterChip(
                         label: Text(category),
-
                         selected: selectedCategories.contains(category),
-
                         onSelected: (value) {
                           setModalState(() {
                             if (value) {
@@ -151,43 +161,96 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 20),
 
+                  // ================= REASON =================
                   TextField(
                     controller: reasonController,
                     maxLines: 4,
-
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: "Tulis alasan laporan...",
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
+                  // ================= BUTTON =================
                   SizedBox(
                     width: double.infinity,
-
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MoodlyColors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
                       onPressed: () async {
+                        if (selectedCategories.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Pilih minimal 1 kategori"),
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (reasonController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Alasan laporan wajib diisi"),
+                            ),
+                          );
+                          return;
+                        }
+
                         await ReportDiaryService.createReport(
+                          type: "diary",
+
+                          /// USER YANG DILAPORKAN
                           reportedUser: diary.username,
-
                           reportedProfile: diary.profileImage,
+                          reportedUid: diary.uid,
 
-                          reportCategory: selectedCategories.join(", "),
-
-                          diaryText: diary.content,
-
-                          reportedBy:
+                          /// PELAPOR
+                          reportedByUid:
                               FirebaseAuth.instance.currentUser?.uid ?? "",
 
-                          diaryId: diary.id,
+                          reportedByUsername:
+                              FirebaseAuth.instance.currentUser?.displayName ??
+                              "Unknown User",
+
+                          /// REPORT
+                          reportCategory: selectedCategories.join(", "),
+                          reportReason: reasonController.text.trim(),
+
+                          /// CONTENT
+                          contentText: diary.content,
+
+                          /// TARGET
+                          targetId: diary.id,
                         );
 
                         if (context.mounted) {
                           Navigator.pop(context);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Laporan berhasil dikirim ke admin",
+                              ),
+                            ),
+                          );
                         }
                       },
-
-                      child: const Text("Laporkan"),
+                      child: const Text(
+                        "Laporkan",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],
@@ -210,69 +273,56 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: MoodlyColors.green,
-
         onPressed: showFilterDialog,
-
         child: const Icon(Icons.tune, color: Colors.white),
       ),
 
       body: Column(
         children: [
+          // ================= SEARCH =================
           Padding(
             padding: const EdgeInsets.all(16),
-
             child: TextField(
               controller: searchController,
               onChanged: searchDiary,
-
               decoration: InputDecoration(
                 hintText: "Cari diary...",
-
                 prefixIcon: const Icon(Icons.search),
-
                 filled: true,
                 fillColor: Colors.white,
-
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
-
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
           ),
 
+          // ================= LIST DIARY =================
           Expanded(
             child: StreamBuilder<List<DiaryModel>>(
               stream: FirestoreDiaryService.getPublicDiaries(),
-
               builder: (context, snapshot) {
-                /// ERROR
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
-
                       child: Text(
                         snapshot.error.toString(),
-
                         textAlign: TextAlign.center,
                       ),
                     ),
                   );
                 }
 
-                /// LOADING
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                /// EMPTY
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-
                       children: [
                         const Icon(
                           Icons.menu_book_rounded,
@@ -284,7 +334,6 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                         Text(
                           "Belum ada diary publik",
-
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
 
@@ -292,7 +341,6 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                         Text(
                           "Diary publik akan muncul di sini ✨",
-
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -302,17 +350,25 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                 final diaries = snapshot.data!;
 
-                allDiaries = diaries;
+                allDiaries = List.from(diaries);
+
+                // ================= AUTO REFRESH SEARCH =================
 
                 if (searchController.text.isEmpty) {
-                  filteredDiaries = diaries;
+                  filteredDiaries = List.from(allDiaries);
+
+                  if (newestFirst) {
+                    filteredDiaries.sort(
+                      (a, b) => b.createdAt.compareTo(a.createdAt),
+                    );
+                  }
+                } else {
+                  searchDiary(searchController.text);
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 100),
-
                   itemCount: filteredDiaries.length,
-
                   itemBuilder: (context, index) {
                     final diary = filteredDiaries[index];
 
@@ -328,21 +384,19 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                       decoration: BoxDecoration(
                         color: MoodlyColors.greenLight,
-
                         borderRadius: BorderRadius.circular(24),
                       ),
 
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-
                         children: [
+                          // ================= HEADER =================
                           Row(
                             children: [
                               MoodlyUserAvatar(
                                 username: diary.username,
-
+                                photoUrl: diary.profileImage,
                                 radius: 22,
-
                                 placeholderAsset:
                                     'assets/profile_pic/PP_default.jpg',
                               ),
@@ -350,24 +404,35 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                               const SizedBox(width: 10),
 
                               Expanded(
-                                child: Text(
-                                  diary.username,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      diary.username,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
 
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                    Text(
+                                      "${diary.date} ${diary.month} ${diary.year}",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
-                              PopupMenuButton(
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert),
                                 itemBuilder: (context) => const [
                                   PopupMenuItem(
                                     value: "report",
-
                                     child: Text("Laporkan"),
                                   ),
                                 ],
-
                                 onSelected: (value) {
                                   if (value == "report") {
                                     showReportDialog(diary);
@@ -379,9 +444,9 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                           const SizedBox(height: 14),
 
+                          // ================= TITLE =================
                           Text(
                             diary.title,
-
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -390,21 +455,21 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                           const SizedBox(height: 6),
 
+                          // ================= CONTENT =================
                           Text(
                             diary.content,
-
                             style: const TextStyle(height: 1.5),
                           ),
 
                           const SizedBox(height: 16),
 
+                          // ================= ACTION =================
                           Row(
                             children: [
                               InkWell(
                                 onTap: () async {
                                   await FirestoreDiaryService.toggleDiaryLike(
                                     diaryId: diary.id,
-
                                     userId: userId,
                                   );
                                 },
@@ -415,7 +480,6 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                                       isLiked
                                           ? Icons.favorite
                                           : Icons.favorite_border,
-
                                       color: isLiked ? Colors.red : Colors.grey,
                                     ),
 
@@ -432,7 +496,6 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-
                                     MaterialPageRoute(
                                       builder: (_) => CommentPage(diary: diary),
                                     ),

@@ -1,4 +1,8 @@
+// lib/services/firestore_diary_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/diary_model.dart';
 
 class FirestoreDiaryService {
@@ -40,7 +44,7 @@ class FirestoreDiaryService {
         });
   }
 
-  /// ================= WEEK / BULAN DIARY =================
+  /// ================= WEEK DIARY =================
   static Stream<List<DiaryModel>> getWeekDiaries() {
     final now = DateTime.now();
 
@@ -103,9 +107,9 @@ class FirestoreDiaryService {
     required String month,
     required int year,
     required bool isPublic,
-    required String username,
-    required String profileImage,
   }) async {
+    final user = FirebaseAuth.instance.currentUser;
+
     await diaryRef.add({
       "title": title,
       "content": content,
@@ -117,13 +121,19 @@ class FirestoreDiaryService {
 
       "isPublic": isPublic,
 
-      "username": username,
-      "profileImage": profileImage,
+      /// ================= USER INFO =================
+      "uid": user?.uid ?? "",
 
+      "username": user?.displayName ?? "Anonymous",
+
+      "profileImage": user?.photoURL ?? "",
+
+      /// ================= SOCIAL =================
       "likes": 0,
       "comments": 0,
       "likedBy": [],
 
+      /// ================= TIME =================
       "createdAt": FieldValue.serverTimestamp(),
     });
   }

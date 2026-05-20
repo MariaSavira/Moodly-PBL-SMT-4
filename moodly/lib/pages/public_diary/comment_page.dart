@@ -38,7 +38,9 @@ class _CommentPageState extends State<CommentPage> {
   // =========================
 
   Future<void> sendComment() async {
-    if (commentController.text.trim().isEmpty) return;
+    if (commentController.text.trim().isEmpty) {
+      return;
+    }
 
     final text = commentController.text.trim();
 
@@ -48,8 +50,8 @@ class _CommentPageState extends State<CommentPage> {
       await CommentService.addReply(
         diaryId: widget.diary.id,
         commentId: replyingCommentId!,
-        username: "Kamu",
-        profileImage: "",
+        username: user?.displayName ?? "Moodly User",
+        profileImage: user?.photoURL ?? "",
         reply: text,
       );
 
@@ -57,13 +59,15 @@ class _CommentPageState extends State<CommentPage> {
     } else {
       await CommentService.addComment(
         diaryId: widget.diary.id,
-        username: "Kamu",
-        profileImage: "",
+        username: user?.displayName ?? "Moodly User",
+        profileImage: user?.photoURL ?? "",
         comment: text,
       );
     }
 
     commentController.clear();
+
+    setState(() {});
   }
 
   // =========================
@@ -71,46 +75,140 @@ class _CommentPageState extends State<CommentPage> {
   // =========================
 
   void showReportDialog(Map<String, dynamic> comment, String commentId) {
+    String selectedCategory = "";
+
+    final TextEditingController reasonController = TextEditingController();
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: MoodlyColors.greenLight,
+
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
+
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Laporkan Komentar",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               ),
 
-              const SizedBox(height: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
 
-              ...reportCategories.map((category) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                crossAxisAlignment: CrossAxisAlignment.start,
 
-                  child: Material(
-                    color: MoodlyColors.pinkLight,
+                children: [
+                  const Center(
+                    child: Text(
+                      "Laporkan Komentar",
 
-                    borderRadius: BorderRadius.circular(18),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
 
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
+                  const SizedBox(height: 20),
 
-                      onTap: () async {
+                  const Text("Pilih kategori"),
+
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+
+                    children: reportCategories.map((category) {
+                      return FilterChip(
+                        label: Text(category),
+
+                        selected: selectedCategory == category,
+
+                        onSelected: (value) {
+                          setModalState(() {
+                            selectedCategory = category;
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: reasonController,
+
+                    maxLines: 4,
+
+                    decoration: InputDecoration(
+                      hintText: "Tulis alasan laporan...",
+
+                      filled: true,
+
+                      fillColor: Colors.white,
+
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (selectedCategory.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Pilih kategori report"),
+                            ),
+                          );
+
+                          return;
+                        }
+
                         await ReportCommentService.createReport(
-                          reportedUser: comment["username"],
+                          type: "comment",
+
+                          /// USER YANG DILAPORKAN
+                          reportedUser: comment["username"] ?? "",
+
                           reportedProfile: comment["profile_image"] ?? "",
-                          reportCategory: category,
-                          commentText: comment["comment"],
-                          reportedBy:
-                              FirebaseAuth.instance.currentUser?.uid ?? "",
+
+                          reportedUid: comment["uid"] ?? "",
+
+                          /// PELAPOR
+                          reportedByUid: currentUser?.uid ?? "",
+
+                          reportedByUsername:
+                              currentUser?.displayName ?? "Moodly User",
+
+                          /// REPORT
+                          reportCategory: selectedCategory,
+
+                          reportReason: reasonController.text.trim(),
+
+                          /// CONTENT
+                          contentText: comment["comment"] ?? "",
+
+                          /// TARGET
                           diaryId: widget.diary.id,
+
                           commentId: commentId,
                         );
 
@@ -125,28 +223,13 @@ class _CommentPageState extends State<CommentPage> {
                         }
                       },
 
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                          horizontal: 15,
-                        ),
-
-                        child: Row(
-                          children: [
-                            const Icon(Icons.flag_rounded),
-
-                            const SizedBox(width: 10),
-
-                            Text(category),
-                          ],
-                        ),
-                      ),
+                      child: const Text("Kirim Laporan"),
                     ),
                   ),
-                );
-              }).toList(),
-            ],
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -181,6 +264,7 @@ class _CommentPageState extends State<CommentPage> {
 
                   const Text(
                     "Komentar",
+
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -211,7 +295,11 @@ class _CommentPageState extends State<CommentPage> {
                 children: [
                   MoodlyUserAvatar(
                     username: widget.diary.username,
+
+                    photoUrl: widget.diary.profileImage,
+
                     radius: 24,
+
                     placeholderAsset: 'assets/profile_pic/PP_default.jpg',
                   ),
 
@@ -263,6 +351,7 @@ class _CommentPageState extends State<CommentPage> {
                     return Center(
                       child: Text(
                         "Belum ada komentar",
+
                         style: TextStyle(color: Colors.grey.shade600),
                       ),
                     );
@@ -300,7 +389,11 @@ class _CommentPageState extends State<CommentPage> {
                               children: [
                                 MoodlyUserAvatar(
                                   username: comment["username"],
+
+                                  photoUrl: comment["profile_image"],
+
                                   radius: 22,
+
                                   placeholderAsset:
                                       'assets/profile_pic/PP_default.jpg',
                                 ),
@@ -333,6 +426,7 @@ class _CommentPageState extends State<CommentPage> {
                                               return const [
                                                 PopupMenuItem(
                                                   value: "report",
+
                                                   child: Text("Laporkan"),
                                                 ),
                                               ];
@@ -369,7 +463,9 @@ class _CommentPageState extends State<CommentPage> {
                                             onTap: () async {
                                               await CommentService.likeComment(
                                                 diaryId: widget.diary.id,
+
                                                 commentId: commentId,
+
                                                 isLiked: false,
                                               );
                                             },
@@ -378,7 +474,9 @@ class _CommentPageState extends State<CommentPage> {
                                               children: [
                                                 Icon(
                                                   Icons.favorite_border,
+
                                                   size: 20,
+
                                                   color: MoodlyColors.textDark,
                                                 ),
 
