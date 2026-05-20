@@ -100,6 +100,16 @@ class ProfilePage extends StatelessWidget {
     return null;
   }
 
+  String? _resolveActiveFrameId(Map<String, dynamic>? inventory) {
+    final active = (inventory?['activeFrameId'] as String?)?.trim();
+    if (active != null && active.isNotEmpty) return active;
+
+    final owned = List<String>.from(inventory?['ownedFrameIds'] ?? []);
+    if (owned.isNotEmpty) return owned.first;
+
+    return null;
+  }
+
   String _resolvePhone(Map<String, dynamic>? data) {
     final phone = (data?['phoneNumber'] as String?)?.trim();
     if (phone != null && phone.isNotEmpty) return phone;
@@ -241,19 +251,33 @@ class ProfilePage extends StatelessWidget {
                                   onBack: () => Navigator.pop(context),
                                 ),
                                 const SizedBox(height: 22),
-                                _ProfileHeroCard(
-                                  name: name,
-                                  email: email,
-                                  photoUrl: photoUrl,
-                                  avatarAsset: avatarAsset,
-                                  isVerified: isVerified,
-                                  provider: provider,
-                                  onEdit: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const EditProfilePage(),
-                                      ),
+                                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(uid)
+                                      .collection('reward_inventory')
+                                      .doc('main')
+                                      .snapshots(),
+                                  builder: (context, inventorySnapshot) {
+                                    final inventory = inventorySnapshot.data?.data();
+                                    final activeFrameId = _resolveActiveFrameId(inventory);
+
+                                    return _ProfileHeroCard(
+                                      name: name,
+                                      email: email,
+                                      photoUrl: photoUrl,
+                                      avatarAsset: avatarAsset,
+                                      activeFrameId: activeFrameId,
+                                      isVerified: isVerified,
+                                      provider: provider,
+                                      onEdit: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const EditProfilePage(),
+                                          ),
+                                        );
+                                      },
                                     );
                                   },
                                 ),
@@ -391,6 +415,7 @@ class _ProfileHeroCard extends StatelessWidget {
   final bool isVerified;
   final String provider;
   final VoidCallback onEdit;
+  final String? activeFrameId;
 
   const _ProfileHeroCard({
     required this.name,
@@ -400,6 +425,7 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.isVerified,
     required this.provider,
     required this.onEdit,
+    required this.activeFrameId,
   });
 
   @override
@@ -419,6 +445,7 @@ class _ProfileHeroCard extends StatelessWidget {
             child: _ProfileAvatar(
               photoUrl: photoUrl,
               avatarAsset: avatarAsset,
+              activeFrameId: activeFrameId,
             ),
           ),
           const SizedBox(height: 14),
@@ -491,11 +518,73 @@ class _ProfileHeroCard extends StatelessWidget {
 class _ProfileAvatar extends StatelessWidget {
   final String? photoUrl;
   final String? avatarAsset;
+  final String? activeFrameId;
 
   const _ProfileAvatar({
     required this.photoUrl,
     required this.avatarAsset,
+    required this.activeFrameId,
   });
+
+  List<Color> _frameGradient() {
+    switch (activeFrameId) {
+      case 'frame_bloom':
+        return const [Color(0xFFF8C9D4), Color(0xFFFFEEF2)];
+      case 'frame_meadow':
+        return const [Color(0xFF9DD47E), Color(0xFFEAF6DA)];
+      default:
+        return const [Color(0xFF92D373), Color(0xFFD9EDC5)];
+    }
+  }
+
+  Widget? _frameBadge() {
+    switch (activeFrameId) {
+      case 'frame_bloom':
+        return Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFEEF2),
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.08),
+                offset: Offset(0, 4),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: Color(0xFFE58696),
+            size: 18,
+          ),
+        );
+      case 'frame_meadow':
+        return Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF6DA),
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.08),
+                offset: Offset(0, 4),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.filter_vintage_rounded,
+            color: Color(0xFF74B55F),
+            size: 18,
+          ),
+        );
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -554,8 +643,8 @@ class _ProfileAvatar extends StatelessWidget {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF92D373), Color(0xFFD9EDC5)],
+              gradient: LinearGradient(
+                colors: _frameGradient(),
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -576,27 +665,36 @@ class _ProfileAvatar extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: 6,
-            bottom: 6,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _profilePinkSoft,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.08),
-                    offset: Offset(0, 6),
-                    blurRadius: 14,
-                  ),
+            right: 4,
+            bottom: 4,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_frameBadge() != null) ...[
+                  _frameBadge()!,
+                  const SizedBox(height: 6),
                 ],
-              ),
-              child: const Icon(
-                Icons.edit_rounded,
-                color: _profileGreenDark,
-                size: 24,
-              ),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _profilePinkSoft,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color.fromRGBO(0, 0, 0, 0.08),
+                        offset: Offset(0, 6),
+                        blurRadius: 14,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.edit_rounded,
+                    color: _profileGreenDark,
+                    size: 24,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

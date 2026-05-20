@@ -40,6 +40,42 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
     super.dispose();
   }
 
+  Widget _buildConfirmButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+
+        final String trimmed = profileNameController.text.trim();
+        profileName = trimmed.isEmpty ? 'Spaghetti Unyu' : trimmed;
+
+        Navigator.of(context).pop({
+          'profileName': profileName,
+          'selectedProfileImage': selectedProfileImage,
+        });
+      },
+      child: Container(
+        width: 126,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFF84C76A),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          'Konfirmasi',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
@@ -103,172 +139,151 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
 
                 Align(
                   alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 140),
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            FocusScope.of(context).unfocus();
-                            setState(() {
-                              showAvatarPicker = !showAvatarPicker;
-                            });
-                          },
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 105,
-                                height: 105,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x22000000),
-                                      blurRadius: 12,
-                                      offset: Offset(0, 6),
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      140,
+                      20,
+                      keyboardOpen
+                          ? keyboardHeight + 24
+                          : (showAvatarPicker ? 340 : 24),
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              FocusScope.of(context).unfocus();
+                              setState(() {
+                                showAvatarPicker = !showAvatarPicker;
+                              });
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 105,
+                                  height: 105,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x22000000),
+                                        blurRadius: 12,
+                                        offset: Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      selectedProfileImage,
+                                      fit: BoxFit.cover,
                                     ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    selectedProfileImage,
-                                    fit: BoxFit.cover,
                                   ),
                                 ),
-                              ),
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: const BoxDecoration(
-                                  color: Color(0x55FFFFFF),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.edit_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 210,
-                          height: 42,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x22000000),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: profileNameController,
-                                  textAlign: TextAlign.center,
-                                  maxLength: 20,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black87,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    counterText: '',
-                                    isCollapsed: true,
-                                  ),
-                                  onTap: () {
-                                    setState(() {
-                                      showAvatarPicker = false;
-                                    });
-                                  },
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  FocusScope.of(context).unfocus();
-
-                                  final unlocked = widget.unlockedProfileAvatars;
-                                  final random = DateTime.now().millisecondsSinceEpoch % unlocked.length;
-
-                                  setState(() {
-                                    selectedProfileImage = unlocked[random];
-                                  });
-                                },
-                                child: Container(
-                                  width: 24,
-                                  height: 24,
+                                Container(
+                                  width: 34,
+                                  height: 34,
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFF84C76A),
+                                    color: Color(0x55FFFFFF),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
-                                    Icons.casino_rounded,
-                                    size: 15,
+                                    Icons.edit_rounded,
                                     color: Colors.white,
+                                    size: 18,
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          '*Jangan gunakan nama asli\n*Maksimal 20 huruf',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 12),
+                          Container(
+                            width: 210,
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x22000000),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: profileNameController,
+                                    textAlign: TextAlign.center,
+                                    maxLength: 20,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black87,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      counterText: '',
+                                      isCollapsed: true,
+                                    ),
+                                    onTap: () {
+                                      setState(() {
+                                        showAvatarPicker = false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    FocusScope.of(context).unfocus();
+
+                                    final unlocked = widget.unlockedProfileAvatars;
+                                    final random =
+                                        DateTime.now().millisecondsSinceEpoch % unlocked.length;
+
+                                    setState(() {
+                                      selectedProfileImage = unlocked[random];
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF84C76A),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.casino_rounded,
+                                      size: 15,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  right: 20,
-                  bottom: 350,
-                  child: GestureDetector(
-                    onTap: () {
-                      FocusScope.of(context).unfocus();
-
-                      final String trimmed = profileNameController.text.trim();
-                      profileName = trimmed.isEmpty ? 'Spaghetti Unyu' : trimmed;
-
-                      Navigator.of(context).pop({
-                        'profileName': profileName,
-                        'selectedProfileImage': selectedProfileImage,
-                      });
-                    },
-                    child: Container(
-                      width: 126,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF84C76A),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x22000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '*Jangan gunakan nama asli\n*Maksimal 20 huruf',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: _buildConfirmButton(context),
                           ),
                         ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Konfirmasi',
-                        style: Theme.of(context).textTheme.labelLarge,
                       ),
                     ),
                   ),
@@ -333,20 +348,9 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
                                           : null,
                                     ),
                                     child: ClipOval(
-                                      child: ColorFiltered(
-                                        colorFilter: isUnlocked
-                                            ? const ColorFilter.mode(
-                                                Colors.transparent,
-                                                BlendMode.dst,
-                                              )
-                                            : ColorFilter.mode(
-                                                Colors.black.withOpacity(0.35),
-                                                BlendMode.darken,
-                                              ),
-                                        child: Image.asset(
-                                          avatar,
-                                          fit: BoxFit.cover,
-                                        ),
+                                      child: Image.asset(
+                                        avatar,
+                                        fit: BoxFit.cover,
                                       ),
                                     ),
                                   ),
@@ -355,14 +359,36 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
                                       child: Container(
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Colors.black.withOpacity(0.18),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.lock_rounded,
-                                            color: Colors.white,
-                                            size: 22,
+                                          color: Colors.white.withOpacity(0.34),
+                                          border: Border.all(
+                                            color: Colors.white.withOpacity(0.72),
+                                            width: 1.2,
                                           ),
+                                        ),
+                                      ),
+                                    ),
+                                  if (!isUnlocked)
+                                    Positioned(
+                                      right: 4,
+                                      bottom: 4,
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.92),
+                                          shape: BoxShape.circle,
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x22000000),
+                                              blurRadius: 6,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.lock_rounded,
+                                          color: Color(0xFF7D8A73),
+                                          size: 13,
                                         ),
                                       ),
                                     ),

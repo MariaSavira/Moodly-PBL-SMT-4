@@ -21,6 +21,8 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   int _currentNavIndex = 0;
 
+  bool _isPremiumUser = false;
+
   String? moodHariIni;
   String tipMood = 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.';
   String _affirmationPreview =
@@ -44,15 +46,38 @@ class _HomepageState extends State<Homepage> {
   bool get _hasSelectedMood =>
       moodHariIni != null && moodHariIni!.trim().isNotEmpty;
 
+  bool get _canOpenMoodAnalysis {
+    if (_isPremiumUser) return true;
+    return DateTime.now().day == 1;
+  }
+
   @override
   void initState() {
     super.initState();
     _syncHomepageState();
     _bootstrapSignals();
+    _loadPremiumStatus();
   }
 
   Future<void> _bootstrapSignals() async {
     await MoodlyNotificationService.instance.syncForCurrentUser();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final data = doc.data() ?? {};
+    if (!mounted) return;
+
+    setState(() {
+      _isPremiumUser = (data['isPremium'] ?? false) == true;
+    });
   }
 
   String get _greetingText {
@@ -199,9 +224,7 @@ class _HomepageState extends State<Homepage> {
 
     setState(() {
       moodHariIni = (mood != null && mood.trim().isNotEmpty) ? mood.trim() : null;
-      tipMood = (note != null && note.trim().isNotEmpty)
-          ? note.trim()
-          : _defaultTipForMood(moodHariIni);
+      tipMood = _defaultTipForMood(moodHariIni);
     });
   }
 
@@ -1243,7 +1266,7 @@ class _HomepageState extends State<Homepage> {
               top: 114,
               child: Center(
                 child: Container(
-                  width: 74,
+                  width: 54,
                   height: 54,
                   decoration: BoxDecoration(
                     color: _green,
@@ -1329,7 +1352,19 @@ class _HomepageState extends State<Homepage> {
 
   Widget _moodGraphCard() {
     return GestureDetector(
-      onTap: () => _goToPage(const MoodAnalysis()),
+      onTap: () {
+        if (!_canOpenMoodAnalysis) {
+          showCuteTopPopup(
+            context,
+            title: 'Belum tersedia',
+            message: 'Analisa mood untuk akun reguler dibuka setiap tanggal 1. Premium bisa akses kapan saja.',
+            type: CutePopupType.info,
+          );
+          return;
+        }
+
+        _goToPage(const MoodAnalysis());
+      },
       child: Container(
         height: 156,
         decoration: BoxDecoration(

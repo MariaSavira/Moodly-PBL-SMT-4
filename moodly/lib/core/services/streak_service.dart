@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/services/reward_service.dart';
 
 class StreakState {
   final int currentStreak;
@@ -17,6 +18,9 @@ class StreakState {
 
   final bool autoUseFreeze;
 
+  final DateTime? lastStateReviewAt;
+  final String? lastMonthlyFreezeRefillKey;
+
   const StreakState({
     required this.currentStreak,
     required this.longestStreak,
@@ -29,6 +33,8 @@ class StreakState {
     required this.lastAffirmationClaimAt,
     required this.lastComboClaimAt,
     required this.autoUseFreeze,
+    required this.lastStateReviewAt,
+    required this.lastMonthlyFreezeRefillKey,
   });
 
   factory StreakState.initial() {
@@ -44,6 +50,8 @@ class StreakState {
       lastAffirmationClaimAt: null,
       lastComboClaimAt: null,
       autoUseFreeze: false,
+      lastStateReviewAt: null,
+      lastMonthlyFreezeRefillKey: null,
     );
   }
 
@@ -65,6 +73,9 @@ class StreakState {
       lastAffirmationClaimAt: parseTs(map['lastAffirmationClaimAt']),
       lastComboClaimAt: parseTs(map['lastComboClaimAt']),
       autoUseFreeze: (map['autoUseFreeze'] ?? false) as bool,
+      lastStateReviewAt: parseTs(map['lastStateReviewAt']),
+      lastMonthlyFreezeRefillKey:
+        map['lastMonthlyFreezeRefillKey'] as String?,
     );
   }
 
@@ -85,6 +96,8 @@ class StreakState {
       'lastComboClaimAt': toTs(lastComboClaimAt),
       'updatedAt': FieldValue.serverTimestamp(),
       'autoUseFreeze': autoUseFreeze,
+      'lastStateReviewAt': toTs(lastStateReviewAt),
+      'lastMonthlyFreezeRefillKey': lastMonthlyFreezeRefillKey,
     };
   }
 
@@ -104,6 +117,10 @@ class StreakState {
     bool keepLastAffirmationClaimAt = true,
     bool keepLastComboClaimAt = true,
     bool? autoUseFreeze,
+    DateTime? lastStateReviewAt,
+    String? lastMonthlyFreezeRefillKey,
+    bool keepLastStateReviewAt = true,
+    bool keepLastMonthlyFreezeRefillKey = true,
   }) {
     return StreakState(
       currentStreak: currentStreak ?? this.currentStreak,
@@ -125,6 +142,12 @@ class StreakState {
           ? (lastComboClaimAt ?? this.lastComboClaimAt)
           : lastComboClaimAt,
       autoUseFreeze: autoUseFreeze ?? this.autoUseFreeze,
+      lastStateReviewAt: keepLastStateReviewAt
+          ? (lastStateReviewAt ?? this.lastStateReviewAt)
+          : lastStateReviewAt,
+      lastMonthlyFreezeRefillKey: keepLastMonthlyFreezeRefillKey
+          ? (lastMonthlyFreezeRefillKey ?? this.lastMonthlyFreezeRefillKey)
+          : lastMonthlyFreezeRefillKey,
     );
   }
 
@@ -187,6 +210,9 @@ class StreakService {
     return _dateOnly(to).difference(_dateOnly(from)).inDays;
   }
 
+  String _monthKey(DateTime dt) =>
+      '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+
   Future<void> _ensureExists(String uid) async {
     final ref = _streakRef(uid);
     final snap = await ref.get();
@@ -195,13 +221,17 @@ class StreakService {
     }
   }
 
-  Stream<StreakState> watchState() {
+  Stream<StreakState> watchState() async* {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      return Stream.value(StreakState.initial());
+      yield StreakState.initial();
+      return;
     }
 
-    return _streakRef(uid).snapshots().map((doc) {
+    await _ensureExists(uid);
+    await refreshStateForToday();
+
+    yield* _streakRef(uid).snapshots().map((doc) {
       final data = doc.data();
       if (data == null) return StreakState.initial();
       return StreakState.fromMap(data);
@@ -215,6 +245,78 @@ class StreakService {
     await _ensureExists(uid);
     final snap = await _streakRef(uid).get();
     return StreakState.fromMap(snap.data() ?? {});
+  }
+
+  Future<StreakState> refreshStateForToday() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return StreakState.initial();
+
+    await _ensureExists(uid);
+    final ref = _streakRef(uid);
+    final now = DateTime.now();
+    final today = _dateOnly(now);
+
+    return _firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = StreakState.fromMap(snap.data() ?? {});
+
+      int nextStreak = current.currentStreak;
+      int nextFreezeOwned = current.freezeOwned;
+      bool nextFreezeEnabled = current.freezeEnabled;
+      bool nextAutoUse = current.autoUseFreeze;
+      String? nextMonthlyKey = current.lastMonthlyFreezeRefillKey;
+
+      final lastReviewDate = current.lastStateReviewAt != null
+          ? _dateOnly(current.lastStateReviewAt!)
+          : (current.lastMoodCheckInAt != null
+              ? _dateOnly(current.lastMoodCheckInAt!)
+              : today);
+
+      final elapsedDays = _daysBetween(lastReviewDate, today);
+
+      if (elapsedDays > 0 && !current.moodDoneToday) {
+        if ((current.freezeEnabled || current.autoUseFreeze) &&
+            nextFreezeOwned > 0) {
+          final consumed = elapsedDays <= nextFreezeOwned
+              ? elapsedDays
+              : nextFreezeOwned;
+
+          nextFreezeOwned -= consumed;
+
+          if (consumed < elapsedDays) {
+            nextStreak = 0;
+          }
+        } else {
+          nextStreak = 0;
+        }
+      }
+
+      if (today.day == 1) {
+        final currentMonthKey = _monthKey(today);
+        if (nextMonthlyKey != currentMonthKey) {
+          nextFreezeOwned = (nextFreezeOwned + 1).clamp(0, current.freezeMax);
+          nextMonthlyKey = currentMonthKey;
+        }
+      }
+
+      if (nextFreezeOwned <= 0) {
+        nextFreezeOwned = 0;
+        nextFreezeEnabled = false;
+        nextAutoUse = false;
+      }
+
+      final next = current.copyWith(
+        currentStreak: nextStreak,
+        freezeOwned: nextFreezeOwned,
+        freezeEnabled: nextFreezeEnabled,
+        autoUseFreeze: nextAutoUse,
+        lastStateReviewAt: today,
+        lastMonthlyFreezeRefillKey: nextMonthlyKey,
+      );
+
+      tx.set(ref, next.toMap(), SetOptions(merge: true));
+      return next;
+    });
   }
 
   Future<StreakClaimResult> claimMoodCheckIn() async {
@@ -243,37 +345,17 @@ class StreakService {
         );
       }
 
-      int newStreak = current.currentStreak;
-      int newFreezeOwned = current.freezeOwned;
-      int freezeUsed = 0;
+      final int newStreak = current.currentStreak == 0
+          ? 1
+          : current.currentStreak + 1;
 
-      if (current.lastMoodCheckInAt == null) {
-        newStreak = 1;
-      } else {
-        final gapDays = _daysBetween(current.lastMoodCheckInAt!, now);
-
-        if (gapDays == 1) {
-          newStreak = current.currentStreak + 1;
-        } else if (gapDays > 1) {
-          final missedDays = gapDays - 1;
-
-          if ((current.freezeEnabled || current.autoUseFreeze) &&
-            current.freezeOwned >= missedDays) {
-              freezeUsed = missedDays;
-              newFreezeOwned = current.freezeOwned - missedDays;
-              newStreak = current.currentStreak + gapDays;
-            } else {
-              newStreak = 1;
-          }
-        }
-      }
+      const int freezeUsed = 0;
 
       final next = current.copyWith(
         currentStreak: newStreak,
         longestStreak:
             newStreak > current.longestStreak ? newStreak : current.longestStreak,
         totalPoints: current.totalPoints + moodPoints,
-        freezeOwned: newFreezeOwned,
         lastMoodCheckInAt: now,
       );
 

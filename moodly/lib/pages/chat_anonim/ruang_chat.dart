@@ -644,51 +644,54 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF8),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.10),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.78,
+          minChildSize: 0.55,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _actionSheetItem(
-                icon: Icons.edit_rounded,
-                label: 'Edit',
-                iconColor: const Color(0xFF6FB65B),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showEditMessageDialog(doc.id, text);
-                },
-              ),
-              _actionSheetItem(
-                icon: Icons.delete_rounded,
-                label: 'Hapus',
-                iconColor: const Color(0xFFE36A77),
-                onTap: () async {
-                  Navigator.pop(context);
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFE5E5E0),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                      children: [
+                        Text(
+                          'Pilih alasan laporan',
+                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontSize: 22,
+                                color: Colors.black,
+                              ),
+                        ),
+                        const SizedBox(height: 18),
 
-                  if (roomId == null) return;
-
-                  await _chatService.deleteMessageForEveryone(
-                    roomId: roomId!,
-                    messageId: doc.id,
-                  );
-                },
+                        // semua option alasan laporan taruh di sini
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -1028,137 +1031,175 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     final result = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFCF8),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Pilih alasan laporan',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2B2B2B),
+            return DraggableScrollableSheet(
+              initialChildSize: 0.78,
+              minChildSize: 0.55,
+              maxChildSize: 0.92,
+              expand: false,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFFCF8),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  ..._reportOptions.map((item) {
-                    final tag = item['tag']!;
-                    final reason = item['reason']!;
-                    final isSelected = tempTag == tag;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setModalState(() {
-                          tempTag = tag;
-                          tempReason = reason;
-                        });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 46,
+                        height: 5,
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFFFDECEF)
-                              : const Color(0xFFF8F6F3),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFFE36A77)
-                                : Colors.transparent,
-                            width: 1.2,
-                          ),
+                          color: const Color(0xFFE5E5E0),
+                          borderRadius: BorderRadius.circular(99),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(height: 18),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
                           children: [
-                            Icon(
-                              isSelected
-                                  ? Icons.radio_button_checked_rounded
-                                  : Icons.radio_button_off_rounded,
-                              color: isSelected
-                                  ? const Color(0xFFE36A77)
-                                  : const Color(0xFFB9B0B4),
+                            Text(
+                              'Pilih alasan laporan',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineLarge
+                                  ?.copyWith(
+                                    fontSize: 22,
+                                    color: Colors.black,
+                                  ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tag,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF2B2B2B),
+                            const SizedBox(height: 18),
+
+                            ..._reportOptions.map((option) {
+                              final isSelected = tempTag == option['tag'];
+
+                              return GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    tempTag = option['tag'];
+                                    tempReason = option['reason'];
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  margin: const EdgeInsets.only(bottom: 14),
+                                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFFFF1F3)
+                                        : const Color(0xFFF7F4EF),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFFE36A77)
+                                          : const Color(0xFFE8E2D8),
+                                      width: isSelected ? 1.4 : 1,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    reason,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      height: 1.45,
-                                      color: Color(0xFF666666),
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        margin: const EdgeInsets.only(top: 2),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? const Color(0xFFE36A77)
+                                                : const Color(0xFFC9C2B7),
+                                            width: 2,
+                                          ),
+                                          color: isSelected
+                                              ? const Color(0xFFFFD9DF)
+                                              : Colors.transparent,
+                                        ),
+                                        child: isSelected
+                                            ? const Icon(
+                                                Icons.check_rounded,
+                                                size: 14,
+                                                color: Color(0xFFE36A77),
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              option['tag'] ?? '',
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF2B2B2B),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              option['reason'] ?? '',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                height: 1.45,
+                                                color: Color(0xFF666666),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                              );
+                            }),
+
+                            const SizedBox(height: 6),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: tempTag == null || tempReason == null
+                                    ? null
+                                    : () {
+                                        _selectedReportTag = tempTag;
+                                        _selectedReportReason = tempReason;
+                                        Navigator.pop(context, true);
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: const Color(0xFF84C76A),
+                                  disabledBackgroundColor: const Color(0xFFCCE0C2),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Lanjutkan',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  }),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (tempTag == null || tempReason == null)
-                          ? null
-                          : () {
-                              _selectedReportTag = tempTag;
-                              _selectedReportReason = tempReason;
-                              Navigator.pop(context, true);
-                            },
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: const Color(0xFFE36A77),
-                        disabledBackgroundColor: const Color(0xFFF2C8CE),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        'Lanjutkan laporan',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

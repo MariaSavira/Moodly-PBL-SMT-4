@@ -64,6 +64,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     }
 
     await loadProfileFromFirestoreOrLocal();
+    await _loadRewardInventory();
 
     if (!mounted) return;
 
@@ -366,17 +367,49 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
   String profileName = '';
   String selectedProfileImage = '';
+  List<String> ownedRewardAvatarIds = [];
 
   // Avatar yang terbuka untuk user baru.
-// NANTI kalau sistem streak/reward sudah jadi, pindahkan kontrol unlock ke Firestore/user inventory di sini.
-final List<String> unlockedProfileAvatars = const [
-  'assets/profile_pic/PP.png',
-  'assets/profile_pic/PP_2.png',
-  'assets/profile_pic/PP_3.png',
-  'assets/profile_pic/PP_4.png',
-  'assets/profile_pic/PP_5.png',
-  'assets/profile_pic/PP_6.png',
-];
+  // NANTI kalau sistem streak/reward sudah jadi, pindahkan kontrol unlock ke Firestore/user inventory di sini.
+
+  List<String> get unlockedProfileAvatars {
+    final lockedRewardAssets = <String>{
+      ..._oranyeImutPack,
+      ..._matchaKalemPack,
+    };
+
+    final baseUnlocked = profileAvatars
+        .where((avatar) => !lockedRewardAssets.contains(avatar))
+        .toList();
+
+    final result = [...baseUnlocked];
+
+    if (ownedRewardAvatarIds.contains('avatar_oren_imut')) {
+      result.addAll(_oranyeImutPack);
+    }
+
+    if (ownedRewardAvatarIds.contains('avatar_matcha_calm')) {
+      result.addAll(_matchaKalemPack);
+    }
+
+    return result.toSet().toList();
+  }
+
+  static const List<String> _oranyeImutPack = [
+    'assets/profile_pic/PP_12.png',
+    'assets/profile_pic/PP_13.png',
+    'assets/profile_pic/PP_14.png',
+    'assets/profile_pic/PP_15.png',
+    'assets/profile_pic/PP_21.png',
+  ];
+
+  static const List<String> _matchaKalemPack = [
+    'assets/profile_pic/PP_16.png',
+    'assets/profile_pic/PP_17.png',
+    'assets/profile_pic/PP_18.png',
+    'assets/profile_pic/PP_19.png',
+    'assets/profile_pic/PP_2.png',
+  ];
 
   final List<String> profileAvatars = const [
     'assets/profile_pic/PP.png',
@@ -507,6 +540,26 @@ final List<String> unlockedProfileAvatars = const [
     return unlockedProfileAvatars[random.nextInt(unlockedProfileAvatars.length)];
   }
 
+  Future<void> _loadRewardInventory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('reward_inventory')
+        .doc('main')
+        .get();
+
+    final data = snap.data() ?? {};
+
+    if (!mounted) return;
+
+    setState(() {
+      ownedRewardAvatarIds = List<String>.from(data['ownedAvatarIds'] ?? []);
+    });
+  }
+
   Future<void> loadProfileFromFirestoreOrLocal() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -548,10 +601,14 @@ final List<String> unlockedProfileAvatars = const [
             ? firestoreName
             : generateRandomNickname();
 
+    final fallbackAvatar = generateRandomUnlockedAvatar();
+
     final resolvedAvatar =
-      firestoreAvatar != null && firestoreAvatar.isNotEmpty
-          ? firestoreAvatar
-          : generateRandomUnlockedAvatar();
+        firestoreAvatar != null &&
+                firestoreAvatar.isNotEmpty &&
+                unlockedProfileAvatars.contains(firestoreAvatar)
+            ? firestoreAvatar
+            : fallbackAvatar;
 
     await prefs.setString(nameKey, resolvedName);
     await prefs.setString(avatarKey, resolvedAvatar);
@@ -646,7 +703,7 @@ final List<String> unlockedProfileAvatars = const [
         systemNavigationBarDividerColor: Color(0xFFE0EBBB),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFDDE2C4),
+        backgroundColor: const Color(0xFFF3FADC),
         extendBody: true,
         resizeToAvoidBottomInset: false,
         body: SafeArea(
@@ -669,28 +726,24 @@ final List<String> unlockedProfileAvatars = const [
                         child: _buildHeader(),
                       ),
                     ),
-                    const SizedBox(height: 88),
+                    const SizedBox(height: 72),
                     Opacity(
                       opacity: showProfileOverlay ? 0.0 : 1.0,
                       child: IgnorePointer(
                         ignoring: showProfileOverlay,
-                        child: _buildCenterContent(),
+                        child: Column(
+                          children: [
+                            _buildCenterContent(),
+                            const SizedBox(height: 22),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildProfileButton(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 52),
                   ],
-                ),
-              ),
-
-              Positioned(
-                right: 20,
-                bottom: 350,
-                child: Opacity(
-                  opacity: showProfileOverlay ? 0.0 : 1.0,
-                  child: IgnorePointer(
-                    ignoring: showProfileOverlay,
-                    child: _buildProfileButton(),
-                  ),
                 ),
               ),
 
@@ -700,29 +753,6 @@ final List<String> unlockedProfileAvatars = const [
                 right: 0,
                 bottom: 0,
                 child: _buildFilterCard(),
-              ),
-
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 140,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0x00EFCACC),
-                          Color(0x66EFCACC),
-                          Color(0xFFEFCACC),
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -898,7 +928,7 @@ final List<String> unlockedProfileAvatars = const [
 
   Widget _buildFilterCard() {
     return Container(
-      height: 340,
+      height: 282,
       decoration: const BoxDecoration(
         color: Color(0xFFDCE9BE),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -924,7 +954,7 @@ final List<String> unlockedProfileAvatars = const [
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 138),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -938,6 +968,7 @@ final List<String> unlockedProfileAvatars = const [
                 _buildCTAButton(),
                 const SizedBox(height: 10),
                 _buildHelperText(),
+                const SizedBox(height: 8),
               ],
             ),
           ),

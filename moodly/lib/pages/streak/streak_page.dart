@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moodly/core/services/reward_service.dart';
 import 'reward_page.dart';
 import '../../widgets/streak/streak_feedback_popup.dart';
 import 'streak_detail_page.dart';
@@ -18,6 +19,47 @@ class StreakPage extends StatelessWidget {
   static const Color _mintSoft = Color(0xFFEFFAF7);
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
+
+  static final GlobalKey _walkStreakKey = GlobalKey();
+  static final GlobalKey _walkFreezeKey = GlobalKey();
+  static final GlobalKey _walkMissionKey = GlobalKey();
+  static final GlobalKey _walkRewardKey = GlobalKey();
+
+  static bool _badgeSyncBusy = false;
+
+  static const List<String> _badgeOrder = [
+    'milestone_3',
+    'milestone_7',
+    'milestone_14',
+    'milestone_30',
+    'milestone_120',
+  ];
+
+  static const Map<String, int> _badgeMilestoneDays = {
+    'milestone_3': 3,
+    'milestone_7': 7,
+    'milestone_14': 14,
+    'milestone_30': 30,
+    'milestone_120': 120,
+  };
+
+  // ===== TEMPAT GANTI PEMETAAN BADGE ASLI DAN PLACEHOLDER =====
+  // Ganti path di sini kalau nanti nama asset badge berubah.
+  static const Map<String, String> _badgeUnlockedAssets = {
+    'milestone_3': 'assets/streak_badges/3_hari.png',
+    'milestone_7': 'assets/streak_badges/7_hari.png',
+    'milestone_14': 'assets/streak_badges/14_hari.png',
+    'milestone_30': 'assets/streak_badges/30_hari.png',
+    'milestone_120': 'assets/streak_badges/120_hari.png',
+  };
+
+  static const Map<String, String> _badgeLockedAssets = {
+    'milestone_3': 'assets/streak_badges/3_hari_qm.png',
+    'milestone_7': 'assets/streak_badges/7_hari_qm.png',
+    'milestone_14': 'assets/streak_badges/14_hari_qm.png',
+    'milestone_30': 'assets/streak_badges/30_hari_qm.png',
+    'milestone_120': 'assets/streak_badges/120_hari_qm.png',
+  };
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
@@ -94,6 +136,10 @@ class StreakPage extends StatelessWidget {
             title: 'Isi mood hari ini',
             isDone: state.moodDoneToday,
           ),
+          const _MissionTask(
+            title: 'Lihat insight bulanan (segera hadir)',
+            isDone: false,
+          ),
         ],
       ),
       _MissionSection(
@@ -116,6 +162,10 @@ class StreakPage extends StatelessWidget {
           _MissionTask(
             title: 'Klaim bonus diary hari ini',
             isDone: state.diaryDoneToday,
+          ),
+          const _MissionTask(
+            title: 'Reaksi / komentar diary lain (segera hadir)',
+            isDone: false,
           ),
         ],
       ),
@@ -140,6 +190,10 @@ class StreakPage extends StatelessWidget {
           _MissionTask(
             title: 'Klaim bonus afirmasi hari ini',
             isDone: state.affirmationDoneToday,
+          ),
+          const _MissionTask(
+            title: 'Bagikan 1 afirmasi (segera hadir)',
+            isDone: false,
           ),
         ],
       ),
@@ -202,6 +256,43 @@ class StreakPage extends StatelessWidget {
     if (streak < 30) return 'Menjaga Diri dengan Setia';
     if (streak < 120) return 'Tumbuh dengan Tenang';
     return 'Semua badge terbuka';
+  }
+
+  List<String> _eligibleBadgeIdsFor(int streak) {
+    final result = <String>[];
+    for (final badgeId in _badgeOrder) {
+      final need = _badgeMilestoneDays[badgeId] ?? 999999;
+      if (streak >= need) result.add(badgeId);
+    }
+    return result;
+  }
+
+  String? _currentBadgeIdFor(int streak) {
+    final eligible = _eligibleBadgeIdsFor(streak);
+    return eligible.isEmpty ? null : eligible.last;
+  }
+
+  Future<void> _syncUnlockedBadges(BuildContext context, StreakState state) async {
+    if (_badgeSyncBusy) return;
+
+    final eligible = _eligibleBadgeIdsFor(state.currentStreak);
+    if (eligible.isEmpty) return;
+
+    _badgeSyncBusy = true;
+    try {
+      final inventory = await RewardService.instance.getInventoryOnce();
+      final claimed = Set<String>.from(inventory['claimedBadgeIds'] ?? []);
+      final newBadges = eligible.where((e) => !claimed.contains(e)).toList();
+
+      if (newBadges.isEmpty) return;
+
+      await RewardService.instance.unlockBadges(newBadges);
+
+      if (!context.mounted) return;
+      _showBadgeUnlockedCelebration(context, newBadges.last);
+    } finally {
+      _badgeSyncBusy = false;
+    }
   }
 
   Future<void> _handleMissionAction(
@@ -298,6 +389,102 @@ class StreakPage extends StatelessWidget {
     }
   }
 
+  void _showBadgeUnlockedCelebration(BuildContext context, String badgeId) {
+    final asset = _badgeUnlockedAssets[badgeId];
+    final title = switch (badgeId) {
+      'milestone_3' => 'Mulai Konsisten',
+      'milestone_7' => 'Teman Diri Sendiri',
+      'milestone_14' => 'Tumbuh Pelan-Pelan',
+      'milestone_30' => 'Menjaga Diri dengan Setia',
+      'milestone_120' => 'Tumbuh dengan Tenang',
+      _ => 'Badge Baru',
+    };
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Badge Unlock',
+      barrierColor: Colors.black.withOpacity(0.70),
+      pageBuilder: (_, __, ___) {
+        return Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              const Positioned(
+                top: 120,
+                left: 40,
+                child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 30),
+              ),
+              const Positioned(
+                top: 190,
+                right: 48,
+                child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26),
+              ),
+              const Positioned(
+                top: 280,
+                left: 56,
+                child: Icon(Icons.star_rounded, color: Colors.white, size: 20),
+              ),
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 26),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                  decoration: BoxDecoration(
+                    color: _card,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: _softShadow,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Kamu memperoleh milestone badge baru!',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: 24,
+                              color: _textDark,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (asset != null)
+                        Image.asset(asset, width: 210, fit: BoxFit.contain),
+                      const SizedBox(height: 12),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontSize: 18,
+                              color: _textDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _green,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Lihat semua badge'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildProgressBar({
     required double value,
     required Color fillColor,
@@ -314,21 +501,47 @@ class StreakPage extends StatelessWidget {
     );
   }
 
-  void _showStreakWalkthrough(BuildContext context) {
-    final steps = const [
-      _WalkthroughStep(
+  Rect _targetRectFromKey(GlobalKey key) {
+    final context = key.currentContext;
+    if (context == null) return Rect.zero;
+    final box = context.findRenderObject() as RenderBox;
+    final offset = box.localToGlobal(Offset.zero);
+    return offset & box.size;
+  }
+
+  Future<void> _scrollToKey(GlobalKey key) async {
+    final context = key.currentContext;
+    if (context == null) return;
+
+    await Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeInOut,
+      alignment: 0.16,
+    );
+
+    await Future.delayed(const Duration(milliseconds: 180));
+  }
+
+  void _showStreakWalkthrough(BuildContext context, StreakState state) {
+    final steps = [
+      _SpotlightStep(
+        keyTarget: _walkStreakKey,
         title: 'Streak Aktif',
         desc: 'Angka ini naik saat kamu isi mood harian. Ini pemicu utamanya.',
       ),
-      _WalkthroughStep(
+      _SpotlightStep(
+        keyTarget: _walkFreezeKey,
         title: 'Freeze Streak',
-        desc: 'Freeze melindungi streak saat kamu bolong, sesuai mode yang kamu pilih.',
+        desc: 'Freeze melindungi streak saat kamu bolong, sesuai mode proteksi yang kamu pilih.',
       ),
-      _WalkthroughStep(
+      _SpotlightStep(
+        keyTarget: _walkMissionKey,
         title: 'Misi Harian',
         desc: 'Mood, diary, afirmasi, dan bonus combo memberimu poin tambahan.',
       ),
-      _WalkthroughStep(
+      _SpotlightStep(
+        keyTarget: _walkRewardKey,
         title: 'Poin & Hadiah',
         desc: 'Poin bisa ditukar untuk hadiah reguler atau premium.',
       ),
@@ -336,26 +549,45 @@ class StreakPage extends StatelessWidget {
 
     int currentStep = 0;
 
+    Future<void> goToStep(StateSetter setDialogState, int index) async {
+      if (index < 0 || index >= steps.length) return;
+      await _scrollToKey(steps[index].keyTarget);
+      setDialogState(() {
+        currentStep = index;
+      });
+    }
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Walkthrough Streak',
-      barrierColor: Colors.black.withOpacity(0.62),
+      barrierColor: Colors.transparent,
       pageBuilder: (_, __, ___) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final textTheme = Theme.of(context).textTheme;
-            final item = steps[currentStep];
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToKey(steps[currentStep].keyTarget);
+            });
+
+            final rect = _targetRectFromKey(steps[currentStep].keyTarget);
 
             return Material(
               color: Colors.transparent,
               child: Stack(
                 children: [
-                  Positioned.fill(child: Container(color: Colors.transparent)),
-                  Align(
-                    alignment: Alignment.bottomCenter,
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _SpotlightPainter(
+                        holeRect: rect.inflate(8),
+                        borderRadius: 24,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 28,
                     child: Container(
-                      margin: const EdgeInsets.fromLTRB(18, 18, 18, 26),
                       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
                       decoration: BoxDecoration(
                         color: _card,
@@ -367,22 +599,22 @@ class StreakPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.title,
-                            style: textTheme.headlineLarge?.copyWith(
-                              fontSize: 24,
-                              color: _textDark,
-                            ),
+                            steps[currentStep].title,
+                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                  fontSize: 24,
+                                  color: _textDark,
+                                ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           Text(
-                            item.desc,
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: _textSoft,
-                              height: 1.5,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            steps[currentStep].desc,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: _textSoft,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           Row(
                             children: List.generate(
                               steps.length,
@@ -402,17 +634,16 @@ class StreakPage extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           Row(
                             children: [
                               if (currentStep > 0)
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        currentStep -= 1;
-                                      });
-                                    },
+                                    onPressed: () => goToStep(
+                                      setDialogState,
+                                      currentStep - 1,
+                                    ),
                                     child: const Text('Kembali'),
                                   ),
                                 ),
@@ -423,9 +654,7 @@ class StreakPage extends StatelessWidget {
                                     if (currentStep == steps.length - 1) {
                                       Navigator.pop(context);
                                     } else {
-                                      setDialogState(() {
-                                        currentStep += 1;
-                                      });
+                                      goToStep(setDialogState, currentStep + 1);
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -749,136 +978,167 @@ class StreakPage extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return Container(
-          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-          decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: _softShadow,
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E7E1),
-                      borderRadius: BorderRadius.circular(99),
+        return StreamBuilder<Map<String, dynamic>>(
+          stream: RewardService.instance.watchInventory(),
+          builder: (context, snapshot) {
+            final inventory = snapshot.data ?? {};
+            final claimedBadgeIds = Set<String>.from(inventory['claimedBadgeIds'] ?? []);
+            final currentBadgeId = _currentBadgeIdFor(state.currentStreak);
+            final nextMilestone = _nextMilestoneFor(state.currentStreak);
+            final nextBadge = _nextBadgeTitleFor(state.currentStreak);
+            final progressValue = state.currentStreak >= _milestones.last
+                ? 1.0
+                : (state.currentStreak / nextMilestone).clamp(0.0, 1.0).toDouble();
+
+            Widget badgeCard(String badgeId) {
+              final unlocked = claimedBadgeIds.contains(badgeId);
+              final asset = unlocked
+                  ? _badgeUnlockedAssets[badgeId]
+                  : _badgeLockedAssets[badgeId];
+
+              return Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: unlocked ? _mintSoft : const Color(0xFFF7F7F5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Image.asset(
+                  asset!,
+                  fit: BoxFit.contain,
+                  height: 138,
+                ),
+              );
+            }
+
+            return Container(
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: _softShadow,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7E7E1),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Badge Milestone',
-                  style: textTheme.headlineLarge?.copyWith(
-                    fontSize: 24,
-                    color: _textDark,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Semakin konsisten kamu hadir untuk dirimu sendiri, semakin banyak badge yang bisa dibuka.',
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: _textSoft,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: const [
-                    _BadgePill(label: '3 hari', title: 'Mulai Konsisten'),
-                    _BadgePill(label: '7 hari', title: 'Teman Diri Sendiri'),
-                    _BadgePill(label: '14 hari', title: 'Tumbuh Pelan-Pelan'),
-                    _BadgePill(label: '30 hari', title: 'Menjaga Diri dengan Setia'),
-                    _BadgePill(label: '120 hari', title: 'Tumbuh dengan Tenang'),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Badge Milestone',
+                      style: textTheme.headlineLarge?.copyWith(
+                        fontSize: 24,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Semakin konsisten kamu hadir untuk dirimu sendiri, semakin banyak badge yang bisa dibuka.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: _textSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.92,
+                      children: [
+                        badgeCard('milestone_3'),
+                        badgeCard('milestone_7'),
+                        badgeCard('milestone_14'),
+                        badgeCard('milestone_30'),
+                        badgeCard('milestone_120'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                      decoration: BoxDecoration(
+                        color: _greenPastel,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Badge aktif saat ini',
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: _textSoft,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            currentBadgeId == null
+                                ? 'Belum ada badge'
+                                : _currentBadgeTitleFor(state.currentStreak),
+                            style: textTheme.titleMedium?.copyWith(
+                              fontSize: 18,
+                              color: _textDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            state.currentStreak >= _milestones.last
+                                ? 'Semua badge sudah terbuka'
+                                : 'Badge berikutnya: $nextBadge',
+                            style: textTheme.bodyMedium?.copyWith(
+                              fontSize: 12,
+                              color: _textDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildProgressBar(
+                            value: progressValue,
+                            fillColor: _green,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            state.currentStreak >= _milestones.last
+                                ? 'Kamu sudah menuntaskan semua milestone badge.'
+                                : '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge berikutnya',
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: _textSoft,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                  decoration: BoxDecoration(
-                    color: _greenPastel,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Badge aktif saat ini',
-                        style: textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: _textSoft,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        currentBadge,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontSize: 18,
-                          color: _textDark,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        state.currentStreak >= _milestones.last
-                            ? 'Semua badge sudah terbuka'
-                            : 'Badge berikutnya: $nextBadge',
-                        style: textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
-                          color: _textDark,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildProgressBar(
-                        value: progressValue,
-                        fillColor: _green,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        state.currentStreak >= _milestones.last
-                            ? 'Kamu sudah menuntaskan semua milestone badge.'
-                            : '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge berikutnya',
-                        style: textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: _textSoft,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tekan detail streak untuk melihat progres lebih lengkap',
-                        style: textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: _textSoft,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
 
     return Row(
@@ -911,7 +1171,7 @@ class StreakPage extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => _showStreakWalkthrough(context),
+          onTap: () => _showStreakWalkthrough(context, state),
           child: Container(
             width: 40,
             height: 40,
@@ -1106,17 +1366,20 @@ class StreakPage extends StatelessWidget {
                 bgColor: _pinkSoft,
                 iconColor: const Color(0xFFE58696),
               ),
-              _buildTopInfoChip(
-                context,
-                icon: state.freezeEnabled
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                label: state.freezeEnabled
-                    ? 'Freeze aktif ${state.freezeOwned}/${state.freezeMax}'
-                    : 'Freeze nonaktif ${state.freezeOwned}/${state.freezeMax}',
-                bgColor: _greenPastel,
-                iconColor: _green,
-                onTap: () => _showFreezeInfoSheet(context, state),
+              KeyedSubtree(
+                key: _walkFreezeKey,
+                child: _buildTopInfoChip(
+                  context,
+                  icon: state.freezeEnabled
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  label: state.freezeEnabled
+                      ? 'Freeze aktif ${state.freezeOwned}/${state.freezeMax}'
+                      : 'Freeze nonaktif ${state.freezeOwned}/${state.freezeMax}',
+                  bgColor: _greenPastel,
+                  iconColor: _green,
+                  onTap: () => _showFreezeInfoSheet(context, state),
+                ),
               ),
               _buildTopInfoChip(
                 context,
@@ -1494,6 +1757,34 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _buildComboBanner(context, state),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF4E7),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE7B35C), width: 1.1),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.ondemand_video_rounded,
+                    color: Color(0xFFE29A3A), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Misi iklan bonus 2x akan ditambahkan di sini. Reward target: +30 poin.',
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: _textDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1989,6 +2280,11 @@ class StreakPage extends StatelessWidget {
       stream: StreakService.instance.watchState(),
       builder: (context, snapshot) {
         final state = snapshot.data ?? StreakState.initial();
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _syncUnlockedBadges(context, state);
+        });
+
         final sections = _buildSections(state);
 
         return Scaffold(
@@ -2038,20 +2334,26 @@ class StreakPage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                        child: _buildHeader(context),
+                        child: _buildHeader(context, state),
                       ),
                     ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: _buildSummaryCard(context, state),
+                        child: KeyedSubtree(
+                          key: _walkStreakKey,
+                          child: _buildSummaryCard(context, state),
+                        ),
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 18)),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: _buildMissionHeader(context, state),
+                        child: KeyedSubtree(
+                          key: _walkMissionKey,
+                          child: _buildMissionHeader(context, state),
+                        ),
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 14)),
@@ -2081,7 +2383,10 @@ class StreakPage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
-                        child: _buildRewardSection(context, state),
+                        child: KeyedSubtree(
+                          key: _walkRewardKey,
+                          child: _buildRewardSection(context, state),
+                        ),
                       ),
                     ),
                   ],
@@ -2210,6 +2515,62 @@ class _BadgePill extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SpotlightStep {
+  final GlobalKey keyTarget;
+  final String title;
+  final String desc;
+
+  const _SpotlightStep({
+    required this.keyTarget,
+    required this.title,
+    required this.desc,
+  });
+}
+
+class _SpotlightPainter extends CustomPainter {
+  final Rect holeRect;
+  final double borderRadius;
+
+  const _SpotlightPainter({
+    required this.holeRect,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fullRect = Offset.zero & size;
+
+    canvas.saveLayer(fullRect, Paint());
+
+    final overlayPaint = Paint()
+      ..color = Colors.black.withOpacity(0.68);
+
+    canvas.drawRect(fullRect, overlayPaint);
+
+    final clearPaint = Paint()..blendMode = BlendMode.clear;
+    final rrect = RRect.fromRectAndRadius(
+      holeRect,
+      Radius.circular(borderRadius),
+    );
+
+    canvas.drawRRect(rrect, clearPaint);
+    canvas.restore();
+
+    final borderPaint = Paint()
+      ..color = Colors.white.withOpacity(0.95)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    canvas.drawRRect(rrect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpotlightPainter oldDelegate) {
+    return oldDelegate.holeRect != holeRect ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }
 

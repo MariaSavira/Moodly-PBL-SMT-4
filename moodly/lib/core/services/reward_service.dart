@@ -44,6 +44,7 @@ class RewardService {
         'ownedAvatarIds': <String>[],
         'ownedFrameIds': <String>[],
         'claimedBadgeIds': <String>[],
+        'activeFrameId': null,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
@@ -86,6 +87,8 @@ class RewardService {
         final ownedFrameIds =
             List<String>.from(inventoryData['ownedFrameIds'] ?? []);
 
+        final activeFrameId = inventoryData['activeFrameId'] as String?;
+
         if (kind == RewardKind.avatar && ownedAvatarIds.contains(itemId)) {
           throw Exception('Avatar ini sudah kamu miliki.');
         }
@@ -112,6 +115,7 @@ class RewardService {
             ownedFrameIds.add(itemId);
             tx.set(inventoryRef, {
               'ownedFrameIds': ownedFrameIds,
+              'activeFrameId': activeFrameId ?? itemId,
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
             break;
@@ -192,6 +196,39 @@ class RewardService {
         message: e.toString().replaceFirst('Exception: ', ''),
       );
     }
+  }
+
+  Future<Map<String, dynamic>> getInventoryOnce() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return {};
+
+    await _ensureInventoryExists(uid);
+    final snap = await _inventoryRef(uid).get();
+    return snap.data() ?? {};
+  }
+
+  Future<void> unlockBadges(List<String> badgeIds) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || badgeIds.isEmpty) return;
+
+    await _ensureInventoryExists(uid);
+
+    await _inventoryRef(uid).set({
+      'claimedBadgeIds': FieldValue.arrayUnion(badgeIds),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> setActiveFrame(String? frameId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    await _ensureInventoryExists(uid);
+
+    await _inventoryRef(uid).set({
+      'activeFrameId': frameId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Stream<Map<String, dynamic>> watchInventory() {
