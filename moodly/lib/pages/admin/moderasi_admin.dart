@@ -535,7 +535,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
             ),
             child: const Center(
               child: Text(
-                '👩🏻‍💻',
+                '👩‍💻',
                 style: TextStyle(fontSize: 20),
               ),
             ),
@@ -620,21 +620,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
   Widget _buildFilterRow() {
     return Row(
       children: [
-        _buildSmallDropdown(
-          value: 'Status',
-          items: const ['Status', 'Pending', 'Diproses', 'Selesai'],
-          width: 92,
-          onChanged: (value) {
-            setState(() {
-              if (value == 'Status') {
-                _selectedTab = 'Semua';
-              } else {
-                _selectedTab = value!;
-              }
-            });
-          },
-        ),
-        const SizedBox(width: 10),
+        // ✅ Dropdown Status DIHAPUS
         _buildSmallDropdown(
           value: _selectedTipe,
           items: _tipeOptions,
