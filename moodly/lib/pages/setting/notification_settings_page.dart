@@ -27,9 +27,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             final isSmall = width < 380;
-            final horizontalPadding = isSmall ? 26.0 : 34.0;
+            final horizontalPadding = isSmall ? 22.0 : 28.0;
 
             return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 16,
@@ -43,21 +44,26 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     title: 'Pemberitahuan',
                     onBack: () => Navigator.pop(context),
                   ),
+
                   const SizedBox(height: 26),
-                  const Text(
+
+                  Text(
                     'Personalisasi peringatan ruang Anda.\n'
                     'Pilih notifikasi mana yang membantu\n'
                     'Anda tetap sadar dan terhubung.',
                     style: TextStyle(
-                      fontSize: 18,
-                      height: 1.5,
+                      fontSize: isSmall ? 15 : 16,
+                      height: 1.45,
                       fontWeight: FontWeight.w500,
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 54),
+
+                  const SizedBox(height: 38),
+
                   const _SectionTitle('UMUM'),
                   const SizedBox(height: 12),
+
                   _NotificationCard(
                     children: [
                       _NotificationItem(
@@ -65,58 +71,74 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         subtitle:
                             'Pengingat halus untuk mencatat suasana hati Anda',
                         value: dailyNote,
-                        onChanged: (value) => setState(() => dailyNote = value),
+                        onChanged: (value) {
+                          setState(() => dailyNote = value);
+                        },
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _NotificationItem(
                         title: 'Kesadaran Pagi',
                         subtitle:
                             'Mulailah hari Anda dengan anjuran yang menenangkan',
                         value: morningAwareness,
-                        onChanged: (value) =>
-                            setState(() => morningAwareness = value),
+                        onChanged: (value) {
+                          setState(() => morningAwareness = value);
+                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 42),
+
+                  const SizedBox(height: 34),
+
                   const _SectionTitle('WAWASAN'),
                   const SizedBox(height: 12),
+
                   _NotificationCard(
                     children: [
                       _NotificationItem(
                         title: 'Peringatan Mood Rendah',
-                        subtitle: 'Terima laporan jika tren mood anda turun',
+                        subtitle: 'Terima laporan jika tren mood Anda turun',
                         value: lowMoodAlert,
-                        onChanged: (value) =>
-                            setState(() => lowMoodAlert = value),
+                        onChanged: (value) {
+                          setState(() => lowMoodAlert = value);
+                        },
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _NotificationItem(
                         title: 'Peringatan Pencapaian',
                         subtitle:
-                            'Rayakan pencapaian kesadaran (mindfulness) Anda',
+                            'Rayakan pencapaian kesadaran mindfulness Anda',
                         value: achievementAlert,
-                        onChanged: (value) =>
-                            setState(() => achievementAlert = value),
+                        onChanged: (value) {
+                          setState(() => achievementAlert = value);
+                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 42),
+
+                  const SizedBox(height: 34),
+
                   const _SectionTitle('SISTEM'),
                   const SizedBox(height: 12),
+
                   _NotificationCard(
                     children: [
                       _NotificationItem(
                         title: 'Pembaruan Aplikasi',
+                        subtitle: 'Dapatkan informasi fitur dan perbaikan baru',
                         value: appUpdate,
-                        onChanged: (value) => setState(() => appUpdate = value),
+                        onChanged: (value) {
+                          setState(() => appUpdate = value);
+                        },
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _NotificationItem(
                         title: 'Peringatan Keamanan',
+                        subtitle: 'Notifikasi untuk aktivitas keamanan akun',
                         value: securityAlert,
-                        onChanged: (value) =>
-                            setState(() => securityAlert = value),
+                        onChanged: (value) {
+                          setState(() => securityAlert = value);
+                        },
                       ),
                     ],
                   ),
@@ -148,16 +170,16 @@ class _Header extends StatelessWidget {
           child: const Icon(
             Icons.arrow_back,
             color: MoodlyColors.green,
-            size: 23,
+            size: 22,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 6),
         Text(
           title,
           style: const TextStyle(
             color: MoodlyColors.green,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const Spacer(),
@@ -166,8 +188,8 @@ class _Header extends StatelessWidget {
           style: TextStyle(
             color: Color(0xFFC65F59),
             fontSize: 32,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.2,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1,
           ),
         ),
       ],
@@ -186,7 +208,7 @@ class _SectionTitle extends StatelessWidget {
       title,
       style: const TextStyle(
         color: MoodlyColors.green,
-        fontSize: 20,
+        fontSize: 17,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.5,
       ),
@@ -203,15 +225,15 @@ class _NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 22, 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 18, 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -237,11 +259,13 @@ class _NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Row(
       children: [
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -249,10 +273,10 @@ class _NotificationItem extends StatelessWidget {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 22,
-                    height: 1.12,
+                    fontSize: isSmall ? 17 : 18,
+                    height: 1.15,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -262,9 +286,9 @@ class _NotificationItem extends StatelessWidget {
                     subtitle!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 13,
+                    style: TextStyle(
+                      color: Colors.black.withValues(alpha: 0.72),
+                      fontSize: isSmall ? 12 : 13,
                       height: 1.25,
                       fontWeight: FontWeight.w400,
                     ),
@@ -275,13 +299,13 @@ class _NotificationItem extends StatelessWidget {
           ),
         ),
         Transform.scale(
-          scale: 0.72,
+          scale: isSmall ? 0.66 : 0.70,
           child: Switch(
             value: value,
-            activeColor: MoodlyColors.green,
+            activeColor: Colors.white,
             activeTrackColor: MoodlyColors.green,
             inactiveThumbColor: Colors.white,
-            inactiveTrackColor: Colors.black,
+            inactiveTrackColor: Colors.black.withValues(alpha: 0.45),
             trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
             onChanged: onChanged,
           ),

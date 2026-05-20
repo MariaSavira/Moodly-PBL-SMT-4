@@ -17,6 +17,7 @@ class TermsConditionsPage extends StatelessWidget {
             final horizontalPadding = isSmall ? 24.0 : 32.0;
 
             return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 16,
@@ -30,23 +31,26 @@ class TermsConditionsPage extends StatelessWidget {
                     title: 'Syarat & Ketentuan',
                     onBack: () => Navigator.pop(context),
                   ),
+
                   const SizedBox(height: 28),
 
-                  const Text(
+                  Text(
                     'Ketentuan penggunaan aplikasi Moodly',
                     style: TextStyle(
                       color: Colors.black,
-                      fontSize: 22,
+                      fontSize: isSmall ? 20 : 22,
                       height: 1.3,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+
                   const SizedBox(height: 10),
-                  const Text(
+
+                  Text(
                     'Dengan menggunakan Moodly, pengguna dianggap memahami dan menyetujui aturan penggunaan aplikasi.',
                     style: TextStyle(
                       color: Colors.black87,
-                      fontSize: 14,
+                      fontSize: isSmall ? 13 : 14,
                       height: 1.5,
                       fontWeight: FontWeight.w400,
                     ),
@@ -134,6 +138,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Row(
       children: [
         GestureDetector(
@@ -141,19 +147,19 @@ class _Header extends StatelessWidget {
           child: const Icon(
             Icons.arrow_back,
             color: MoodlyColors.green,
-            size: 23,
+            size: 22,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: MoodlyColors.green,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontSize: isSmall ? 15 : 17,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -162,8 +168,8 @@ class _Header extends StatelessWidget {
           style: TextStyle(
             color: Color(0xFFC65F59),
             fontSize: 32,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.2,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1,
           ),
         ),
       ],
@@ -184,6 +190,8 @@ class _TermsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
@@ -203,8 +211,8 @@ class _TermsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: isSmall ? 32 : 34,
+            height: isSmall ? 32 : 34,
             decoration: const BoxDecoration(
               color: MoodlyColors.green,
               shape: BoxShape.circle,
@@ -227,18 +235,18 @@ class _TermsCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: isSmall ? 15 : 16,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   content,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black87,
-                    fontSize: 13,
+                    fontSize: isSmall ? 12 : 13,
                     height: 1.45,
                     fontWeight: FontWeight.w400,
                   ),
