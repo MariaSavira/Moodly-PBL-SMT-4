@@ -34,13 +34,17 @@ class _TinjauAjuanBandingUserAdminPageState
           id: 'BD-0001',
           username: 'UserXyz',
           userId: 'USER-001',
+          avatarUrl: '',
           jenisBan: 'Ban Sementara',
           alasanBanding: 'Tidak sengaja, aku hanya berbagi cerita pribadi....',
           tanggal: DateTime(2026, 4, 10),
           status: AjuanBandingStatus.pending,
           catatanAdmin: '',
-          alasanTindakan: 'User melanggar aturan komunitas.',
-          tindakanSaatIni: TindakanUser.banSementara,
+alasanTindakan: 'User melanggar aturan komunitas.',
+tindakanSaatIni: TindakanUser.banSementara,
+
+isiPesan: 'Menggunakan kata-kata kasar',
+tanggalGabung: DateTime(2026, 1, 12),
         );
 
     _catatanController.text = _ajuan.catatanAdmin;
@@ -64,8 +68,13 @@ Future<void> _ubahStatus(
     status: status,
     catatanAdmin: _catatanController.text.trim(),
     tindakanDipilih: tindakanDipilih,
+    
   );
-
+_showMessage(
+  status == AjuanBandingStatus.disetujui
+      ? 'Banding berhasil disetujui'
+      : 'Banding berhasil ditolak',
+);
   if (!mounted) return;
   Navigator.pop(context, true);
 }
@@ -163,10 +172,26 @@ Widget _tindakanOption(TindakanUser tindakan) {
 }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
-    );
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: GoogleFonts.openSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: const Color(0xFF486253),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
 
   String _formatTanggal(DateTime date) {
     final bulan = [
@@ -338,7 +363,7 @@ Widget _tindakanOption(TindakanUser tindakan) {
           const SizedBox(height: 24),
           Row(
             children: [
-              _buildAvatar(),
+              _buildAvatar(_ajuan.avatarUrl),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -351,9 +376,13 @@ Widget _tindakanOption(TindakanUser tindakan) {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    _normalText('ID User: 091283'),
+                    _normalText('ID User: ${_ajuan.userId}'),
                     const SizedBox(height: 6),
-                    _normalText('Bergabung sejak 12 Januari 2026'),
+                    _normalText(
+                    _ajuan.tanggalGabung != null
+                        ? 'Bergabung sejak ${_formatTanggal(_ajuan.tanggalGabung!)}'
+                        : 'Tanggal bergabung tidak tersedia',
+                  ),
                   ],
                 ),
               ),
@@ -380,7 +409,10 @@ Widget _tindakanOption(TindakanUser tindakan) {
             'Konten',
             null,
             child: _pinkBox(
-              text: '“Menggunakan kata - kata\nkasar”',
+              text: '“${_placeholder(
+              _ajuan.isiPesan,
+              'Isi pesan tidak tersedia',
+            )}”',
               width: 140,
               height: 50,
               light: true,
@@ -548,22 +580,32 @@ Widget _tindakanOption(TindakanUser tindakan) {
     );
   }
 
-  Widget _buildAvatar() {
-    return Container(
-      width: 50,
-      height: 50,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: Color(0xFFC8FFE3),
-        shape: BoxShape.circle,
-      ),
-      child: const Text(
-        '✧',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
+  Widget _buildAvatar(String avatarUrl) {
+  return Container(
+    width: 50,
+    height: 50,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFFC8FFE3),
+    ),
+    child: ClipOval(
+      child: avatarUrl.isNotEmpty
+          ? Image.network(
+              avatarUrl,
+              fit: BoxFit.cover,
+            )
+          : const Center(
+              child: Text(
+                '✧',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+    ),
+  );
+}
   Widget _buildInfoRow(String label, String? value, {Widget? child}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
