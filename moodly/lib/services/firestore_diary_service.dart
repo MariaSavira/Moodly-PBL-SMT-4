@@ -80,11 +80,13 @@ class FirestoreDiaryService {
     if (likedBy.contains(userId)) {
       await doc.update({
         "likedBy": FieldValue.arrayRemove([userId]),
+
         "likes": FieldValue.increment(-1),
       });
     } else {
       await doc.update({
         "likedBy": FieldValue.arrayUnion([userId]),
+
         "likes": FieldValue.increment(1),
       });
     }
@@ -96,6 +98,36 @@ class FirestoreDiaryService {
     required int total,
   }) async {
     await diaryRef.doc(diaryId).update({"comments": total});
+  }
+
+  /// ================= DELETE DIARY =================
+  static Future<void> deleteDiary({required String diaryId}) async {
+    try {
+      // ================= DELETE COMMENTS =================
+      final commentsSnapshot = await diaryRef
+          .doc(diaryId)
+          .collection("comments")
+          .get();
+
+      for (var commentDoc in commentsSnapshot.docs) {
+        // ================= DELETE REPLIES =================
+        final repliesSnapshot = await commentDoc.reference
+            .collection("replies")
+            .get();
+
+        for (var replyDoc in repliesSnapshot.docs) {
+          await replyDoc.reference.delete();
+        }
+
+        // ================= DELETE COMMENT =================
+        await commentDoc.reference.delete();
+      }
+
+      // ================= DELETE DIARY =================
+      await diaryRef.doc(diaryId).delete();
+    } catch (e) {
+      throw Exception("Gagal menghapus diary: $e");
+    }
   }
 
   /// ================= ADD DIARY =================
