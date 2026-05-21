@@ -57,6 +57,7 @@ tanggalGabung: DateTime(2026, 1, 12),
 Future<void> _ubahStatus(
   AjuanBandingStatus status, {
   TindakanUser? tindakanDipilih,
+  DateTime? banUntil,
 }) async {
   if (_ajuan.documentId.isEmpty) {
     _showMessage('Data ajuan belum terhubung ke Firebase');
@@ -68,6 +69,7 @@ Future<void> _ubahStatus(
     status: status,
     catatanAdmin: _catatanController.text.trim(),
     tindakanDipilih: tindakanDipilih,
+    banUntil: banUntil,
     
   );
 _showMessage(
@@ -131,23 +133,55 @@ void _showPilihTindakanSheet() {
     },
   );
 }
-
+void _showPilihDurasiBanSheet() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pilih Durasi Ban Sementara'),
+            const SizedBox(height: 12),
+            _durasiOption('1 Jam', const Duration(hours: 1)),
+            _durasiOption('6 Jam', const Duration(hours: 6)),
+            _durasiOption('12 Jam', const Duration(hours: 12)),
+            _durasiOption('1 Hari', const Duration(days: 1)),
+            _durasiOption('3 Hari', const Duration(days: 3)),
+            _durasiOption('7 Hari', const Duration(days: 7)),
+          ],
+        ),
+      );
+    },
+  );
+}
 Widget _tindakanOption(TindakanUser tindakan) {
   return GestureDetector(
     onTap: () async {
-  Navigator.pop(context);
+      if (tindakan == TindakanUser.banSementara) {
+        Navigator.pop(context);
+        _showPilihDurasiBanSheet();
+        return;
+      }
 
-  final confirm = await _showConfirmDialog(
-    'Terima banding dengan tindakan ${tindakan.label}?',
-  );
+      Navigator.pop(context);
 
-  if (!confirm) return;
+      final confirm = await _showConfirmDialog(
+        'Terima banding dengan tindakan ${tindakan.label}?',
+      );
 
-  _ubahStatus(
-    AjuanBandingStatus.disetujui,
-    tindakanDipilih: tindakan,
-  );
-},
+      if (!confirm) return;
+
+      _ubahStatus(
+        AjuanBandingStatus.disetujui,
+        tindakanDipilih: tindakan,
+      );
+    },
     child: Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
@@ -170,7 +204,26 @@ Widget _tindakanOption(TindakanUser tindakan) {
     ),
   );
 }
+Widget _durasiOption(String label, Duration duration) {
+  return ListTile(
+    title: Text(label),
+    onTap: () async {
+      Navigator.pop(context);
 
+      final confirm = await _showConfirmDialog(
+        'Terima banding dengan Ban Sementara selama $label?',
+      );
+
+      if (!confirm) return;
+
+      _ubahStatus(
+        AjuanBandingStatus.disetujui,
+        tindakanDipilih: TindakanUser.banSementara,
+        banUntil: _getBanUntil(duration),
+      );
+    },
+  );
+}
   void _showMessage(String message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -191,6 +244,10 @@ Widget _tindakanOption(TindakanUser tindakan) {
       duration: const Duration(seconds: 2),
     ),
   );
+}
+
+DateTime _getBanUntil(Duration duration) {
+  return DateTime.now().add(duration);
 }
 
   String _formatTanggal(DateTime date) {
@@ -403,7 +460,10 @@ Widget _tindakanOption(TindakanUser tindakan) {
           const SizedBox(height: 24),
           _buildInfoRow('Jenis', 'Chat Anonim'),
           const SizedBox(height: 18),
-          _buildInfoRow('Tanggal', '06 April 2026'),
+          _buildInfoRow(
+  'Tanggal',
+  _formatTanggal(_ajuan.tanggal),
+),
           const SizedBox(height: 16),
           _buildInfoRow(
             'Konten',

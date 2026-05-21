@@ -141,9 +141,10 @@ class AjuanBandingModel {
     data['reportedUserInfo']?['uid'] ??
     data['reportedUserInfo']?['userData']?['uid'] ??
     '',
-      jenisBan:
-    data['reportTag'] ??
+   jenisBan:
+    data['tindakanDipilih'] ??
     data['tindakanSaatIni'] ??
+    data['reportTag'] ??
     'Belum ada tindakan',
       alasanBanding: data['alasanBanding'] ?? 'Belum ada alasan banding',
       tanggal: data['createdAt'] is Timestamp

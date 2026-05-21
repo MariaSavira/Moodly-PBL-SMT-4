@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class KeamananAkunAdminPage extends StatefulWidget {
-  const KeamananAkunAdminPage({super.key});
+class KeamananAkunAdmin extends StatefulWidget {
+  const KeamananAkunAdmin({super.key});
 
   @override
-  State<KeamananAkunAdminPage> createState() => _KeamananAkunAdminPageState();
+  State<KeamananAkunAdmin> createState() => _KeamananAkunAdminState();
 }
 
-class _KeamananAkunAdminPageState extends State<KeamananAkunAdminPage> {
+class _KeamananAkunAdminState extends State<KeamananAkunAdmin> {
   bool _twoFactorEnabled = false;
   bool _isLoading = false;
 

@@ -4,8 +4,7 @@ import '../../widgets/admin_bottom_navbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'tinjau_moderasi_admin.dart';
-import '../../core/services/auth_service.dart';
-import 'login_admin.dart';
+import 'profil_admin_page.dart';
 
 enum ModerasiStatus { pending, diproses, selesai, ditolak }
 
@@ -29,7 +28,7 @@ class ModerasiModel {
   final String uid;
   final String nickname;
   final String avatarId;
-  final String status; // String, bukan enum
+  final String status;
   final bool hasWarning;
   final String warningMessage;
   final DateTime updatedAt;
@@ -76,7 +75,6 @@ class ModerasiModel {
     return null;
   }
 
-  // ✅ Helper untuk konversi String status ke enum
   ModerasiStatus get statusEnum {
     switch (status.toLowerCase()) {
       case 'diproses':
@@ -187,16 +185,29 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
   int _jumlahNotif = 0;
 
   String _selectedTab = 'Semua';
+  String _selectedTipe = 'Semua tipe';
+  String _selectedTanggal = 'Tanggal';
+
   final List<String> _tabs = ['Semua', 'Pending', 'Diproses', 'Selesai'];
+  final List<String> _tipeOptions = [
+    'Semua tipe',
+    'Chat Anonim',
+    'Diary Online',
+  ];
+  final List<String> _tanggalOptions = ['Tanggal', 'Terbaru', 'Terlama'];
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _scrollController.addListener(_onScroll);
     _loadData();
     _loadNotif();
+  }
+
+  void _onScroll() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadData() async {
@@ -226,14 +237,21 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
           m.nickname.toLowerCase().contains(kw) ||
           m.uid.toLowerCase().contains(kw);
 
-      // ✅ Gunakan statusEnum untuk perbandingan
       final matchTab = _selectedTab == 'Semua' ||
           m.statusEnum.label.toLowerCase() == _selectedTab.toLowerCase();
 
-      return matchSearch && matchTab;
+      final matchTipe =
+          _selectedTipe == 'Semua tipe' || m.avatarPath == _selectedTipe;
+
+      return matchSearch && matchTab && matchTipe;
     }).toList();
 
-    result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (_selectedTanggal == 'Terbaru' || _selectedTanggal == 'Tanggal') {
+      result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    } else {
+      result.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    }
+
     return result;
   }
 
@@ -291,7 +309,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
     return startTop + (trackH - thumbH) * frac;
   }
 
-  // 🔔 NOTIFICATION POPUP
   void _showNotifPopup() {
     showMenu(
       context: context,
@@ -381,104 +398,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
     );
   }
 
-  // 🚪 LOGOUT DIALOG
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.35),
-      builder: (_) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 34),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          backgroundColor: const Color(0xFFF1FBD8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.admin_panel_settings_rounded,
-                    color: Color(0xFFFF8EA4), size: 48),
-                const SizedBox(height: 14),
-                Text(
-                  'Keluar dari Akun Admin?',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.fredoka(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF486253),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Anda akan kembali ke halaman login admin.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.openSans(
-                    fontSize: 13,
-                    color: const Color(0xFF6B6B6B),
-                  ),
-                ),
-                const SizedBox(height: 26),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DialogButton(
-                        label: 'Batal',
-                        color: const Color(0xFFDDF5C5),
-                        textColor: const Color(0xFF486253),
-                        onTap: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _DialogButton(
-                        label: 'Keluar',
-                        color: const Color(0xFFFFD7DD),
-                        textColor: const Color(0xFF721C24),
-                        onTap: () async {
-                          Navigator.pop(context);
-
-                          try {
-                            await AuthService.instance.signOut();
-
-                            if (!mounted) return;
-
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const AdminLoginPage(),
-                              ),
-                                  (route) => false,
-                            );
-                          } catch (e) {
-                            debugPrint('❌ Admin logout error: $e');
-
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Logout gagal: ${e.toString()}',
-                                  style: GoogleFonts.openSans(color: Colors.white),
-                                ),
-                                backgroundColor: const Color(0xFF721C24),
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
@@ -500,6 +419,8 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                       _buildTitleSection(),
                       const SizedBox(height: 14),
                       _buildSearchBar(),
+                      const SizedBox(height: 10),
+                      _buildFilterRow(),
                       const SizedBox(height: 18),
                       _buildTabs(),
                       const SizedBox(height: 18),
@@ -527,7 +448,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
           },
         ),
       ),
-
       bottomNavigationBar: AdminBottomNavbar(
         currentIndex: 1,
         onTap: (index) {
@@ -598,41 +518,37 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
         ),
         const SizedBox(width: 14),
         GestureDetector(
-          onTap: _showLogoutDialog,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfilAdminPage(),
+              ),
+            );
+          },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEEF1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFF8EA4), width: 1),
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFC4D7),
+              shape: BoxShape.circle,
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFC4D7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text('👩‍💻', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Admin',
-                  style: GoogleFonts.openSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0C0E0C),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.logout_rounded,
-                    size: 14, color: Color(0xFF721C24)),
-              ],
+            child: const Center(
+              child: Text(
+                '👩‍💻',
+                style: TextStyle(fontSize: 20),
+              ),
             ),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          'Admin',
+          style: GoogleFonts.openSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            height: 22 / 14,
+            color: const Color(0xFF0C0E0C),
           ),
         ),
       ],
@@ -701,6 +617,79 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
     );
   }
 
+  Widget _buildFilterRow() {
+    return Row(
+      children: [
+        _buildSmallDropdown(
+          value: _selectedTipe,
+          items: _tipeOptions,
+          width: 112,
+          onChanged: (value) {
+            setState(() {
+              _selectedTipe = value!;
+            });
+          },
+        ),
+        const SizedBox(width: 10),
+        _buildSmallDropdown(
+          value: _selectedTanggal,
+          items: _tanggalOptions,
+          width: 95,
+          onChanged: (value) {
+            setState(() {
+              _selectedTanggal = value!;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSmallDropdown({
+    required String value,
+    required List<String> items,
+    required double width,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      width: width,
+      height: 23,
+      padding: const EdgeInsets.only(left: 13, right: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 18,
+            color: Colors.black,
+          ),
+          dropdownColor: Colors.white,
+          style: GoogleFonts.openSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+            height: 22 / 12,
+            color: const Color(0xFF0C0E0C),
+          ),
+          items: items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabs() {
     return Column(
       children: [
@@ -717,7 +706,11 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                   : null;
 
               return GestureDetector(
-                onTap: () => setState(() => _selectedTab = tab),
+                onTap: () {
+                  setState(() {
+                    _selectedTab = tab;
+                  });
+                },
                 child: SizedBox(
                   width: 76,
                   child: Column(
@@ -793,7 +786,10 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
             builder: (_) => TinjauModerasiAdmin(moderasi: m),
           ),
         );
-        if (result == true) _loadData();
+        if (result == true) {
+          _loadData();
+          _loadNotif();
+        }
       },
       child: Container(
         width: double.infinity,
@@ -945,20 +941,20 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
       return ClipOval(
         child: Image.asset(
           m.avatarPath,
-          width: 40,
-          height: 40,
+          width: 25,
+          height: 25,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _defaultAvatar(),
+          errorBuilder: (_, __, ___) => _defaultUserIcon(),
         ),
       );
     }
-    return _defaultAvatar();
+    return _defaultUserIcon();
   }
 
-  Widget _defaultAvatar() {
+  Widget _defaultUserIcon() {
     return Container(
-      width: 40,
-      height: 40,
+      width: 25,
+      height: 25,
       alignment: Alignment.center,
       decoration: const BoxDecoration(
         color: Color(0xFFFFD18B),
@@ -967,7 +963,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
       child: const Text(
         '☁',
         style: TextStyle(
-          fontSize: 20,
+          fontSize: 15,
           color: Color(0xFF2B2B2B),
           fontWeight: FontWeight.w700,
         ),
@@ -997,49 +993,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// 🎨 DIALOG BUTTON WIDGET
-class _DialogButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color textColor;
-  final VoidCallback onTap;
-
-  const _DialogButton({
-    required this.label,
-    required this.color,
-    required this.textColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: textColor.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.openSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ),
       ),
     );
   }

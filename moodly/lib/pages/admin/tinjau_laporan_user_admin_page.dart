@@ -36,16 +36,17 @@ class _TinjauLaporanUserAdminPageState
       namaPelapor: 'Admin',
       namaTerlapor: 'UserXyz',
       avatarTerlapor: '',
-reportedUid: '',
-kategoriLaporan: 'Kata-kata tidak pantas',
-tanggal: DateTime(2026, 4, 9),
+      reportedUid: '',
+      kategoriLaporan: 'Kata-kata tidak pantas',
+      alasanLaporan: '',
+      tanggal: DateTime(2026, 4, 9),
       status: LaporanStatus.pending,
       isiLaporan:
-          'aku ngerasa hidup ini berat banget, semuanya jahat, enggak ada yang peduli sama aku...',
-          catatanAdmin: '',
-    diaryId: '',
-imageUrls: const [],
-        );
+          'aku ngerasa hidup ini berat banget...',
+      catatanAdmin: '',
+      diaryId: '',
+      imageUrls: const [],
+    );
     _catatanController.text = _laporan.catatanAdmin;
 
     _catatanController.addListener(() {
@@ -79,40 +80,67 @@ imageUrls: const [],
       return;
     }
 
-    await _laporanService.updateStatusLaporan(
-      documentId: _laporan.documentId,
-      status: status,
-      catatanAdmin: _catatanController.text.trim(),
-    );
+  await _laporanService.updateStatusLaporan(
+  documentId: _laporan.documentId,
+  status: status,
+  catatanAdmin: _catatanController.text.trim(),
+);
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
+if (!mounted) return;
+
+_showMessage('Status laporan berhasil diperbarui');
+
+await Future.delayed(const Duration(milliseconds: 600));
+
+if (!mounted) return;
+
+Navigator.of(context).pop(true);
   }
 Future<void> _hapusPostinganDiary() async {
   if (_laporan.diaryId.isEmpty) {
-    _showMessage('ID diary tidak ditemukan');
+  _showMessage('ID diary tidak ditemukan');
     return;
   }
 
   try {
-    final snapshot = await FirebaseFirestore.instance
+    final docRef = FirebaseFirestore.instance
         .collection('diaries')
-        .where('diary_id', isEqualTo: _laporan.diaryId)
-        .get();
+        .doc(_laporan.diaryId);
 
-    if (snapshot.docs.isEmpty) {
+    final snapshot = await docRef.get();
+
+    if (!snapshot.exists) {
       _showMessage('Postingan diary tidak ditemukan');
       return;
     }
 
-    await snapshot.docs.first.reference.update({
-      'isDeleted': true,
-      'deletedAt': Timestamp.now(),
-    });
+    await docRef.delete();
 
-    _showMessage('Postingan diary berhasil dihapus');
+    _showMessage('Postingan diary berhasil dihapus permanen');
   } catch (e) {
     _showMessage('Gagal hapus postingan: $e');
+  }
+}
+Future<void> _hapusKomentar() async {
+  try {
+    final commentRef = FirebaseFirestore.instance
+        .collection('diaries')
+        .doc(_laporan.diaryId)
+        .collection('comments')
+        .doc(_laporan.id);
+
+    final snapshot = await commentRef.get();
+
+    if (!snapshot.exists) {
+      _showMessage('Komentar tidak ditemukan');
+      return;
+    }
+
+    await commentRef.delete();
+
+    _showMessage('Komentar berhasil dihapus');
+  } catch (e) {
+    _showMessage('Gagal hapus komentar: $e');
   }
 }
   String _statusLabel() {
@@ -485,7 +513,7 @@ Future<void> _hapusPostinganDiary() async {
               border: Border.all(color: const Color(0xFFFFB9B9)),
             ),
             child: Text(
-  'Alasan laporan: ${_laporan.kategoriLaporan}',
+ 'Alasan laporan: ${_laporan.alasanLaporan}',
   style: GoogleFonts.openSans(fontSize: 12, height: 1.6),
 ),
           ),
@@ -613,9 +641,22 @@ if (_laporan.tipeKonten == 'Diary Online') ...[
     onTap: _hapusPostinganDiary,
   ),
 ],
+
+if (_laporan.tipeKonten == 'Comment') ...[
+  const SizedBox(height: 8),
+  _actionButton(
+    icon: Icons.delete_outline_rounded,
+    title: 'Hapus Komentar',
+    subtitle: 'Hapus komentar yang dilaporkan',
+    color: const Color(0xFFFF3B3B),
+    bg: const Color(0xFFFFF1F1),
+    border: const Color(0xFFFF8A8A),
+    onTap: _hapusKomentar,
+  ),
+],
       ],
     );
-  }
+  } 
 
   Widget _buildBackButton(BuildContext context) {
     return GestureDetector(
