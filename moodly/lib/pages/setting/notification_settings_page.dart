@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/services/notification_service.dart';
 import '../../core/styles/moodly_colors.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
@@ -13,30 +15,106 @@ class NotificationSettingsPage extends StatefulWidget {
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool dailyNote = false;
   bool morningAwareness = true;
-  bool lowMoodAlert = true;
   bool achievementAlert = false;
-  bool appUpdate = true;
-  bool securityAlert = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationSettings();
+  }
+
+  Future<void> _loadNotificationSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+
+    setState(() {
+      dailyNote = prefs.getBool('dailyNote') ?? false;
+      morningAwareness = prefs.getBool('morningAwareness') ?? true;
+      achievementAlert = prefs.getBool('achievementAlert') ?? false;
+    });
+  }
+
+  Future<void> _saveNotificationSetting(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> _updateSetting({
+    required String key,
+    required bool value,
+    required void Function(bool value) updateState,
+    required Future<void> Function() onEnabled,
+    required Future<void> Function() onDisabled,
+  }) async {
+    setState(() {
+      updateState(value);
+    });
+
+    await _saveNotificationSetting(key, value);
+
+    if (value) {
+      await onEnabled();
+    } else {
+      await onDisabled();
+    }
+  }
+
+  Future<void> _testNotification() async {
+    await NotificationService.instance.showInstantNotification(
+      title: 'Moodly 🌿',
+      body: 'Notifikasi berhasil muncul di HP kamu.',
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Test notifikasi dikirim. Cek notifikasi HP kamu.'),
+      ),
+    );
+  }
+
+  double _pageWidth(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    if (width >= 1200) return 540;
+    if (width >= 900) return 500;
+    if (width >= 600) return 460;
+
+    return width;
+  }
+
+  EdgeInsets _pagePadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    if (width < 360) {
+      return const EdgeInsets.fromLTRB(16, 16, 16, 28);
+    }
+
+    if (width < 600) {
+      return const EdgeInsets.fromLTRB(22, 16, 22, 32);
+    }
+
+    return const EdgeInsets.fromLTRB(26, 18, 26, 34);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pageWidth = _pageWidth(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return Scaffold(
       backgroundColor: MoodlyColors.bgLight,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final isSmall = width < 380;
-            final horizontalPadding = isSmall ? 22.0 : 28.0;
-
-            return SingleChildScrollView(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: pageWidth,
+            child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                16,
-                horizontalPadding,
-                32,
-              ),
+              padding: _pagePadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -45,21 +123,21 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     onBack: () => Navigator.pop(context),
                   ),
 
-                  const SizedBox(height: 26),
+                  SizedBox(height: isSmall ? 22 : 26),
 
                   Text(
                     'Personalisasi peringatan ruang Anda.\n'
-                    'Pilih notifikasi mana yang membantu\n'
-                    'Anda tetap sadar dan terhubung.',
+                    'Pilih notifikasi yang membantu Anda\n'
+                    'tetap sadar dan terhubung.',
                     style: TextStyle(
-                      fontSize: isSmall ? 15 : 16,
+                      fontSize: isSmall ? 14 : 16,
                       height: 1.45,
                       fontWeight: FontWeight.w500,
                       color: Colors.black,
                     ),
                   ),
 
-                  const SizedBox(height: 38),
+                  SizedBox(height: isSmall ? 30 : 38),
 
                   const _SectionTitle('UMUM'),
                   const SizedBox(height: 12),
@@ -72,7 +150,21 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             'Pengingat halus untuk mencatat suasana hati Anda',
                         value: dailyNote,
                         onChanged: (value) {
-                          setState(() => dailyNote = value);
+                          _updateSetting(
+                            key: 'dailyNote',
+                            value: value,
+                            updateState: (newValue) {
+                              dailyNote = newValue;
+                            },
+                            onEnabled: () {
+                              return NotificationService.instance
+                                  .scheduleDailyMoodReminder();
+                            },
+                            onDisabled: () {
+                              return NotificationService.instance
+                                  .cancelDailyMoodReminder();
+                            },
+                          );
                         },
                       ),
                       const SizedBox(height: 22),
@@ -82,13 +174,27 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             'Mulailah hari Anda dengan anjuran yang menenangkan',
                         value: morningAwareness,
                         onChanged: (value) {
-                          setState(() => morningAwareness = value);
+                          _updateSetting(
+                            key: 'morningAwareness',
+                            value: value,
+                            updateState: (newValue) {
+                              morningAwareness = newValue;
+                            },
+                            onEnabled: () {
+                              return NotificationService.instance
+                                  .scheduleMorningAwarenessReminder();
+                            },
+                            onDisabled: () {
+                              return NotificationService.instance
+                                  .cancelMorningAwarenessReminder();
+                            },
+                          );
                         },
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 34),
+                  SizedBox(height: isSmall ? 30 : 34),
 
                   const _SectionTitle('WAWASAN'),
                   const SizedBox(height: 12),
@@ -96,56 +202,62 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   _NotificationCard(
                     children: [
                       _NotificationItem(
-                        title: 'Peringatan Mood Rendah',
-                        subtitle: 'Terima laporan jika tren mood Anda turun',
-                        value: lowMoodAlert,
-                        onChanged: (value) {
-                          setState(() => lowMoodAlert = value);
-                        },
-                      ),
-                      const SizedBox(height: 22),
-                      _NotificationItem(
                         title: 'Peringatan Pencapaian',
                         subtitle:
                             'Rayakan pencapaian kesadaran mindfulness Anda',
                         value: achievementAlert,
                         onChanged: (value) {
-                          setState(() => achievementAlert = value);
+                          _updateSetting(
+                            key: 'achievementAlert',
+                            value: value,
+                            updateState: (newValue) {
+                              achievementAlert = newValue;
+                            },
+                            onEnabled: () {
+                              return NotificationService.instance
+                                  .scheduleAchievementReminder();
+                            },
+                            onDisabled: () {
+                              return NotificationService.instance
+                                  .cancelAchievementReminder();
+                            },
+                          );
                         },
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 34),
+                  const SizedBox(height: 18),
 
-                  const _SectionTitle('SISTEM'),
-                  const SizedBox(height: 12),
+                  const _InfoNote(),
 
-                  _NotificationCard(
-                    children: [
-                      _NotificationItem(
-                        title: 'Pembaruan Aplikasi',
-                        subtitle: 'Dapatkan informasi fitur dan perbaikan baru',
-                        value: appUpdate,
-                        onChanged: (value) {
-                          setState(() => appUpdate = value);
-                        },
+                  const SizedBox(height: 18),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _testNotification,
+                      icon: const Icon(Icons.notifications_active_rounded),
+                      label: const Text('Test Notifikasi'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MoodlyColors.green,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                      const SizedBox(height: 22),
-                      _NotificationItem(
-                        title: 'Peringatan Keamanan',
-                        subtitle: 'Notifikasi untuk aktivitas keamanan akun',
-                        value: securityAlert,
-                        onChanged: (value) {
-                          setState(() => securityAlert = value);
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -163,6 +275,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Row(
       children: [
         GestureDetector(
@@ -176,9 +290,9 @@ class _Header extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: MoodlyColors.green,
-            fontSize: 17,
+            fontSize: isSmall ? 15 : 17,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -204,11 +318,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         color: MoodlyColors.green,
-        fontSize: 17,
+        fontSize: isSmall ? 15 : 17,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.5,
       ),
@@ -223,9 +339,16 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 18, 20),
+      padding: EdgeInsets.fromLTRB(
+        isSmall ? 16 : 20,
+        isSmall ? 18 : 20,
+        isSmall ? 14 : 18,
+        isSmall ? 18 : 20,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
@@ -237,9 +360,7 @@ class _NotificationCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 }
@@ -275,7 +396,7 @@ class _NotificationItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: isSmall ? 17 : 18,
+                    fontSize: isSmall ? 16 : 18,
                     height: 1.15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -311,6 +432,34 @@ class _NotificationItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InfoNote extends StatelessWidget {
+  const _InfoNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isSmall ? 14 : 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEEF2),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Text(
+        'Pengaturan notifikasi lainnya masih dalam pengembangan.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.black.withValues(alpha: 0.70),
+          fontSize: isSmall ? 12 : 13,
+          height: 1.35,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }

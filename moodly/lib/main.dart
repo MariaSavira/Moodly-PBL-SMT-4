@@ -10,6 +10,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'firebase_options.dart';
+import 'core/services/notification_service.dart';
 import 'pages/onboarding_page.dart';
 import 'pages/splash_screen.dart';
 
@@ -21,6 +22,7 @@ Future<void> main() async {
   );
 
   if (!kIsWeb) {
+    await NotificationService.instance.initialize();
     await MobileAds.instance.initialize();
   }
 
