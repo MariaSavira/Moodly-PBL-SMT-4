@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/admin_bottom_navbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,64 +18,144 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
   int _laporanBaru = 0;
   int _diaryBelumModerasi = 0;
   List<Map<String, dynamic>> _laporanTerbaru = [];
+  List<Map<String, dynamic>> _graphData = [];
+
+  StreamSubscription<QuerySnapshot>? _reportsSubscription;
+  StreamSubscription<QuerySnapshot>? _diarySubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _setupRealtimeListeners();
+    _loadLaporanTerbaru();
+    _loadGraphData();
   }
 
-  Future<void> _loadData() async {
-    await _loadStats();
-    await _loadLaporanTerbaru();
-  }
-
-  Future<void> _loadStats() async {
-    try {
-      final reportedUsersSnap = await FirebaseFirestore.instance
-          .collection('reportedUserInfo')
-          .where('userData.hasWarning', isEqualTo: true)
-          .get();
-
-      final diarySnap = await FirebaseFirestore.instance
-          .collection('diary')
-          .where('status', isEqualTo: 'pending')
-          .get();
-
+  void _setupRealtimeListeners() {
+    _reportsSubscription = FirebaseFirestore.instance
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
       if (!mounted) return;
       setState(() {
-        _laporanBaru = reportedUsersSnap.docs.length;
-        _diaryBelumModerasi = diarySnap.docs.length;
+        _jumlahNotif = snapshot.docs.length;
+        _laporanBaru = snapshot.docs.length;
       });
-    } catch (e) {
-      debugPrint('❌ Error loading stats: $e');
-    }
+    });
+
+    _diarySubscription = FirebaseFirestore.instance
+        .collection('diary')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        _diaryBelumModerasi = snapshot.docs.length;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _reportsSubscription?.cancel();
+    _diarySubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadLaporanTerbaru() async {
     try {
       final snap = await FirebaseFirestore.instance
-          .collection('reportedUserInfo')
-          .orderBy('userData.updatedAt', descending: true)
+          .collection('reports')
+          .orderBy('created_at', descending: true)
           .limit(5)
           .get();
 
       if (!mounted) return;
       setState(() {
         _laporanTerbaru = snap.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final userData = data['userData'] as Map<String, dynamic>? ?? {};
+          final data = doc.data();
+
+          DateTime time = DateTime.now();
+          if (data['created_at'] is Timestamp) {
+            time = (data['created_at'] as Timestamp).toDate();
+          } else if (data['created_at'] is DateTime) {
+            time = data['created_at'];
+          }
+
           return {
             'id': doc.id,
-            'type': (userData['avatarPath'] ?? 'Chat Anonim') as String,
-            'user': (userData['nickname'] ?? 'User') as String,
-            'message': (userData['warningMessage'] ?? '') as String,
-            'time': _parseTime(userData['updatedAt']),
+            'type': (data['report_category'] ?? 'Umum') as String,
+            'user': (data['reported_by_username'] ?? 'Anonim') as String,
+            'message': (data['report_reason'] ?? 'Tidak ada deskripsi') as String,
+            'target': (data['reported_user'] ?? 'User') as String,
+            'time': time,
+            'status': (data['status'] ?? 'unknown') as String,
           };
         }).toList();
       });
     } catch (e) {
       debugPrint('❌ Error loading latest reports: $e');
+    }
+  }
+
+  Future<void> _loadGraphData() async {
+    try {
+      final now = DateTime.now();
+      final sevenDaysAgo = now.subtract(const Duration(days: 7));
+
+      final snap = await FirebaseFirestore.instance
+          .collection('reports')
+          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
+          .where('created_at', isLessThanOrEqualTo: Timestamp.fromDate(now))
+          .get();
+
+      final Map<String, Map<String, int>> dataMap = {
+        'Sen': {'chat': 0, 'diary': 0},
+        'Sel': {'chat': 0, 'diary': 0},
+        'Rab': {'chat': 0, 'diary': 0},
+        'Kam': {'chat': 0, 'diary': 0},
+        'Jum': {'chat': 0, 'diary': 0},
+        'Sab': {'chat': 0, 'diary': 0},
+        'Min': {'chat': 0, 'diary': 0},
+      };
+
+      const hariMap = {
+        1: 'Sen', 2: 'Sel', 3: 'Rab', 4: 'Kam', 5: 'Jum', 6: 'Sab', 7: 'Min'
+      };
+
+      for (var doc in snap.docs) {
+        final data = doc.data();
+        final createdAt = (data['created_at'] as Timestamp).toDate();
+        final category = (data['report_category'] ?? '').toString().toLowerCase();
+
+        final dayOfWeek = createdAt.weekday;
+        final dayName = hariMap[dayOfWeek] ?? 'Sen';
+
+        final isChat = category.contains('chat') ||
+            category.contains('anonim') ||
+            category == 'spam';
+        final typeKey = isChat ? 'chat' : 'diary';
+
+        dataMap[dayName]![typeKey] = dataMap[dayName]![typeKey]! + 1;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _graphData = dataMap.entries.map((entry) {
+          return {
+            'day': entry.key,
+            'chat': entry.value['chat'] ?? 0,
+            'diary': entry.value['diary'] ?? 0,
+          };
+        }).toList();
+      });
+
+      debugPrint('📊 Total reports loaded: ${snap.docs.length}');
+      debugPrint('📊 Graph data: $_graphData');
+
+    } catch (e) {
+      debugPrint('❌ Error loading graph data: $e');
     }
   }
 
@@ -123,8 +204,8 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             ),
             child: _notifItem(
               icon: Icons.shield_rounded,
-              title: 'Moderasi',
-              subtitle: '$_jumlahNotif laporan menunggu ditinjau',
+              title: 'Laporan Baru',
+              subtitle: '$_jumlahNotif laporan menunggu tinjauan',
               color: const Color(0xFFFF8EA4),
             ),
           ),
@@ -206,7 +287,19 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
               const SizedBox(height: 18),
               _buildLaporanTerbaruHeader(),
               const SizedBox(height: 12),
-              ..._laporanTerbaru.map(_buildLaporanItem),
+
+              if (_laporanTerbaru.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      'Belum ada laporan terbaru',
+                      style: GoogleFonts.openSans(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ..._laporanTerbaru.map(_buildLaporanItem),
             ],
           ),
         ),
@@ -215,20 +308,11 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
         currentIndex: 0,
         onTap: (index) {
           if (index == 1) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/admin-moderasi',
-            );
+            Navigator.pushReplacementNamed(context, '/admin-moderasi');
           } else if (index == 2) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/admin-laporan',
-            );
+            Navigator.pushReplacementNamed(context, '/admin-laporan');
           } else if (index == 3) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/admin-banding',
-            );
+            Navigator.pushReplacementNamed(context, '/admin-banding');
           }
         },
       ),
@@ -253,29 +337,29 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(Icons.notifications_rounded,
-                  size: 24, color: Color(0xFF8B8B8B)),
-              Positioned(
-                top: -5,
-                right: -2,
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF9AB2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$_jumlahNotif',
-                    style: GoogleFonts.openSans(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
+              const Icon(Icons.notifications_rounded, size: 24, color: Color(0xFF8B8B8B)),
+              if (_jumlahNotif > 0)
+                Positioned(
+                  top: -5,
+                  right: -2,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF9AB2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _jumlahNotif > 9 ? '9+' : '$_jumlahNotif',
+                      style: GoogleFonts.openSans(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -298,7 +382,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             ),
             child: const Center(
               child: Text(
-                '👩‍💻',
+                '👩🏻‍💻',
                 style: TextStyle(fontSize: 20),
               ),
             ),
@@ -405,11 +489,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
               color: iconColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              size: 24,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 24, color: iconColor),
           ),
           const SizedBox(height: 12),
           Text(
@@ -505,15 +585,23 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
   }
 
   Widget _buildBarChart() {
-    final data = [
-      {'day': 'Sen', 'chat': 12, 'diary': 8},
-      {'day': 'Sel', 'chat': 15, 'diary': 10},
-      {'day': 'Rab', 'chat': 10, 'diary': 18},
-      {'day': 'Kam', 'chat': 14, 'diary': 12},
-      {'day': 'Jum', 'chat': 8, 'diary': 6},
-      {'day': 'Sab', 'chat': 11, 'diary': 9},
-      {'day': 'Min', 'chat': 6, 'diary': 4},
-    ];
+    final data = _graphData.isEmpty ? [
+      {'day': 'Sen', 'chat': 0, 'diary': 0},
+      {'day': 'Sel', 'chat': 0, 'diary': 0},
+      {'day': 'Rab', 'chat': 0, 'diary': 0},
+      {'day': 'Kam', 'chat': 0, 'diary': 0},
+      {'day': 'Jum', 'chat': 0, 'diary': 0},
+      {'day': 'Sab', 'chat': 0, 'diary': 0},
+      {'day': 'Min', 'chat': 0, 'diary': 0},
+    ] : _graphData;
+
+    int maxValue = 1;
+    for (var item in data) {
+      final chatVal = (item['chat'] ?? 0) as int;
+      final diaryVal = (item['diary'] ?? 0) as int;
+      if (chatVal > maxValue) maxValue = chatVal;
+      if (diaryVal > maxValue) maxValue = diaryVal;
+    }
 
     return SizedBox(
       height: 120,
@@ -531,12 +619,16 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildBar(
-                    height: (chatValue / 20 * 80).toDouble(),
+                    height: chatValue > 0
+                        ? (chatValue / maxValue * 80).toDouble()
+                        : 4,
                     color: const Color(0xFFFF8EA4),
                   ),
                   const SizedBox(width: 4),
                   _buildBar(
-                    height: (diaryValue / 20 * 80).toDouble(),
+                    height: diaryValue > 0
+                        ? (diaryValue / maxValue * 80).toDouble()
+                        : 4,
                     color: const Color(0xFFFFC85E),
                   ),
                 ],
@@ -570,7 +662,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
 
   Widget _buildLaporanTerbaruHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Text(
           'Laporan Terbaru',
@@ -581,32 +673,20 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             color: const Color(0xFF0C0E0C),
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(context, '/admin-laporan');
-          },
-          child: Text(
-            'View All',
-            style: GoogleFonts.openSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF5F9E4E),
-            ),
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildLaporanItem(Map<String, dynamic> laporan) {
-    final type = (laporan['type'] ?? '') as String;
-    final user = (laporan['user'] ?? 'User') as String;
+    final type = (laporan['type'] ?? 'Umum') as String;
+    final userPelapor = (laporan['user'] ?? 'Anonim') as String;
     final message = (laporan['message'] ?? '') as String;
-    final time = laporan['time'] is DateTime
-        ? laporan['time'] as DateTime
-        : DateTime.now();
+    final target = (laporan['target'] ?? 'User') as String;
+    final time = (laporan['time'] as DateTime?) ?? DateTime.now();
 
-    final isChat = type == 'Chat Anonim' || type.toLowerCase().contains('chat');
+    final isChat = type.toLowerCase().contains('chat') || type == 'Chat Anonim';
+    final badgeColor = isChat ? const Color(0xFFFF8EA4) : const Color(0xFFFFC85E);
+    final badgeBg = isChat ? const Color(0xFFFFF0F3) : const Color(0xFFFFF9E6);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -623,9 +703,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isChat
-                      ? const Color(0xFFFFF0F3)
-                      : const Color(0xFFFFF9E6),
+                  color: badgeBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -633,9 +711,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                     Icon(
                       isChat ? Icons.chat_bubble_rounded : Icons.book_rounded,
                       size: 12,
-                      color: isChat
-                          ? const Color(0xFFFF8EA4)
-                          : const Color(0xFFFFC85E),
+                      color: badgeColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -643,9 +719,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                       style: GoogleFonts.openSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: isChat
-                            ? const Color(0xFFFF8EA4)
-                            : const Color(0xFFD4A017),
+                        color: badgeColor,
                       ),
                     ),
                   ],
@@ -689,7 +763,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user,
+                      userPelapor,
                       style: GoogleFonts.openSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

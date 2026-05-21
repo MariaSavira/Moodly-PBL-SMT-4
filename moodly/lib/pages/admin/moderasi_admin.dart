@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/admin_bottom_navbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,44 +26,52 @@ extension ModerasiStatusLabel on ModerasiStatus {
 
 class ModerasiModel {
   final String id;
-  final String uid;
-  final String nickname;
-  final String avatarId;
+  final String contentText;
+  final String reportCategory;
+  final String reportReason;
+  final String reportedByUid;
+  final String reportedByUsername;
+  final String reportedProfile;
+  final String reportedUid;
+  final String reportedUser;
+  final String targetId;
   final String status;
-  final bool hasWarning;
-  final String warningMessage;
-  final DateTime updatedAt;
-  final DateTime? warningUpdatedAt;
-  final String? currentRoomId;
+  final String catatanAdmin;
+  final DateTime createdAt;
 
   ModerasiModel({
     required this.id,
-    required this.uid,
-    required this.nickname,
-    required this.avatarId,
+    required this.contentText,
+    required this.reportCategory,
+    required this.reportReason,
+    required this.reportedByUid,
+    required this.reportedByUsername,
+    required this.reportedProfile,
+    required this.reportedUid,
+    required this.reportedUser,
+    required this.targetId,
     required this.status,
-    required this.hasWarning,
-    required this.warningMessage,
-    required this.updatedAt,
-    this.warningUpdatedAt,
-    this.currentRoomId,
+    required this.catatanAdmin,
+    required this.createdAt,
   });
 
   factory ModerasiModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    final userData = data['userData'] as Map<String, dynamic>? ?? {};
 
     return ModerasiModel(
       id: doc.id,
-      uid: userData['uid'] ?? data['uid'] ?? '',
-      nickname: userData['nickname'] ?? 'Unknown',
-      avatarId: userData['avatarId'] ?? '',
-      status: userData['status'] ?? 'unknown',
-      hasWarning: userData['hasWarning'] ?? false,
-      warningMessage: userData['warningMessage'] ?? '',
-      updatedAt: _parseTimestamp(userData['updatedAt']) ?? DateTime.now(),
-      warningUpdatedAt: _parseTimestamp(userData['warningUpdatedAt']),
-      currentRoomId: userData['currentRoomId'],
+      contentText: data['content_text'] ?? '',
+      reportCategory: data['report_category'] ?? '',
+      reportReason: data['report_reason'] ?? '',
+      reportedByUid: data['reported_by_uid'] ?? '',
+      reportedByUsername: data['reported_by_username'] ?? '',
+      reportedProfile: data['reported_profile'] ?? '',
+      reportedUid: data['reported_uid'] ?? '',
+      reportedUser: data['reported_user'] ?? '',
+      targetId: data['target_id'] ?? '',
+      status: data['status'] ?? 'pending',
+      catatanAdmin: data['catatanAdmin'] ?? '',
+      createdAt: _parseTimestamp(data['created_at']) ?? DateTime.now(),
     );
   }
 
@@ -88,19 +97,27 @@ class ModerasiModel {
     }
   }
 
-  String get displayName => nickname.isNotEmpty ? nickname : 'User';
-  String get avatarPath => avatarId.isNotEmpty ? avatarId : '';
+  String get displayName => reportedByUsername.isNotEmpty ? reportedByUsername : 'User';
 }
 
 class ModerasiService {
-  final _col = FirebaseFirestore.instance.collection('reportedUserInfo');
+  final _col = FirebaseFirestore.instance.collection('reports');
+
+  Stream<QuerySnapshot> getReportsStream() {
+    return _col.orderBy('created_at', descending: true).snapshots();
+  }
+
+  Stream<int> getPendingCountStream() {
+    return _col
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
 
   Future<List<ModerasiModel>> getModerasiList() async {
     try {
-      final snap = await _col.get();
-      final list = snap.docs.map((d) => ModerasiModel.fromFirestore(d)).toList();
-      list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      return list;
+      final snap = await _col.orderBy('created_at', descending: true).get();
+      return snap.docs.map((d) => ModerasiModel.fromFirestore(d)).toList();
     } catch (e) {
       debugPrint('❌ Error fetching reports: $e');
       return [];
@@ -110,7 +127,7 @@ class ModerasiService {
   Future<int> getPendingCount() async {
     try {
       final snap = await _col
-          .where('userData.hasWarning', isEqualTo: true)
+          .where('status', isEqualTo: 'pending')
           .get();
       return snap.docs.length;
     } catch (e) {
@@ -119,12 +136,37 @@ class ModerasiService {
     }
   }
 
+  Future<bool> updateStatus({
+    required String docId,
+    required String status,
+    String? catatanAdmin,
+  }) async {
+    try {
+      Map<String, dynamic> updateData = {
+        'status': status,
+      };
+
+      if (catatanAdmin != null) {
+        updateData['catatanAdmin'] = catatanAdmin;
+      }
+
+      await _col.doc(docId).update(updateData);
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error updating status: $e');
+      return false;
+    }
+  }
+
   Future<bool> giveWarning({
     required String uid,
     required String message,
   }) async {
     try {
-      await _col.doc(uid).update({
+      await FirebaseFirestore.instance
+          .collection('reportedUserInfo')
+          .doc(uid)
+          .update({
         'userData.hasWarning': true,
         'userData.warningMessage': message,
         'userData.warningUpdatedAt': FieldValue.serverTimestamp(),
@@ -139,14 +181,17 @@ class ModerasiService {
 
   Future<bool> clearWarning({required String uid}) async {
     try {
-      await _col.doc(uid).update({
+      await FirebaseFirestore.instance
+          .collection('reportedUserInfo')
+          .doc(uid)
+          .update({
         'userData.hasWarning': false,
         'userData.warningMessage': '',
         'userData.chatNotice': null,
       });
       return true;
     } catch (e) {
-      debugPrint('❌ Error clearing warning: $e');
+      debugPrint(' Error clearing warning: $e');
       return false;
     }
   }
@@ -156,14 +201,17 @@ class ModerasiService {
     required String durasi,
   }) async {
     try {
-      await _col.doc(uid).update({
+      await FirebaseFirestore.instance
+          .collection('reportedUserInfo')
+          .doc(uid)
+          .update({
         'userData.status': 'banned',
         'userData.hasWarning': true,
         'userData.warningMessage': 'Akun Anda dibanned selama $durasi',
       });
       return true;
     } catch (e) {
-      debugPrint('❌ Error banning user: $e');
+      debugPrint(' Error banning user: $e');
       return false;
     }
   }
@@ -184,24 +232,43 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
   List<ModerasiModel> _list = [];
   int _jumlahNotif = 0;
 
+  StreamSubscription<QuerySnapshot>? _reportsSubscription;
+  StreamSubscription<int>? _pendingCountSubscription;
+
   String _selectedTab = 'Semua';
   String _selectedTipe = 'Semua tipe';
-  String _selectedTanggal = 'Tanggal';
+  String _selectedTanggal = 'Terbaru';
 
   final List<String> _tabs = ['Semua', 'Pending', 'Diproses', 'Selesai'];
   final List<String> _tipeOptions = [
     'Semua tipe',
-    'Chat Anonim',
-    'Diary Online',
+    'Spam',
+    'Konten Tidak Pantas',
   ];
-  final List<String> _tanggalOptions = ['Tanggal', 'Terbaru', 'Terlama'];
+  final List<String> _tanggalOptions = ['Terbaru', 'Terlama'];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadData();
-    _loadNotif();
+    _setupRealtimeListeners();
+  }
+
+  void _setupRealtimeListeners() {
+    _reportsSubscription = _service.getReportsStream().listen((snapshot) {
+      if (!mounted) return;
+      final data = snapshot.docs.map((d) => ModerasiModel.fromFirestore(d)).toList();
+      setState(() {
+        _list = data;
+      });
+    });
+
+    _pendingCountSubscription = _service.getPendingCountStream().listen((count) {
+      if (!mounted) return;
+      setState(() {
+        _jumlahNotif = count;
+      });
+    });
   }
 
   void _onScroll() {
@@ -210,49 +277,53 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
     }
   }
 
-  Future<void> _loadData() async {
-    final data = await _service.getModerasiList();
-    if (!mounted) return;
-    setState(() => _list = data);
-  }
-
-  Future<void> _loadNotif() async {
-    final count = await _service.getPendingCount();
-    if (!mounted) return;
-    setState(() => _jumlahNotif = count);
-  }
-
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _reportsSubscription?.cancel();
+    _pendingCountSubscription?.cancel();
     super.dispose();
   }
 
   List<ModerasiModel> get _filtered {
-    final kw = _searchController.text.toLowerCase();
+    final kw = _searchController.text.toLowerCase().trim();
 
-    final result = _list.where((m) {
-      final matchSearch = m.id.toLowerCase().contains(kw) ||
-          m.nickname.toLowerCase().contains(kw) ||
-          m.uid.toLowerCase().contains(kw);
+    var filtered = _list.where((m) {
+      if (kw.isEmpty) return true;
+      return m.id.toLowerCase().contains(kw) ||
+          m.reportedByUsername.toLowerCase().contains(kw) ||
+          m.reportedByUid.toLowerCase().contains(kw) ||
+          m.contentText.toLowerCase().contains(kw) ||
+          m.reportReason.toLowerCase().contains(kw);
+    });
 
-      final matchTab = _selectedTab == 'Semua' ||
-          m.statusEnum.label.toLowerCase() == _selectedTab.toLowerCase();
-
-      final matchTipe =
-          _selectedTipe == 'Semua tipe' || m.avatarPath == _selectedTipe;
-
-      return matchSearch && matchTab && matchTipe;
-    }).toList();
-
-    if (_selectedTanggal == 'Terbaru' || _selectedTanggal == 'Tanggal') {
-      result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    } else {
-      result.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    if (_selectedTab != 'Semua') {
+      final targetStatus = _selectedTab.toLowerCase();
+      filtered = filtered.where((m) => m.statusEnum.label.toLowerCase() == targetStatus);
     }
 
-    return result;
+    if (_selectedTipe != 'Semua tipe') {
+      final targetTipe = _selectedTipe.toLowerCase().trim();
+      filtered = filtered.where((m) {
+        final dbTipe = m.reportCategory.toLowerCase().trim();
+        return dbTipe == targetTipe || dbTipe.contains(targetTipe);
+      });
+    }
+
+    final sortedList = filtered.toList();
+
+    if (_selectedTanggal == 'Terlama') {
+      sortedList.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    } else {
+      sortedList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
+    if (_selectedTipe != 'Semua tipe') {
+      return sortedList.take(5).toList();
+    }
+
+    return sortedList;
   }
 
   int _countByStatus(ModerasiStatus s) =>
@@ -535,7 +606,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
             ),
             child: const Center(
               child: Text(
-                '👩‍💻',
+                '‍💻',
                 style: TextStyle(fontSize: 20),
               ),
             ),
@@ -623,7 +694,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
         _buildSmallDropdown(
           value: _selectedTipe,
           items: _tipeOptions,
-          width: 112,
+          width: 140,
           onChanged: (value) {
             setState(() {
               _selectedTipe = value!;
@@ -787,8 +858,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
           ),
         );
         if (result == true) {
-          _loadData();
-          _loadNotif();
         }
       },
       child: Container(
@@ -813,7 +882,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        m.nickname,
+                        m.reportedByUsername,
                         style: GoogleFonts.openSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -822,7 +891,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        m.uid,
+                        m.reportCategory,
                         style: GoogleFonts.openSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
@@ -832,42 +901,27 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                     ],
                   ),
                 ),
-                if (m.hasWarning)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD9DD),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '⚠️ Warning',
-                      style: GoogleFonts.openSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF721C24),
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 12),
-            if (m.warningMessage.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF2F4D9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  m.warningMessage,
-                  style: GoogleFonts.openSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF9A5606),
-                  ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                m.contentText.length > 100
+                    ? '${m.contentText.substring(0, 100)}...'
+                    : m.contentText,
+                style: GoogleFonts.openSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF333333),
                 ),
               ),
+            ),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -878,7 +932,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _formatTanggal(m.updatedAt),
+                  _formatTanggal(m.createdAt),
                   style: GoogleFonts.openSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w400,
@@ -902,7 +956,7 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '#MD-${m.id.substring(0, 4).toUpperCase()}',
+              '#${m.id.substring(0, 8).toUpperCase()}',
               style: GoogleFonts.fredoka(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -937,21 +991,6 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
   }
 
   Widget _buildUserIcon(ModerasiModel m) {
-    if (m.avatarPath.isNotEmpty) {
-      return ClipOval(
-        child: Image.asset(
-          m.avatarPath,
-          width: 25,
-          height: 25,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _defaultUserIcon(),
-        ),
-      );
-    }
-    return _defaultUserIcon();
-  }
-
-  Widget _defaultUserIcon() {
     return Container(
       width: 25,
       height: 25,
@@ -960,10 +999,12 @@ class _ModerasiAdminPageState extends State<ModerasiAdminPage> {
         color: Color(0xFFFFD18B),
         shape: BoxShape.circle,
       ),
-      child: const Text(
-        '☁',
-        style: TextStyle(
-          fontSize: 15,
+      child: Text(
+        m.reportedByUsername.isNotEmpty
+            ? m.reportedByUsername[0].toUpperCase()
+            : 'U',
+        style: const TextStyle(
+          fontSize: 12,
           color: Color(0xFF2B2B2B),
           fontWeight: FontWeight.w700,
         ),
