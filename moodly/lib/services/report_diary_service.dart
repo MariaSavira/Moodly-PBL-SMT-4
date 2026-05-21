@@ -28,7 +28,7 @@ class ReportDiaryService {
     required String contentText,
 
     /// TARGET ID
-    required String targetId,
+    required String diaryId,
   }) async {
     await reportRef.add({
       /// TYPE
@@ -51,7 +51,7 @@ class ReportDiaryService {
       "content_text": contentText,
 
       /// TARGET
-      "target_id": targetId,
+      "diary_id": diaryId,
 
       /// SYSTEM
       "status": "pending",

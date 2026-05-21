@@ -10,4 +10,6 @@
 
     <!-- Format wajib: fb + App ID -->
     <string name="fb_login_protocol_scheme">fb2076039389934481</string>
+
+    <style name="uCrop.UCropActivityTheme" parent="Theme.AppCompat.Light.NoActionBar"/>
 </resources>

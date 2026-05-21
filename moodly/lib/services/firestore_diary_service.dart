@@ -139,12 +139,15 @@ class FirestoreDiaryService {
     required String month,
     required int year,
     required bool isPublic,
+    required List<String> images,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
     await diaryRef.add({
       "title": title,
       "content": content,
+
+      "images": images,
 
       "time": time,
       "date": date,

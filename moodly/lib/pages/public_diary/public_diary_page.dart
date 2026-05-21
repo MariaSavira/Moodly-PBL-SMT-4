@@ -138,7 +138,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 20),
 
-                  // ================= CATEGORY =================
+                  /// CATEGORY
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
@@ -161,7 +161,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 20),
 
-                  // ================= REASON =================
+                  /// REASON
                   TextField(
                     controller: reasonController,
                     maxLines: 4,
@@ -178,7 +178,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                   const SizedBox(height: 20),
 
-                  // ================= BUTTON =================
+                  /// BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -232,7 +232,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                           contentText: diary.content,
 
                           /// TARGET
-                          targetId: diary.id,
+                          diaryId: diary.id,
                         );
 
                         if (context.mounted) {
@@ -279,7 +279,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
       body: Column(
         children: [
-          // ================= SEARCH =================
+          /// SEARCH
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -298,7 +298,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
             ),
           ),
 
-          // ================= LIST DIARY =================
+          /// LIST DIARY
           Expanded(
             child: StreamBuilder<List<DiaryModel>>(
               stream: FirestoreDiaryService.getPublicDiaries(),
@@ -352,8 +352,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                 allDiaries = List.from(diaries);
 
-                // ================= AUTO REFRESH SEARCH =================
-
+                /// AUTO REFRESH SEARCH
                 if (searchController.text.isEmpty) {
                   filteredDiaries = List.from(allDiaries);
 
@@ -390,7 +389,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ================= HEADER =================
+                          /// HEADER
                           Row(
                             children: [
                               MoodlyUserAvatar(
@@ -444,7 +443,44 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                           const SizedBox(height: 14),
 
-                          // ================= TITLE =================
+                          /// ================= IMAGES =================
+                          if (diary.images.isNotEmpty) ...[
+                            SizedBox(
+                              height: 200,
+
+                              child: GridView.builder(
+                                shrinkWrap: true,
+
+                                physics: const NeverScrollableScrollPhysics(),
+
+                                itemCount: diary.images.length > 4
+                                    ? 4
+                                    : diary.images.length,
+
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 8,
+                                      mainAxisSpacing: 8,
+                                    ),
+
+                                itemBuilder: (context, imageIndex) {
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+
+                                    child: Image.network(
+                                      diary.images[imageIndex],
+                                      fit: BoxFit.cover,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+                          ],
+
+                          /// TITLE
                           Text(
                             diary.title,
                             style: const TextStyle(
@@ -455,7 +491,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                           const SizedBox(height: 6),
 
-                          // ================= CONTENT =================
+                          /// CONTENT
                           Text(
                             diary.content,
                             style: const TextStyle(height: 1.5),
@@ -463,7 +499,7 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
 
                           const SizedBox(height: 16),
 
-                          // ================= ACTION =================
+                          /// ACTION
                           Row(
                             children: [
                               InkWell(

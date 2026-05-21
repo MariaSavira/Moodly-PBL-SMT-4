@@ -4,12 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DiaryModel {
   final String id;
-
-  // ================= UID =================
   final String uid;
-
   final String title;
   final String content;
+  final List<String> images;
 
   final String time;
   final int date;
@@ -22,7 +20,6 @@ class DiaryModel {
   final String profileImage;
 
   final DateTime createdAt;
-
   final List likedBy;
 
   int likes;
@@ -31,12 +28,10 @@ class DiaryModel {
 
   DiaryModel({
     required this.id,
-
-    // ================= FIX =================
-    this.uid = '',
-
+    required this.uid,
     required this.title,
     required this.content,
+    required this.images,
 
     required this.time,
     required this.date,
@@ -59,63 +54,27 @@ class DiaryModel {
   factory DiaryModel.fromFirestore(String id, Map<String, dynamic> data) {
     return DiaryModel(
       id: id,
+      uid: data['uid'] ?? '',
+      title: data['title'] ?? '',
+      content: data['content'] ?? '',
+      images: List<String>.from(data['images'] ?? []),
 
-      // ================= UID =================
-      uid: data['uid']?.toString() ?? '',
-
-      title: data['title']?.toString() ?? '',
-      content: data['content']?.toString() ?? '',
-
-      time: data['time']?.toString() ?? '',
-
+      time: data['time'] ?? '',
       date: data['date'] ?? 1,
-
-      month: data['month']?.toString() ?? '',
-
+      month: data['month'] ?? '',
       year: data['year'] ?? 2025,
 
       isPublic: data['isPublic'] ?? false,
 
-      username: data['username']?.toString() ?? 'Anonymous',
-
-      profileImage: data['profileImage']?.toString() ?? '',
+      username: data['username'] ?? 'Anonymous',
+      profileImage: data['profileImage'] ?? '',
 
       likes: data['likes'] ?? 0,
-
       comments: data['comments'] ?? 0,
 
       likedBy: data['likedBy'] ?? [],
 
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
-  }
-
-  // ================= OPTIONAL =================
-
-  Map<String, dynamic> toMap() {
-    return {
-      "id": id,
-      "uid": uid,
-
-      "title": title,
-      "content": content,
-
-      "time": time,
-      "date": date,
-      "month": month,
-      "year": year,
-
-      "isPublic": isPublic,
-
-      "username": username,
-      "profileImage": profileImage,
-
-      "likes": likes,
-      "comments": comments,
-
-      "likedBy": likedBy,
-
-      "createdAt": createdAt,
-    };
   }
 }

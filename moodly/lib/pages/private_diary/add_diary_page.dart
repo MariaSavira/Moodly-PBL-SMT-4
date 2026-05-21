@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../services/firestore_diary_service.dart';
 import '../../core/styles/moodly_colors.dart';
@@ -27,9 +27,12 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   final ImagePicker _picker = ImagePicker();
 
-  File? _image;
+  /// MULTIPLE IMAGE
+  List<File> _images = [];
 
   bool isPressed = false;
+
+  bool isLoading = false;
 
   DateTime selectedDate = DateTime.now();
 
@@ -53,76 +56,41 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   Future<void> pickImage() async {
     await requestPermission();
 
-    showModalBottomSheet(
-      context: context,
+    final pickedFiles = await _picker.pickMultiImage(imageQuality: 50);
 
-      builder: (_) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera),
+    if (pickedFiles.isNotEmpty) {
+      /// MAX 4 FOTO
+      if (_images.length + pickedFiles.length > 4) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Maksimal 4 foto")));
 
-              title: const Text("Kamera"),
+        return;
+      }
 
-              onTap: () async {
-                Navigator.pop(context);
-
-                final picked = await _picker.pickImage(
-                  source: ImageSource.camera,
-                );
-
-                await _cropImage(picked);
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.photo),
-
-              title: const Text("Galeri"),
-
-              onTap: () async {
-                Navigator.pop(context);
-
-                final picked = await _picker.pickImage(
-                  source: ImageSource.gallery,
-                );
-
-                await _cropImage(picked);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+      setState(() {
+        _images.addAll(pickedFiles.map((e) => File(e.path)));
+      });
+    }
   }
 
-  /// ================= CROP IMAGE =================
-  Future<void> _cropImage(XFile? picked) async {
-    if (picked == null) return;
+  /// ================= UPLOAD IMAGE =================
+  Future<List<String>> uploadImages() async {
+    final futures = _images.map((image) async {
+      final fileName =
+          "${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}";
 
-    try {
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child("diary_images")
+          .child(fileName);
 
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Atur Gambar',
-            toolbarColor: Colors.green,
-            toolbarWidgetColor: Colors.white,
-          ),
+      await ref.putFile(image);
 
-          IOSUiSettings(title: 'Atur Gambar'),
-        ],
-      );
+      return await ref.getDownloadURL();
+    }).toList();
 
-      if (cropped != null) {
-        setState(() {
-          _image = File(cropped.path);
-        });
-      }
-    } catch (e) {
-      debugPrint("Crop error: $e");
-    }
+    return await Future.wait(futures);
   }
 
   /// ================= SAVE DIARY =================
@@ -138,6 +106,12 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
       return;
     }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    final imageUrls = await uploadImages();
 
     final monthList = [
       "JAN",
@@ -158,6 +132,9 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       title: title,
       content: content,
 
+      /// SAVE IMAGE URL
+      images: imageUrls,
+
       /// DATE
       time: "${selectedDate.hour}:${selectedDate.minute}",
 
@@ -170,6 +147,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       /// TYPE
       isPublic: isPublic,
     );
+
+    setState(() {
+      isLoading = false;
+    });
 
     if (!mounted) return;
 
@@ -295,6 +276,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
+
       backgroundColor: MoodlyColors.bgLight,
 
       floatingActionButton: isKeyboardOpen
@@ -330,63 +313,72 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   borderRadius: BorderRadius.circular(18),
                 ),
 
-                child: const Icon(Icons.check),
+                child: isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+
+                        child: CircularProgressIndicator(),
+                      )
+                    : const Icon(Icons.check),
               ),
             ),
 
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
 
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
 
-              /// HEADER
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
 
-                    child: const Icon(Icons.arrow_back),
-                  ),
+                /// HEADER
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
 
-                  const SizedBox(width: 10),
+                      child: const Icon(Icons.arrow_back),
+                    ),
 
-                  Text(
-                    "Buat Diary",
+                    const SizedBox(width: 10),
 
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
+                    Text(
+                      "Buat Diary",
 
-              const SizedBox(height: 15),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
 
-              /// DATE PICKER
-              Align(
-                alignment: Alignment.centerLeft,
+                const SizedBox(height: 15),
 
-                child: TextButton.icon(
-                  onPressed: pickDate,
+                /// DATE PICKER
+                Align(
+                  alignment: Alignment.centerLeft,
 
-                  icon: const Icon(Icons.calendar_today),
+                  child: TextButton.icon(
+                    onPressed: pickDate,
 
-                  label: Text(
-                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                    icon: const Icon(Icons.calendar_today),
+
+                    label: Text(
+                      "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              /// IMAGE
-              GestureDetector(
-                onTap: pickImage,
-
-                child: Container(
-                  height: 120,
+                /// IMAGE GRID
+                Container(
                   width: double.infinity,
+
+                  padding: const EdgeInsets.all(10),
 
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
@@ -394,21 +386,124 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
 
-                  child: _image != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                  child: _images.isEmpty
+                      ? GestureDetector(
+                          onTap: pickImage,
 
-                          child: Image.file(_image!, fit: BoxFit.cover),
+                          child: const SizedBox(
+                            height: 120,
+
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+
+                                children: [
+                                  Icon(Icons.add_a_photo, size: 35),
+
+                                  SizedBox(height: 8),
+
+                                  Text("Tambah Foto"),
+                                ],
+                              ),
+                            ),
+                          ),
                         )
-                      : const Center(child: Icon(Icons.image)),
+                      : GridView.builder(
+                          shrinkWrap: true,
+
+                          physics: const NeverScrollableScrollPhysics(),
+
+                          itemCount: _images.length < 4
+                              ? _images.length + 1
+                              : _images.length,
+
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
+
+                          itemBuilder: (context, index) {
+                            /// ADD BUTTON
+                            if (index == _images.length && _images.length < 4) {
+                              return GestureDetector(
+                                onTap: pickImage,
+
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white70,
+
+                                    borderRadius: BorderRadius.circular(20),
+
+                                    border: Border.all(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add,
+                                      size: 40,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+
+                                  child: Image.file(
+                                    _images[index],
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+
+                                Positioned(
+                                  top: 5,
+                                  right: 5,
+
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _images.removeAt(index);
+                                      });
+                                    },
+
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                 ),
-              ),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 15),
 
-              /// CONTENT
-              Expanded(
-                child: Container(
+                /// CONTENT
+                Container(
+                  height: MediaQuery.of(context).size.height * 0.45,
+
                   padding: const EdgeInsets.all(15),
 
                   decoration: BoxDecoration(
@@ -421,6 +516,11 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                     children: [
                       TextField(
                         controller: titleController,
+
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
 
                         decoration: const InputDecoration(
                           hintText: "Judul",
@@ -438,13 +538,53 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           focusNode: _focusNode,
 
                           scrollController: _scrollController,
+
+                          config: const quill.QuillEditorConfig(
+                            placeholder: "Apa yang kamu rasakan hari ini...",
+
+                            customStyles: quill.DefaultStyles(
+                              paragraph: quill.DefaultTextBlockStyle(
+                                TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                  height: 1.5,
+                                ),
+
+                                quill.HorizontalSpacing(0, 0),
+
+                                quill.VerticalSpacing(0, 0),
+
+                                quill.VerticalSpacing(0, 0),
+
+                                null,
+                              ),
+
+                              placeHolder: quill.DefaultTextBlockStyle(
+                                TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey,
+                                  height: 1.5,
+                                ),
+
+                                quill.HorizontalSpacing(0, 0),
+
+                                quill.VerticalSpacing(0, 0),
+
+                                quill.VerticalSpacing(0, 0),
+
+                                null,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
       ),

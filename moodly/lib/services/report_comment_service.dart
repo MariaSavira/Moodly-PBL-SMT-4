@@ -3,9 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ReportCommentService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static final CollectionReference reportRef = _db.collection(
-    "reported_comments",
-  );
+  static final CollectionReference reportRef = _db.collection("reports");
 
   /// ================= REPORT COMMENT / REPLY =================
   static Future<void> createReport({

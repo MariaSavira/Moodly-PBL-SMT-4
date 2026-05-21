@@ -19,7 +19,13 @@ class DiaryModel {
   final bool isPublic;
 
   final String username;
+
+  // ================= IMAGE =================
+  final String imageUrl;
   final String profileImage;
+
+  /// MULTI IMAGE
+  final List<String> images;
 
   final DateTime createdAt;
 
@@ -32,7 +38,7 @@ class DiaryModel {
   DiaryModel({
     required this.id,
 
-    // ================= FIX =================
+    // ================= UID =================
     this.uid = '',
 
     required this.title,
@@ -46,7 +52,13 @@ class DiaryModel {
     required this.isPublic,
 
     required this.username,
+
+    // ================= IMAGE =================
+    required this.imageUrl,
     required this.profileImage,
+
+    /// MULTI IMAGE
+    required this.images,
 
     required this.createdAt,
     required this.likedBy,
@@ -78,7 +90,13 @@ class DiaryModel {
 
       username: data['username']?.toString() ?? 'Anonymous',
 
+      // ================= IMAGE =================
+      imageUrl: data['image_url']?.toString() ?? '',
+
       profileImage: data['profileImage']?.toString() ?? '',
+
+      /// MULTI IMAGE
+      images: List<String>.from(data['images'] ?? []),
 
       likes: data['likes'] ?? 0,
 
@@ -90,7 +108,7 @@ class DiaryModel {
     );
   }
 
-  // ================= OPTIONAL =================
+  // ================= TO MAP =================
 
   Map<String, dynamic> toMap() {
     return {
@@ -108,7 +126,13 @@ class DiaryModel {
       "isPublic": isPublic,
 
       "username": username,
+
+      // ================= IMAGE =================
+      "image_url": imageUrl,
       "profileImage": profileImage,
+
+      /// MULTI IMAGE
+      "images": images,
 
       "likes": likes,
       "comments": comments,
