@@ -35,13 +35,13 @@ class _ListLaporanUserAdminPageState extends State<ListLaporanUserAdminPage> {
   ];
   final List<String> _tanggalOptions = ['Tanggal', 'Terbaru', 'Terlama'];
 
- @override
-void initState() {
-  super.initState();
-  _scrollController.addListener(_onScroll);
-  _loadLaporan();
-  _loadJumlahNotif();
-}
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _loadLaporan();
+    _loadJumlahNotif();
+  }
 
   void _onScroll() {
     if (mounted) {
@@ -58,106 +58,106 @@ void initState() {
       _laporanList = data;
     });
   }
-Future<void> _loadJumlahNotif() async {
-  final laporanPending = await FirebaseFirestore.instance
-      .collection('reports')
-      .where('status', isEqualTo: 'pending')
-      .get();
+  Future<void> _loadJumlahNotif() async {
+    final laporanPending = await FirebaseFirestore.instance
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .get();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    _jumlahNotif = laporanPending.docs.length;
-  });
-}
+    setState(() {
+      _jumlahNotif = laporanPending.docs.length;
+    });
+  }
 
-void _showNotifPopup() {
-  showMenu(
-    context: context,
-    position: const RelativeRect.fromLTRB(190, 72, 16, 0),
-    color: Colors.transparent,
-    elevation: 0,
-    items: [
-      PopupMenuItem(
-        enabled: false,
-        padding: EdgeInsets.zero,
-        child: Container(
-          width: 245,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF6FA),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: _notifItem(
-            icon: Icons.report_rounded,
-            title: 'Laporan User',
-            subtitle: '$_jumlahNotif laporan menunggu ditinjau',
-            color: const Color(0xFFFF8EA4),
-          ),
-        ),
-      ),
-    ],
-  );
-}
-Widget _notifItem({
-  required IconData icon,
-  required String title,
-  required String subtitle,
-  required Color color,
-}) {
-  return Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.22),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 19, color: color),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.fredoka(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0C0E0C),
+  void _showNotifPopup() {
+    showMenu(
+      context: context,
+      position: const RelativeRect.fromLTRB(190, 72, 16, 0),
+      color: Colors.transparent,
+      elevation: 0,
+      items: [
+        PopupMenuItem(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: Container(
+            width: 245,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF6FA),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: GoogleFonts.openSans(
-                  fontSize: 10,
-                  color: const Color(0xFF6B6B6B),
-                ),
-              ),
-            ],
+              ],
+            ),
+            child: _notifItem(
+              icon: Icons.report_rounded,
+              title: 'Laporan User',
+              subtitle: '$_jumlahNotif laporan menunggu ditinjau',
+              color: const Color(0xFFFF8EA4),
+            ),
           ),
         ),
       ],
-    ),
-  );
-}
+    );
+  }
+  Widget _notifItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.22),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 19, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.fredoka(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0C0E0C),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.openSans(
+                    fontSize: 10,
+                    color: const Color(0xFF6B6B6B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   List<LaporanUserModel> get _filteredLaporan {
     final keyword = _searchController.text.toLowerCase();
 
@@ -262,8 +262,8 @@ Widget _notifItem({
     }
 
     final double scrollFraction =
-        (_scrollController.offset / _scrollController.position.maxScrollExtent)
-            .clamp(0.0, 1.0);
+    (_scrollController.offset / _scrollController.position.maxScrollExtent)
+        .clamp(0.0, 1.0);
 
     return startTop + (trackHeight - thumbHeight) * scrollFraction;
   }
@@ -281,67 +281,67 @@ Widget _notifItem({
     final filteredLaporan = _filteredLaporan;
 
     return Scaffold(
-  backgroundColor: const Color(0xFFF1FBD8),
+      backgroundColor: const Color(0xFFF1FBD8),
 
-  body: SafeArea(
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        return Stack(
-          children: [
-            SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopBar(),
-                  const SizedBox(height: 20),
-                  _buildTitleSection(),
-                  const SizedBox(height: 14),
-                  _buildSearchBar(),
-                  const SizedBox(height: 10),
-                  _buildFilterRow(),
-                  const SizedBox(height: 18),
-                  _buildTabs(),
-                  const SizedBox(height: 18),
-                  if (filteredLaporan.isEmpty)
-                    _buildEmptyState()
-                  else
-                    ...filteredLaporan.map(_buildReportCard),
-                ],
-              ),
-            ),
-
-            Positioned(
-              right: 4,
-              top: _customScrollbarTop(constraints.maxHeight),
-              child: Container(
-                width: 5,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
-                  borderRadius: BorderRadius.circular(16),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTopBar(),
+                      const SizedBox(height: 20),
+                      _buildTitleSection(),
+                      const SizedBox(height: 14),
+                      _buildSearchBar(),
+                      const SizedBox(height: 10),
+                      _buildFilterRow(),
+                      const SizedBox(height: 18),
+                      _buildTabs(),
+                      const SizedBox(height: 18),
+                      if (filteredLaporan.isEmpty)
+                        _buildEmptyState()
+                      else
+                        ...filteredLaporan.map(_buildReportCard),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        );
-      },
-    ),
-  ),
 
-  bottomNavigationBar: AdminBottomNavbar(
-    currentIndex: 2,
-    onTap: (index) {
-      if (index == 0) {
-        Navigator.pushReplacementNamed(context, '/admin-dashboard');
-      } else if (index == 1) {
-        Navigator.pushReplacementNamed(context, '/admin-moderasi');
-      } else if (index == 3) {
-        Navigator.pushReplacementNamed(context, '/admin-banding');
-      }
-    },
-  ),
+                Positioned(
+                  right: 4,
+                  top: _customScrollbarTop(constraints.maxHeight),
+                  child: Container(
+                    width: 5,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+
+      bottomNavigationBar: AdminBottomNavbar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacementNamed(context, '/admin-dashboard');
+          } else if (index == 1) {
+            Navigator.pushReplacementNamed(context, '/admin-moderasi');
+          } else if (index == 3) {
+            Navigator.pushReplacementNamed(context, '/admin-banding');
+          }
+        },
+      ),
     );
   }
 
@@ -359,66 +359,66 @@ Widget _notifItem({
           ),
         ),
         const Spacer(),
-GestureDetector(
-  onTap: _showNotifPopup,
-  child: Stack(
-    clipBehavior: Clip.none,
-    children: [
-            const Icon(
-              Icons.notifications_rounded,
-              size: 24,
-              color: Color(0xFF8B8B8B),
-            ),
-            Positioned(
-              top: -5,
-              right: -2,
-              child: Container(
-                width: 15,
-                height: 15,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF9AB2),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-  _jumlahNotif.toString(),
-                  style: GoogleFonts.openSans(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
+        GestureDetector(
+          onTap: _showNotifPopup,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(
+                Icons.notifications_rounded,
+                size: 24,
+                color: Color(0xFF8B8B8B),
+              ),
+              Positioned(
+                top: -5,
+                right: -2,
+                child: Container(
+                  width: 15,
+                  height: 15,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF9AB2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _jumlahNotif.toString(),
+                    style: GoogleFonts.openSans(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-),
         const SizedBox(width: 14),
-GestureDetector(
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ProfilAdminPage(),
-      ),
-    );
-  },
-  child: Container(
-    width: 38,
-    height: 38,
-    decoration: const BoxDecoration(
-      color: Color(0xFFFFC4D7),
-      shape: BoxShape.circle,
-    ),
-    child: const Center(
-      child: Text(
-        '👩🏻‍💻',
-        style: TextStyle(fontSize: 20),
-      ),
-    ),
-  ),
-),
-const SizedBox(width: 7),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfilAdminPage(),
+              ),
+            );
+          },
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFC4D7),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '👩🏻‍💻',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 7),
         Text(
           'Admin',
           style: GoogleFonts.openSans(
@@ -604,8 +604,8 @@ const SizedBox(width: 7),
               final count = tab == 'Pending'
                   ? _countByStatus(LaporanStatus.pending)
                   : tab == 'Diproses'
-                      ? _countByStatus(LaporanStatus.diproses)
-                      : null;
+                  ? _countByStatus(LaporanStatus.diproses)
+                  : null;
 
               return GestureDetector(
                 onTap: () {
@@ -625,7 +625,7 @@ const SizedBox(width: 7),
                             style: GoogleFonts.openSans(
                               fontSize: 12,
                               fontWeight:
-                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
                               height: 22 / 12,
                               letterSpacing: 0,
                               color: const Color(0xFF0C0E0C),
@@ -683,97 +683,115 @@ const SizedBox(width: 7),
     );
   }
 
-  Widget _buildReportCard(LaporanUserModel laporan) {
-  final isChat = laporan.tipeKonten == 'Chat Anonim';
+Widget _buildReportCard(LaporanUserModel laporan) {
 
-  return GestureDetector(
-    onTap: () async {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TinjauLaporanUserAdminPage(
-            laporan: laporan,
+  IconData icon;
+
+  switch (laporan.tipeKonten) {
+    case 'Chat Anonim':
+      icon = Icons.forum_rounded;
+      break;
+
+    case 'Comment':
+      icon = Icons.mode_comment_outlined;
+      break;
+
+    case 'Diary Online':
+      icon = Icons.menu_book_rounded;
+      break;
+
+    default:
+      icon = Icons.flag_outlined;
+  }
+
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TinjauLaporanUserAdminPage(
+              laporan: laporan,
+            ),
           ),
+        );
+
+        if (result == true) {
+          _loadLaporan();
+          _loadJumlahNotif();
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(left: 20, right: 12, bottom: 20),
+        padding: const EdgeInsets.fromLTRB(17, 14, 17, 17),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(11),
         ),
-      );
-
-      if (result == true) {
-  _loadLaporan();
-  _loadJumlahNotif();
-}
-    },
-    child: Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(left: 20, right: 12, bottom: 20),
-      padding: const EdgeInsets.fromLTRB(17, 14, 17, 17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTop(laporan),
-          const SizedBox(height: 8),
-          _buildTypeBadge(
-            label: laporan.tipeKonten,
-            icon: isChat ? Icons.forum_rounded : Icons.menu_book_rounded,
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              _buildUserIcon(laporan),
-              const SizedBox(width: 7),
-              Text(
-                laporan.namaTerlapor,
-                style: GoogleFonts.openSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  height: 22 / 12,
-                  letterSpacing: 0,
-                  color: const Color(0xFF0C0E0C),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCardTop(laporan),
+            const SizedBox(height: 8),
+            _buildTypeBadge(
+              label: laporan.tipeKonten,
+              icon: icon,
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                _buildUserIcon(laporan),
+                const SizedBox(width: 7),
+                Text(
+                  laporan.namaTerlapor,
+                  style: GoogleFonts.openSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    height: 22 / 12,
+                    letterSpacing: 0,
+                    color: const Color(0xFF0C0E0C),
+                  ),
                 ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 49,
-                height: 22,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _formatTanggal(laporan.tanggal),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.openSans(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w400,
-                      height: 22 / 8,
-                      letterSpacing: 0,
-                      color: const Color(0xFF6B6B6B),
+                const Spacer(),
+                SizedBox(
+                  width: 49,
+                  height: 22,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _formatTanggal(laporan.tanggal),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.openSans(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w400,
+                        height: 22 / 8,
+                        letterSpacing: 0,
+                        color: const Color(0xFF6B6B6B),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 17),
-          Text(
-            '“${laporan.isiLaporan}”',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.openSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              height: 22 / 12,
-              letterSpacing: 0,
-              color: const Color(0xFF0C0E0C),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 17),
+            Text(
+              '“${laporan.isiLaporan}”',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.openSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                height: 22 / 12,
+                letterSpacing: 0,
+                color: const Color(0xFF0C0E0C),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
   Widget _buildCardTop(LaporanUserModel laporan) {
     return Row(
       children: [
@@ -866,50 +884,62 @@ const SizedBox(width: 7),
       ),
     );
   }
-String _shortId(String id) {
-  if (id.length >= 4) {
-    return id.substring(0, 4).toUpperCase();
-  }
+  String _shortId(String id) {
+    if (id.length >= 4) {
+      return id.substring(0, 4).toUpperCase();
+    }
 
-  return id.toUpperCase().padLeft(4, '0');
-}
+    return id.toUpperCase().padLeft(4, '0');
+  }
   Widget _buildUserIcon(LaporanUserModel laporan) {
   if (laporan.avatarTerlapor.isNotEmpty) {
+    final isNetworkImage = laporan.avatarTerlapor.startsWith('http');
+
     return ClipOval(
-      child: Image.asset(
-        laporan.avatarTerlapor,
-        width: 25,
-        height: 25,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _defaultUserIcon();
-        },
-      ),
+      child: isNetworkImage
+          ? Image.network(
+              laporan.avatarTerlapor,
+              width: 25,
+              height: 25,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _defaultUserIcon();
+              },
+            )
+          : Image.asset(
+              laporan.avatarTerlapor,
+              width: 25,
+              height: 25,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _defaultUserIcon();
+              },
+            ),
     );
   }
 
   return _defaultUserIcon();
 }
 
-Widget _defaultUserIcon() {
-  return Container(
-    width: 25,
-    height: 25,
-    alignment: Alignment.center,
-    decoration: const BoxDecoration(
-      color: Color(0xFFFFD18B),
-      shape: BoxShape.circle,
-    ),
-    child: const Text(
-      '☁',
-      style: TextStyle(
-        fontSize: 15,
-        color: Color(0xFF2B2B2B),
-        fontWeight: FontWeight.w700,
+  Widget _defaultUserIcon() {
+    return Container(
+      width: 25,
+      height: 25,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFD18B),
+        shape: BoxShape.circle,
       ),
-    ),
-  );
-}
+      child: const Text(
+        '☁',
+        style: TextStyle(
+          fontSize: 15,
+          color: Color(0xFF2B2B2B),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 
   Widget _buildEmptyState() {
     return Container(

@@ -34,13 +34,17 @@ class _TinjauAjuanBandingUserAdminPageState
           id: 'BD-0001',
           username: 'UserXyz',
           userId: 'USER-001',
+          avatarUrl: '',
           jenisBan: 'Ban Sementara',
           alasanBanding: 'Tidak sengaja, aku hanya berbagi cerita pribadi....',
           tanggal: DateTime(2026, 4, 10),
           status: AjuanBandingStatus.pending,
           catatanAdmin: '',
-          alasanTindakan: 'User melanggar aturan komunitas.',
-          tindakanSaatIni: TindakanUser.banSementara,
+alasanTindakan: 'User melanggar aturan komunitas.',
+tindakanSaatIni: TindakanUser.banSementara,
+
+isiPesan: 'Menggunakan kata-kata kasar',
+tanggalGabung: DateTime(2026, 1, 12),
         );
 
     _catatanController.text = _ajuan.catatanAdmin;
@@ -53,6 +57,7 @@ class _TinjauAjuanBandingUserAdminPageState
 Future<void> _ubahStatus(
   AjuanBandingStatus status, {
   TindakanUser? tindakanDipilih,
+  DateTime? banUntil,
 }) async {
   if (_ajuan.documentId.isEmpty) {
     _showMessage('Data ajuan belum terhubung ke Firebase');
@@ -64,8 +69,14 @@ Future<void> _ubahStatus(
     status: status,
     catatanAdmin: _catatanController.text.trim(),
     tindakanDipilih: tindakanDipilih,
+    banUntil: banUntil,
+    
   );
-
+_showMessage(
+  status == AjuanBandingStatus.disetujui
+      ? 'Banding berhasil disetujui'
+      : 'Banding berhasil ditolak',
+);
   if (!mounted) return;
   Navigator.pop(context, true);
 }
@@ -122,23 +133,55 @@ void _showPilihTindakanSheet() {
     },
   );
 }
-
+void _showPilihDurasiBanSheet() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pilih Durasi Ban Sementara'),
+            const SizedBox(height: 12),
+            _durasiOption('1 Jam', const Duration(hours: 1)),
+            _durasiOption('6 Jam', const Duration(hours: 6)),
+            _durasiOption('12 Jam', const Duration(hours: 12)),
+            _durasiOption('1 Hari', const Duration(days: 1)),
+            _durasiOption('3 Hari', const Duration(days: 3)),
+            _durasiOption('7 Hari', const Duration(days: 7)),
+          ],
+        ),
+      );
+    },
+  );
+}
 Widget _tindakanOption(TindakanUser tindakan) {
   return GestureDetector(
     onTap: () async {
-  Navigator.pop(context);
+      if (tindakan == TindakanUser.banSementara) {
+        Navigator.pop(context);
+        _showPilihDurasiBanSheet();
+        return;
+      }
 
-  final confirm = await _showConfirmDialog(
-    'Terima banding dengan tindakan ${tindakan.label}?',
-  );
+      Navigator.pop(context);
 
-  if (!confirm) return;
+      final confirm = await _showConfirmDialog(
+        'Terima banding dengan tindakan ${tindakan.label}?',
+      );
 
-  _ubahStatus(
-    AjuanBandingStatus.disetujui,
-    tindakanDipilih: tindakan,
-  );
-},
+      if (!confirm) return;
+
+      _ubahStatus(
+        AjuanBandingStatus.disetujui,
+        tindakanDipilih: tindakan,
+      );
+    },
     child: Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
@@ -161,12 +204,51 @@ Widget _tindakanOption(TindakanUser tindakan) {
     ),
   );
 }
+Widget _durasiOption(String label, Duration duration) {
+  return ListTile(
+    title: Text(label),
+    onTap: () async {
+      Navigator.pop(context);
 
+      final confirm = await _showConfirmDialog(
+        'Terima banding dengan Ban Sementara selama $label?',
+      );
+
+      if (!confirm) return;
+
+      _ubahStatus(
+        AjuanBandingStatus.disetujui,
+        tindakanDipilih: TindakanUser.banSementara,
+        banUntil: _getBanUntil(duration),
+      );
+    },
+  );
+}
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
-    );
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: GoogleFonts.openSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: const Color(0xFF486253),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
+
+DateTime _getBanUntil(Duration duration) {
+  return DateTime.now().add(duration);
+}
 
   String _formatTanggal(DateTime date) {
     final bulan = [
@@ -338,7 +420,7 @@ Widget _tindakanOption(TindakanUser tindakan) {
           const SizedBox(height: 24),
           Row(
             children: [
-              _buildAvatar(),
+              _buildAvatar(_ajuan.avatarUrl),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -351,9 +433,13 @@ Widget _tindakanOption(TindakanUser tindakan) {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    _normalText('ID User: 091283'),
+                    _normalText('ID User: ${_ajuan.userId}'),
                     const SizedBox(height: 6),
-                    _normalText('Bergabung sejak 12 Januari 2026'),
+                    _normalText(
+                    _ajuan.tanggalGabung != null
+                        ? 'Bergabung sejak ${_formatTanggal(_ajuan.tanggalGabung!)}'
+                        : 'Tanggal bergabung tidak tersedia',
+                  ),
                   ],
                 ),
               ),
@@ -374,13 +460,19 @@ Widget _tindakanOption(TindakanUser tindakan) {
           const SizedBox(height: 24),
           _buildInfoRow('Jenis', 'Chat Anonim'),
           const SizedBox(height: 18),
-          _buildInfoRow('Tanggal', '06 April 2026'),
+          _buildInfoRow(
+  'Tanggal',
+  _formatTanggal(_ajuan.tanggal),
+),
           const SizedBox(height: 16),
           _buildInfoRow(
             'Konten',
             null,
             child: _pinkBox(
-              text: '“Menggunakan kata - kata\nkasar”',
+              text: '“${_placeholder(
+              _ajuan.isiPesan,
+              'Isi pesan tidak tersedia',
+            )}”',
               width: 140,
               height: 50,
               light: true,
@@ -548,22 +640,32 @@ Widget _tindakanOption(TindakanUser tindakan) {
     );
   }
 
-  Widget _buildAvatar() {
-    return Container(
-      width: 50,
-      height: 50,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: Color(0xFFC8FFE3),
-        shape: BoxShape.circle,
-      ),
-      child: const Text(
-        '✧',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
+  Widget _buildAvatar(String avatarUrl) {
+  return Container(
+    width: 50,
+    height: 50,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFFC8FFE3),
+    ),
+    child: ClipOval(
+      child: avatarUrl.isNotEmpty
+          ? Image.network(
+              avatarUrl,
+              fit: BoxFit.cover,
+            )
+          : const Center(
+              child: Text(
+                '✧',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+    ),
+  );
+}
   Widget _buildInfoRow(String label, String? value, {Widget? child}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,

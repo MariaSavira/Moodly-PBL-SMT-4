@@ -60,47 +60,47 @@ Future<void> _loadJumlahNotif() async {
 
     if (!mounted) return;
 
-  setState(() {
-    _jumlahNotif = data
-        .where((ajuan) => ajuan.status == AjuanBandingStatus.pending)
-        .length;
-  });
-}
-void _showNotifPopup() {
-  showMenu(
-    context: context,
-    position: const RelativeRect.fromLTRB(190, 72, 16, 0),
-    color: Colors.transparent,
-    elevation: 0,
-    items: [
-      PopupMenuItem(
-        enabled: false,
-        padding: EdgeInsets.zero,
-        child: Container(
-          width: 245,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF6FA),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: _notifItem(
-            icon: Icons.gavel_rounded,
-            title: 'Ajuan Banding',
-            subtitle: '$_jumlahNotif banding menunggu keputusan',
-            color: const Color(0xFF8ECD86),
+    setState(() {
+      _jumlahNotif = data
+          .where((ajuan) => ajuan.status == AjuanBandingStatus.pending)
+          .length;
+    });
+  }
+  void _showNotifPopup() {
+    showMenu(
+      context: context,
+      position: const RelativeRect.fromLTRB(190, 72, 16, 0),
+      color: Colors.transparent,
+      elevation: 0,
+      items: [
+        PopupMenuItem(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: Container(
+            width: 245,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF6FA),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: _notifItem(
+              icon: Icons.gavel_rounded,
+              title: 'Ajuan Banding',
+              subtitle: '$_jumlahNotif banding menunggu keputusan',
+              color: const Color(0xFF8ECD86),
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _notifItem({
     required IconData icon,
@@ -266,11 +266,11 @@ void _showNotifPopup() {
       ),
     );
 
- if (result == true) {
-  _loadAjuanBanding();
-  _loadJumlahNotif();
-}
-}
+    if (result == true) {
+      _loadAjuanBanding();
+      _loadJumlahNotif();
+    }
+  }
 
   @override
   void dispose() {
@@ -321,7 +321,7 @@ else
                     ],
                   ),
                 ),
-                
+
                 Positioned(
                   right: 4,
                   top: _customScrollbarTop(constraints.maxHeight),
@@ -375,66 +375,66 @@ else
           ),
         ),
         const Spacer(),
-GestureDetector(
-  onTap: _showNotifPopup,
-  child: Stack(
-    clipBehavior: Clip.none,
-    children: [
-      const Icon(
-        Icons.notifications_rounded,
-        size: 24,
-        color: Color(0xFF8B8B8B),
-      ),
-      Positioned(
-        top: -5,
-        right: -2,
-        child: Container(
-          width: 15,
-          height: 15,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFF9AB2),
-            shape: BoxShape.circle,
+        GestureDetector(
+          onTap: _showNotifPopup,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(
+                Icons.notifications_rounded,
+                size: 24,
+                color: Color(0xFF8B8B8B),
+              ),
+              Positioned(
+                top: -5,
+                right: -2,
+                child: Container(
+                  width: 15,
+                  height: 15,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF9AB2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _jumlahNotif.toString(),
+                    style: GoogleFonts.openSans(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: Text(
-            _jumlahNotif.toString(),
-            style: GoogleFonts.openSans(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
+        ),
+        const SizedBox(width: 14),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfilAdminPage(),
+              ),
+            );
+          },
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFC4D7),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '👩🏻‍💻',
+                style: TextStyle(fontSize: 20),
+              ),
             ),
           ),
         ),
-      ),
-    ],
-  ),
-),
-    const SizedBox(width: 14),
-GestureDetector(
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ProfilAdminPage(),
-      ),
-    );
-  },
-  child: Container(
-    width: 38,
-    height: 38,
-    decoration: const BoxDecoration(
-      color: Color(0xFFFFC4D7),
-      shape: BoxShape.circle,
-    ),
-    child: const Center(
-      child: Text(
-        '👩🏻‍💻',
-        style: TextStyle(fontSize: 20),
-      ),
-    ),
-  ),
-),
-const SizedBox(width: 7),
+        const SizedBox(width: 7),
         Text(
           'Admin',
           style: GoogleFonts.openSans(

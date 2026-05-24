@@ -37,7 +37,6 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
     setState(() => _isLoading = true);
 
     try {
-      // ✅ Update ke collection yang benar
       await FirebaseFirestore.instance
           .collection('reportedUserInfo')
           .doc(widget.moderasi.uid)
