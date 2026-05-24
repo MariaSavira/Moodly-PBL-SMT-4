@@ -628,7 +628,7 @@ class _ProfileAvatar extends StatelessWidget {
             width: 132,
             height: 132,
             padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: _frameGradient(),
