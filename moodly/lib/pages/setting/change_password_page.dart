@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../core/styles/moodly_colors.dart';
+import '../../widgets/shared/moodly_settings_header.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -27,7 +29,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   double _pageWidth(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return width > 390 ? 390 : width;
+    return width > 430 ? 430 : width;
   }
 
   @override
@@ -37,25 +39,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Scaffold(
       backgroundColor: MoodlyColors.bgLight,
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: SizedBox(
             width: pageWidth,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(32, 16, 32, 34),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(
+                  const MoodlySettingsHeader(
                     title: 'Ubah Kata Sandi',
-                    onBack: () => Navigator.pop(context),
                   ),
-
-                  const SizedBox(height: 56),
-
+                  const SizedBox(height: 32),
                   const _PasswordInfoCard(),
-
-                  const SizedBox(height: 64),
-
+                  const SizedBox(height: 32),
                   _PasswordInput(
                     label: 'Kata Sandi Saat Ini',
                     controller: currentPasswordController,
@@ -67,9 +65,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       });
                     },
                   ),
-
-                  const SizedBox(height: 34),
-
+                  const SizedBox(height: 22),
                   _PasswordInput(
                     label: 'Kata Sandi Baru',
                     controller: newPasswordController,
@@ -81,9 +77,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       });
                     },
                   ),
-
-                  const SizedBox(height: 34),
-
+                  const SizedBox(height: 22),
                   _PasswordInput(
                     label: 'Konfirmasi Kata Sandi Baru',
                     controller: confirmPasswordController,
@@ -95,46 +89,31 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       });
                     },
                   ),
-
-                  const SizedBox(height: 58),
-
+                  const SizedBox(height: 34),
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: MoodlyColors.green,
                         foregroundColor: Colors.white,
-                        elevation: 12,
-                        shadowColor: Colors.black.withOpacity(0.2),
+                        elevation: 8,
+                        shadowColor: Colors.black.withOpacity(0.16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(28),
                         ),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Ubah Kata Sandi',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Icon(Icons.arrow_forward_rounded, size: 30),
-                        ],
+                      child: const Text(
+                        'Ubah Kata Sandi',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 42),
-
+                  const SizedBox(height: 22),
                   Center(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -142,8 +121,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         'Batal',
                         style: TextStyle(
                           color: MoodlyColors.green,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -158,55 +137,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 }
 
-class _Header extends StatelessWidget {
-  final String title;
-  final VoidCallback onBack;
-
-  const _Header({
-    required this.title,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: const Icon(
-            Icons.arrow_back,
-            color: MoodlyColors.green,
-            size: 22,
-          ),
-        ),
-
-        const SizedBox(width: 6),
-
-        Text(
-          title,
-          style: const TextStyle(
-            color: MoodlyColors.green,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
-        const Spacer(),
-
-        const Text(
-          'Moodly',
-          style: TextStyle(
-            color: Color(0xFFC65F59),
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PasswordInfoCard extends StatelessWidget {
   const _PasswordInfoCard();
 
@@ -214,15 +144,15 @@ class _PasswordInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFC8C8),
+        color: const Color(0xFFFFD8D8),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 26,
-            offset: const Offset(0, 16),
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -232,17 +162,15 @@ class _PasswordInfoCard extends StatelessWidget {
           Icon(
             Icons.health_and_safety_rounded,
             color: MoodlyColors.green,
-            size: 40,
+            size: 30,
           ),
-
-          SizedBox(width: 18),
-
+          SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Memilih kata sandi yang unik membantu menjaga keamanan ruang digital Anda. Kami menyarankan campuran simbol, angka, dan kenangan yang hanya Anda yang tahu.',
+              'Memilih kata sandi yang unik membantu menjaga keamanan ruang digital Anda.',
               style: TextStyle(
-                fontSize: 15,
-                height: 1.6,
+                fontSize: 13,
+                height: 1.5,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
               ),
@@ -278,24 +206,22 @@ class _PasswordInput extends StatelessWidget {
           label,
           style: const TextStyle(
             color: MoodlyColors.green,
-            fontSize: 19,
+            fontSize: 15,
             fontWeight: FontWeight.w800,
           ),
         ),
-
-        const SizedBox(height: 14),
-
+        const SizedBox(height: 10),
         Container(
-          height: 78,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.14),
-                blurRadius: 24,
-                offset: const Offset(0, 14),
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -303,19 +229,17 @@ class _PasswordInput extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: 34,
+                size: 24,
                 color: Colors.black,
               ),
-
-              const SizedBox(width: 18),
-
+              const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: controller,
                   obscureText: obscureText,
                   maxLines: 1,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 15,
                     color: Colors.black,
                     fontWeight: FontWeight.w500,
                   ),
@@ -323,14 +247,12 @@ class _PasswordInput extends StatelessWidget {
                     border: InputBorder.none,
                     hintText: '••••••••••••',
                     hintStyle: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
+                      fontSize: 15,
                       letterSpacing: 1.2,
                     ),
                   ),
                 ),
               ),
-
               GestureDetector(
                 onTap: onToggle,
                 child: Icon(
@@ -338,7 +260,7 @@ class _PasswordInput extends StatelessWidget {
                       ? Icons.visibility_off_rounded
                       : Icons.visibility_rounded,
                   color: Colors.grey,
-                  size: 26,
+                  size: 22,
                 ),
               ),
             ],

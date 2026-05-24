@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../../core/services/streak_service.dart';
 
+import '../../core/services/streak_service.dart';
 import '../pages.dart';
 
 const Color _profileBg = Color(0xFFF4F8EA);
@@ -22,28 +22,40 @@ List<BoxShadow> get _profileShadow => const [
         color: Color.fromRGBO(0, 0, 0, 0.08),
         offset: Offset(0, 8),
         blurRadius: 20,
-        spreadRadius: 0,
       ),
     ];
 
-TextStyle? _h1(BuildContext context, {Color color = _profileTextDark}) {
-  return Theme.of(context).textTheme.headlineLarge?.copyWith(color: color);
+TextStyle _titleLarge(BuildContext context, {Color color = _profileTextDark}) {
+  return TextStyle(
+    color: color,
+    fontSize: MediaQuery.of(context).size.width < 380 ? 22 : 24,
+    fontWeight: FontWeight.w800,
+  );
 }
 
-TextStyle? _h2(BuildContext context, {Color color = _profileTextDark}) {
-  return Theme.of(context).textTheme.titleMedium?.copyWith(color: color);
+TextStyle _titleMedium(BuildContext context, {Color color = _profileTextDark}) {
+  return TextStyle(
+    color: color,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
 }
 
-TextStyle? _body(BuildContext context, {Color color = _profileTextSoft}) {
-  return Theme.of(context).textTheme.bodyMedium?.copyWith(color: color);
+TextStyle _body(BuildContext context, {Color color = _profileTextSoft}) {
+  return TextStyle(
+    color: color,
+    fontSize: 13,
+    height: 1.35,
+    fontWeight: FontWeight.w500,
+  );
 }
 
-TextStyle? _bodyAlt(BuildContext context, {Color color = _profileTextDark}) {
-  return Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
-}
-
-TextStyle? _button(BuildContext context, {Color color = Colors.white}) {
-  return Theme.of(context).textTheme.labelLarge?.copyWith(color: color);
+TextStyle _button(BuildContext context, {Color color = Colors.white}) {
+  return TextStyle(
+    color: color,
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+  );
 }
 
 class ProfilePage extends StatelessWidget {
@@ -71,9 +83,7 @@ class ProfilePage extends StatelessWidget {
     if (displayName != null && displayName.isNotEmpty) return displayName;
 
     final email = user?.email?.trim();
-    if (email != null && email.isNotEmpty) {
-      return email.split('@').first;
-    }
+    if (email != null && email.isNotEmpty) return email.split('@').first;
 
     return 'Pengguna Moodly';
   }
@@ -211,7 +221,8 @@ class ProfilePage extends StatelessWidget {
         children: [
           _background(),
           SafeArea(
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter,
               child: SizedBox(
                 width: maxWidth,
                 child: uid == null
@@ -239,10 +250,12 @@ class ProfilePage extends StatelessWidget {
                                   (user?.emailVerified ?? false);
                           final role =
                               ((data?['role'] as String?) ?? 'user').trim();
-                          final createdAt = _parseCreatedAt(data?['createdAt']);
+                          final createdAt =
+                              _parseCreatedAt(data?['createdAt']);
                           final provider = _providerLabel(user);
 
                           return SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,49 +298,13 @@ class ProfilePage extends StatelessWidget {
                                 StreamBuilder<StreakState>(
                                   stream: StreakService.instance.watchState(),
                                   builder: (context, snapshot) {
-                                    final streak = snapshot.data ?? StreakState.initial();
-                                    final badgeTitle = _badgeTitleFor(streak.currentStreak);
+                                    final streak =
+                                        snapshot.data ?? StreakState.initial();
+                                    final badgeTitle =
+                                        _badgeTitleFor(streak.currentStreak);
 
-                                    return Container(
-                                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                                      decoration: BoxDecoration(
-                                        color: _profileCard,
-                                        borderRadius: BorderRadius.circular(24),
-                                        boxShadow: _profileShadow,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 52,
-                                            height: 52,
-                                            decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: _profilePinkSoft,
-                                            ),
-                                            child: const Icon(
-                                              Icons.workspace_premium_rounded,
-                                              color: _profileBrand,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Badge Milestone',
-                                                  style: _body(context),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  badgeTitle,
-                                                  style: _h2(context),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    return _BadgeCard(
+                                      badgeTitle: badgeTitle,
                                     );
                                   },
                                 ),
@@ -387,20 +364,29 @@ class _ProfileHeader extends StatelessWidget {
         GestureDetector(
           onTap: onBack,
           child: const Icon(
-            Icons.arrow_back_rounded,
+            Icons.arrow_back,
             color: _profileGreenDark,
-            size: 26,
+            size: 22,
           ),
         ),
-        const SizedBox(width: 10),
-        Text(
+        const SizedBox(width: 6),
+        const Text(
           'Profil',
-          style: _h2(context, color: _profileGreenDark),
+          style: TextStyle(
+            color: _profileGreenDark,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const Spacer(),
-        Text(
+        const Text(
           'Moodly',
-          style: _h1(context, color: _profileBrand),
+          style: TextStyle(
+            color: _profileBrand,
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1,
+          ),
         ),
       ],
     );
@@ -452,12 +438,16 @@ class _ProfileHeroCard extends StatelessWidget {
           Text(
             name,
             textAlign: TextAlign.center,
-            style: _h1(context),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: _titleLarge(context),
           ),
           const SizedBox(height: 6),
           Text(
             email,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: _body(context),
           ),
           const SizedBox(height: 14),
@@ -485,7 +475,7 @@ class _ProfileHeroCard extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 50,
             child: ElevatedButton(
               onPressed: onEdit,
               style: ElevatedButton.styleFrom(
@@ -499,10 +489,7 @@ class _ProfileHeroCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Ubah Profil',
-                    style: _button(context),
-                  ),
+                  Text('Ubah Profil', style: _button(context)),
                   const SizedBox(width: 10),
                   const Icon(Icons.arrow_forward_rounded),
                 ],
@@ -601,14 +588,14 @@ class _ProfileAvatar extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const Icon(
                 Icons.person_rounded,
-                size: 86,
+                size: 74,
                 color: _profileTextDark,
               ),
             );
           }
           return const Icon(
             Icons.person_rounded,
-            size: 86,
+            size: 74,
             color: _profileTextDark,
           );
         },
@@ -619,42 +606,35 @@ class _ProfileAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => const Icon(
           Icons.person_rounded,
-          size: 86,
+          size: 74,
           color: _profileTextDark,
         ),
       );
     } else {
       child = const Icon(
         Icons.person_rounded,
-        size: 86,
+        size: 74,
         color: _profileTextDark,
       );
     }
 
     return SizedBox(
-      width: 148,
-      height: 148,
+      width: 132,
+      height: 132,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 148,
-            height: 148,
+            width: 132,
+            height: 132,
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: _frameGradient(),
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.10),
-                  offset: Offset(0, 10),
-                  blurRadius: 20,
-                ),
-              ],
             ),
             child: Container(
               decoration: const BoxDecoration(
@@ -703,6 +683,56 @@ class _ProfileAvatar extends StatelessWidget {
   }
 }
 
+class _BadgeCard extends StatelessWidget {
+  final String badgeTitle;
+
+  const _BadgeCard({required this.badgeTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+      decoration: BoxDecoration(
+        color: _profileCard,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: _profileShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: _profilePinkSoft,
+            ),
+            child: const Icon(
+              Icons.workspace_premium_rounded,
+              color: _profileBrand,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Badge Milestone', style: _body(context)),
+                const SizedBox(height: 4),
+                Text(
+                  badgeTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: _titleMedium(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -731,7 +761,11 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: _bodyAlt(context, color: fg),
+            style: TextStyle(
+              color: fg,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -757,8 +791,8 @@ class _MiniProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 136,
-      padding: const EdgeInsets.all(16),
+      height: 126,
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(26),
@@ -767,20 +801,15 @@ class _MiniProfileCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 30),
+          Icon(icon, color: iconColor, size: 28),
           const Spacer(),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: _h1(context),
-            ),
+            alignment: Alignment.centerLeft,
+            child: Text(value, style: _titleLarge(context)),
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: _body(context),
-          ),
+          const SizedBox(height: 4),
+          Text(label, style: _body(context)),
         ],
       ),
     );
@@ -811,30 +840,8 @@ class _AccountSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _profileGreenSoft,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.badge_rounded,
-                  color: _profileGreenDark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Ringkasan Akun',
-                  style: _h1(context),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
+          Text('Ringkasan Akun', style: _titleLarge(context)),
+          const SizedBox(height: 16),
           _SummaryRow(
             title: 'Bergabung sejak',
             value: joinedDate,
@@ -879,18 +886,15 @@ class _SummaryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: _body(context),
-            ),
-          ),
+          Expanded(child: Text(title, style: _body(context))),
           const SizedBox(width: 10),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: _h2(context),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: _titleMedium(context),
             ),
           ),
         ],

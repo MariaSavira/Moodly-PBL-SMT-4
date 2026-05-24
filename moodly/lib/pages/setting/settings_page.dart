@@ -6,95 +6,42 @@ import '../../core/services/auth_service.dart';
 import '../../main.dart';
 import '../pages.dart';
 
-const Color _settingsBg = Color(0xFFF4F8EA);
-const Color _settingsCard = Colors.white;
-const Color _settingsGreen = Color(0xFF7BC25D);
-const Color _settingsGreenDark = Color(0xFF5E9E49);
-const Color _settingsGreenSoft = Color(0xFFDDEFCF);
-const Color _settingsMintSoft = Color(0xFFE9F7E8);
-const Color _settingsPinkSoft = Color(0xFFFFEEF2);
-const Color _settingsTextDark = Color(0xFF1F1F1F);
-const Color _settingsTextSoft = Color(0xFF6F746E);
-const Color _settingsBrand = Color(0xFFC65F59);
+import 'theme_page.dart';
+import 'language_page.dart';
+import 'notification_settings_page.dart';
+import 'report_history_page.dart';
+import 'terms_conditions_page.dart';
 
-List<BoxShadow> get _settingsShadow => const [
-  BoxShadow(
-    color: Color.fromRGBO(0, 0, 0, 0.08),
-    offset: Offset(0, 8),
-    blurRadius: 20,
-    spreadRadius: 0,
-  ),
-];
-
-TextStyle? _sh1(BuildContext context, {Color color = _settingsTextDark}) {
-  return Theme.of(context).textTheme.headlineLarge?.copyWith(color: color);
-}
-
-TextStyle? _sh2(BuildContext context, {Color color = _settingsTextDark}) {
-  return Theme.of(context).textTheme.titleMedium?.copyWith(color: color);
-}
-
-TextStyle? _sbody(BuildContext context, {Color color = _settingsTextSoft}) {
-  return Theme.of(context).textTheme.bodyMedium?.copyWith(color: color);
-}
-
-TextStyle? _sbodyAlt(BuildContext context, {Color color = _settingsTextDark}) {
-  return Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
-}
-
-TextStyle? _sbutton(BuildContext context, {Color color = Colors.white}) {
-  return Theme.of(context).textTheme.labelLarge?.copyWith(color: color);
-}
+const Color _bg = Color(0xFFF4F8EA);
+const Color _green = Color(0xFF80C96F);
+const Color _greenDark = Color(0xFF5E9E49);
+const Color _panel = Color(0xFFE5F5D4);
+const Color _brand = Color(0xFFC65F59);
+const Color _textDark = Color(0xFF202020);
+const Color _textSoft = Color(0xFF7E7E7E);
+const Color _pink = Color(0xFFF5AFC0);
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   double _pageWidth(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return width > 430 ? 430 : width;
+
+    if (width > 1200) return 520;
+    if (width > 800) return 500;
+    if (width > 600) return 470;
+
+    return width;
   }
 
-  Widget _background() {
-    return Stack(
-      children: [
-        Positioned(
-          top: -30,
-          right: -30,
-          child: Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _settingsPinkSoft.withOpacity(0.7),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 250,
-          left: -70,
-          child: Container(
-            width: 170,
-            height: 170,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _settingsMintSoft.withOpacity(0.85),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 100,
-          right: -60,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _settingsGreenSoft.withOpacity(0.55),
-            ),
-          ),
-        ),
-      ],
-    );
+  EdgeInsets _pagePadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    if (width < 380) {
+      return const EdgeInsets.fromLTRB(18, 16, 18, 24);
+    }
+
+    return const EdgeInsets.fromLTRB(24, 18, 24, 28);
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -107,36 +54,44 @@ class SettingsPage extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          backgroundColor: _settingsBg,
+          backgroundColor: _bg,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.warning_rounded, color: Colors.red, size: 48),
+                const Icon(
+                  Icons.warning_rounded,
+                  color: Colors.red,
+                  size: 48,
+                ),
                 const SizedBox(height: 14),
-                Text(
+                const Text(
                   'Apakah Anda yakin ingin\nkeluar dari akun Anda?',
                   textAlign: TextAlign.center,
-                  style: _sh2(context, color: _settingsTextDark),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _textDark,
+                  ),
                 ),
                 const SizedBox(height: 26),
                 Row(
                   children: [
                     Expanded(
-                      child: _SettingsDialogButton(
+                      child: _DialogButton(
                         label: 'Batal',
-                        color: _settingsGreenSoft,
-                        textColor: _settingsTextDark,
+                        color: const Color(0xFFDDEFCF),
+                        textColor: _textDark,
                         onTap: () => Navigator.pop(context),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _SettingsDialogButton(
+                      child: _DialogButton(
                         label: 'Keluar',
                         color: const Color(0xFFFFD7DD),
-                        textColor: _settingsTextDark,
+                        textColor: _textDark,
                         onTap: () async {
                           Navigator.pop(context);
 
@@ -177,11 +132,12 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pageWidth = _pageWidth(context);
-
     if (FirebaseAuth.instance.currentUser == null) {
       return const RootPage();
     }
+
+    final width = MediaQuery.of(context).size.width;
+    final isSmall = width < 380;
 
     return Scaffold(
       backgroundColor: _settingsBg,
@@ -334,36 +290,58 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _SettingsHeader extends StatelessWidget {
+class _Header extends StatelessWidget {
   final VoidCallback onBack;
 
-  const _SettingsHeader({required this.onBack});
+  const _Header({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return Row(
       children: [
         GestureDetector(
           onTap: onBack,
-          child: const Icon(
-            Icons.arrow_back_rounded,
-            color: _settingsGreenDark,
-            size: 26,
+          child: Row(
+            children: [
+              Icon(
+                Icons.arrow_back_rounded,
+                color: _greenDark,
+                size: isSmall ? 20 : 22,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Settings',
+                style: TextStyle(
+                  color: _greenDark,
+                  fontSize: isSmall ? 15 : 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
-        Text('Pengaturan', style: _sh2(context, color: _settingsGreenDark)),
         const Spacer(),
-        Text('Moodly', style: _sh1(context, color: _settingsBrand)),
+        Text(
+          'Moodly',
+          style: TextStyle(
+            color: _brand,
+            fontSize: isSmall ? 30 : 34,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _SettingsProfileCard extends StatelessWidget {
+class _ProfileCard extends StatelessWidget {
   final VoidCallback onEdit;
 
-  const _SettingsProfileCard({required this.onEdit});
+  const _ProfileCard({required this.onEdit});
 
   String _resolveName(Map<String, dynamic>? data, User? user) {
     final fullName = (data?['fullName'] as String?)?.trim();
@@ -373,37 +351,9 @@ class _SettingsProfileCard extends StatelessWidget {
     if (displayName != null && displayName.isNotEmpty) return displayName;
 
     final email = user?.email?.trim();
-    if (email != null && email.isNotEmpty) {
-      return email.split('@').first;
-    }
+    if (email != null && email.isNotEmpty) return email.split('@').first;
 
     return 'Pengguna Moodly';
-  }
-
-  String _resolveSubtitle(Map<String, dynamic>? data, User? user) {
-    final email = (data?['email'] as String?)?.trim() ?? user?.email?.trim();
-    if (email != null && email.isNotEmpty) return email;
-
-    final role = (data?['role'] as String?)?.trim();
-    if (role != null && role.isNotEmpty) return role;
-
-    return 'Moodly Member';
-  }
-
-  String? _resolvePhotoUrl(Map<String, dynamic>? data, User? user) {
-    final photoUrl = (data?['photoUrl'] as String?)?.trim();
-    if (photoUrl != null && photoUrl.isNotEmpty) return photoUrl;
-
-    final authPhoto = user?.photoURL?.trim();
-    if (authPhoto != null && authPhoto.isNotEmpty) return authPhoto;
-
-    return null;
-  }
-
-  String? _resolveAvatarAsset(Map<String, dynamic>? data) {
-    final avatarId = (data?['avatarId'] as String?)?.trim();
-    if (avatarId != null && avatarId.isNotEmpty) return avatarId;
-    return null;
   }
 
   @override
@@ -412,29 +362,16 @@ class _SettingsProfileCard extends StatelessWidget {
     final uid = user?.uid;
 
     if (uid == null) {
-      return _SettingsProfileContent(
-        name: 'Pengguna Moodly',
-        subtitle: 'Belum login',
-        photoUrl: null,
-        avatarAsset: null,
-        onEdit: onEdit,
-      );
+      return _ProfileContent(name: 'Pengguna Moodly', onEdit: onEdit);
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
-        final avatarAsset = _resolveAvatarAsset(data);
 
-        return _SettingsProfileContent(
+        return _ProfileContent(
           name: _resolveName(data, user),
-          subtitle: _resolveSubtitle(data, user),
-          photoUrl: _resolvePhotoUrl(data, user),
-          avatarAsset: avatarAsset,
           onEdit: onEdit,
         );
       },
@@ -442,129 +379,104 @@ class _SettingsProfileCard extends StatelessWidget {
   }
 }
 
-class _SettingsProfileContent extends StatelessWidget {
+class _ProfileContent extends StatelessWidget {
   final String name;
-  final String subtitle;
-  final String? photoUrl;
-  final String? avatarAsset;
   final VoidCallback onEdit;
 
-  const _SettingsProfileContent({
+  const _ProfileContent({
     required this.name,
-    required this.subtitle,
-    required this.photoUrl,
-    required this.avatarAsset,
     required this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      width: screenWidth < 500 ? screenWidth * 0.72 : 340,
+      constraints: const BoxConstraints(
+        minWidth: 260,
+        maxWidth: 340,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        isSmall ? 10 : 12,
+        isSmall ? 8 : 10,
+        isSmall ? 12 : 16,
+        isSmall ? 8 : 10,
+      ),
       decoration: BoxDecoration(
-        color: _settingsCard,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: _settingsShadow,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(42),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.18),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 68,
-            height: 68,
+            width: isSmall ? 54 : 62,
+            height: isSmall ? 54 : 62,
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF92D373), Color(0xFFD9EDC5)],
-              ),
+              color: _green,
             ),
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: ClipOval(
-                child: photoUrl != null && photoUrl!.isNotEmpty
-                    ? Image.network(
-                        photoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          if (avatarAsset != null && avatarAsset!.isNotEmpty) {
-                            return Image.asset(
-                              avatarAsset!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  color: _settingsTextDark,
-                                  size: 34,
-                                ),
-                              ),
-                            );
-                          }
-                          return const Center(
-                            child: Icon(
-                              Icons.person_rounded,
-                              color: _settingsTextDark,
-                              size: 34,
-                            ),
-                          );
-                        },
-                      )
-                    : (avatarAsset != null && avatarAsset!.isNotEmpty
-                          ? Image.asset(
-                              avatarAsset!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  color: _settingsTextDark,
-                                  size: 34,
-                                ),
-                              ),
-                            )
-                          : const Center(
-                              child: Icon(
-                                Icons.person_rounded,
-                                color: _settingsTextDark,
-                                size: 34,
-                              ),
-                            )),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/icons/login/image3.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person_rounded,
+                  color: _textDark,
+                  size: 34,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _sh2(context, color: _settingsTextDark),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _sbody(context),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: isSmall ? 15 : 18,
+                      fontWeight: FontWeight.w800,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Premium Sanctuary Member',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: isSmall ? 9 : 11,
+                      fontWeight: FontWeight.w400,
+                      color: _textSoft,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           GestureDetector(
             onTap: onEdit,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: _settingsPinkSoft,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(Icons.edit_rounded, color: _settingsGreenDark),
+            child: Icon(
+              Icons.edit_rounded,
+              color: _greenDark,
+              size: isSmall ? 20 : 24,
             ),
           ),
         ],
@@ -573,35 +485,165 @@ class _SettingsProfileContent extends StatelessWidget {
   }
 }
 
-class _SettingsSection extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
+class _SettingsPanel extends StatelessWidget {
+  final VoidCallback onLogout;
 
-  const _SettingsSection({required this.title, required this.children});
+  const _SettingsPanel({required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: EdgeInsets.fromLTRB(
+        isSmall ? 14 : 20,
+        18,
+        isSmall ? 14 : 20,
+        24,
+      ),
       decoration: BoxDecoration(
-        color: _settingsCard,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: _settingsShadow,
+        color: _panel,
+        borderRadius: BorderRadius.circular(isSmall ? 20 : 24),
+        border: Border.all(
+          color: const Color(0xFFCFE8BE),
+          width: 1.5,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(120, 170, 95, 0.18),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: _sh2(context, color: _settingsGreenDark)),
-          const SizedBox(height: 14),
-          ...children,
+          const _SectionTitle('ACCOUNT SETTINGS'),
+          const SizedBox(height: 12),
+          _MenuItem(
+            icon: Icons.account_circle_rounded,
+            iconColor: _green,
+            title: 'Profile',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            },
+          ),
+          _MenuItem(
+            icon: Icons.shield_rounded,
+            iconColor: _green,
+            title: 'Security',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SecurityPage()),
+              );
+            },
+          ),
+          _MenuItem(
+            icon: Icons.error_rounded,
+            iconColor: _green,
+            title: 'Riwayat Pelapor',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportHistoryPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          const _SectionTitle('APP PREFERENCES'),
+          const SizedBox(height: 12),
+          _MenuItem(
+            icon: Icons.notifications_rounded,
+            iconColor: _pink,
+            title: 'Notifications',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsPage(),
+                ),
+              );
+            },
+          ),
+          _MenuItem(
+            icon: Icons.palette_rounded,
+            iconColor: _pink,
+            title: 'Theme',
+            subtitle: 'Light Sanctuary',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ThemePage()),
+              );
+            },
+          ),
+          _MenuItem(
+            icon: Icons.language_rounded,
+            iconColor: _pink,
+            title: 'Language',
+            subtitle: 'Indonesia',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LanguagePage()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          const _SectionTitle('ABOUT'),
+          const SizedBox(height: 12),
+          _MenuItem(
+            icon: Icons.description_rounded,
+            iconColor: Colors.grey,
+            title: 'Terms & Conditions',
+            trailing: const Icon(
+              Icons.open_in_new_rounded,
+              color: Colors.grey,
+              size: 22,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TermsConditionsPage()),
+              );
+            },
+          ),
+          _LogoutItem(onTap: onLogout),
         ],
       ),
     );
   }
 }
 
-class _SettingsItem extends StatelessWidget {
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Text(
+      title,
+      style: TextStyle(
+        color: _green,
+        fontSize: screenWidth < 380 ? 14 : 16,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
@@ -609,7 +651,7 @@ class _SettingsItem extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback onTap;
 
-  const _SettingsItem({
+  const _MenuItem({
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -620,43 +662,85 @@ class _SettingsItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 11),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmall ? 10 : 14,
+            vertical: 9,
+          ),
           decoration: BoxDecoration(
-            color: subtitle == null ? _settingsMintSoft : _settingsPinkSoft,
-            borderRadius: BorderRadius.circular(22),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.14),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Icon(icon, color: iconColor, size: 22),
-              const SizedBox(width: 12),
+              Icon(
+                icon,
+                color: iconColor,
+                size: isSmall ? 22 : 26,
+              ),
+              SizedBox(width: isSmall ? 8 : 12),
               Expanded(
                 child: subtitle == null
                     ? Text(
                         title,
-                        style: _sbodyAlt(context, color: _settingsTextDark),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: isSmall ? 13 : 15,
+                          fontWeight: FontWeight.w500,
+                          color: _textDark,
+                        ),
                       )
                     : Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             title,
-                            style: _sbodyAlt(context, color: _settingsTextDark),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: isSmall ? 13 : 15,
+                              fontWeight: FontWeight.w500,
+                              color: _textDark,
+                              height: 1,
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(subtitle!, style: _sbody(context)),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: isSmall ? 9 : 10,
+                              fontWeight: FontWeight.w400,
+                              color: _textSoft,
+                              height: 1,
+                            ),
+                          ),
                         ],
                       ),
               ),
               trailing ??
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: _settingsTextDark,
-                    size: 16,
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.black,
+                    size: isSmall ? 20 : 24,
                   ),
             ],
           ),
@@ -666,29 +750,53 @@ class _SettingsItem extends StatelessWidget {
   }
 }
 
-class _SettingsLogoutItem extends StatelessWidget {
+class _LogoutItem extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _SettingsLogoutItem({required this.onTap});
+  const _LogoutItem({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 10 : 14,
+          vertical: 9,
+        ),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFEEF1),
-          borderRadius: BorderRadius.circular(22),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color.fromRGBO(0, 0, 0, 0.14),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            const Icon(Icons.logout_rounded, color: Colors.red, size: 22),
-            const SizedBox(width: 12),
+            Icon(
+              Icons.logout_rounded,
+              color: Colors.red,
+              size: isSmall ? 22 : 26,
+            ),
+            SizedBox(width: isSmall ? 8 : 12),
             Expanded(
               child: Text(
-                'Keluar',
-                style: _sbodyAlt(context, color: Colors.red),
+                'Logout',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isSmall ? 13 : 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.red,
+                ),
               ),
             ),
           ],
@@ -698,13 +806,13 @@ class _SettingsLogoutItem extends StatelessWidget {
   }
 }
 
-class _SettingsDialogButton extends StatelessWidget {
+class _DialogButton extends StatelessWidget {
   final String label;
   final Color color;
   final Color textColor;
   final VoidCallback onTap;
 
-  const _SettingsDialogButton({
+  const _DialogButton({
     required this.label,
     required this.color,
     required this.textColor,
@@ -722,7 +830,13 @@ class _SettingsDialogButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
         ),
         child: Center(
-          child: Text(label, style: _sbutton(context, color: textColor)),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
     );

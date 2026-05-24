@@ -268,7 +268,7 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
                   const SizedBox(height: 18),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(22),
@@ -632,11 +632,15 @@ class _HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          height: 42,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 40,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             color: selected ? _historyGreen : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
@@ -662,6 +666,8 @@ class _EmptySectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),

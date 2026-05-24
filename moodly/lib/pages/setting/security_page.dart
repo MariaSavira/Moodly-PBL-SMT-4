@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/styles/moodly_colors.dart';
 import '../pages.dart';
 
@@ -14,7 +15,7 @@ class _SecurityPageState extends State<SecurityPage> {
 
   double _pageWidth(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return width > 390 ? 390 : width;
+    return width > 430 ? 430 : width;
   }
 
   @override
@@ -28,7 +29,8 @@ class _SecurityPageState extends State<SecurityPage> {
           child: SizedBox(
             width: pageWidth,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(32, 16, 32, 32),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(26, 16, 26, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -37,11 +39,10 @@ class _SecurityPageState extends State<SecurityPage> {
                     onBack: () => Navigator.pop(context),
                   ),
 
-                  const SizedBox(height: 72),
+                  const SizedBox(height: 44),
 
-                  const _SectionTitle('Password'),
-
-                  const SizedBox(height: 22),
+                  const _SectionTitle('PASSWORD'),
+                  const SizedBox(height: 14),
 
                   _PasswordCard(
                     onTap: () {
@@ -54,11 +55,10 @@ class _SecurityPageState extends State<SecurityPage> {
                     },
                   ),
 
-                  const SizedBox(height: 44),
+                  const SizedBox(height: 34),
 
                   const _SectionTitle('OTENTIKASI DUA FAKTOR'),
-
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 14),
 
                   _TwoFactorCard(
                     value: is2FAEnabled,
@@ -69,28 +69,27 @@ class _SecurityPageState extends State<SecurityPage> {
                     },
                   ),
 
-                  const SizedBox(height: 44),
+                  const SizedBox(height: 34),
 
-                  const _SectionTitle('AKTIFITAS LOGIN'),
-
-                  const SizedBox(height: 22),
+                  const _SectionTitle('AKTIVITAS LOGIN'),
+                  const SizedBox(height: 14),
 
                   const _DeviceCard(
                     icon: Icons.phone_iphone_rounded,
-                    title: 'Iphone 15 Pro Max',
-                    subtitle: 'Indonesia,IDN . Aktif sekarang',
-                    badge: 'sesi saat ini',
+                    title: 'iPhone 15 Pro Max',
+                    subtitle: 'Indonesia, IDN • Aktif sekarang',
+                    badge: 'Sesi saat ini',
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
 
                   const _DeviceCard(
                     icon: Icons.laptop_mac_rounded,
-                    title: 'Macbook Pro 14',
-                    subtitle: 'Indonesia,IDN . 2 hari yang lalu',
+                    title: 'MacBook Pro 14',
+                    subtitle: 'Indonesia, IDN • 2 hari yang lalu',
                   ),
 
-                  const SizedBox(height: 64),
+                  const SizedBox(height: 34),
 
                   const _SecurityInfoCard(),
                 ],
@@ -107,7 +106,10 @@ class _Header extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
 
-  const _Header({required this.title, required this.onBack});
+  const _Header({
+    required this.title,
+    required this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +158,7 @@ class _SectionTitle extends StatelessWidget {
       text,
       style: const TextStyle(
         color: MoodlyColors.green,
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.5,
       ),
@@ -171,66 +173,56 @@ class _PasswordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final isSmall = MediaQuery.of(context).size.width < 380;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(26),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.16),
-              blurRadius: 26,
-              offset: const Offset(0, 16),
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: width * 0.12,
-              height: width * 0.12,
-              constraints: const BoxConstraints(
-                minWidth: 48,
-                minHeight: 48,
-                maxWidth: 58,
-                maxHeight: 58,
-              ),
+              width: isSmall ? 46 : 50,
+              height: isSmall ? 46 : 50,
               decoration: BoxDecoration(
                 color: MoodlyColors.greenLight,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: const Icon(
                 Icons.lock_reset_rounded,
                 color: MoodlyColors.green,
-                size: 32,
+                size: 28,
               ),
             ),
-
-            const SizedBox(width: 16),
-
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 'Ubah Kata Sandi',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: width < 360 ? 20 : 24,
-                  fontWeight: FontWeight.w600,
+                  fontSize: isSmall ? 18 : 20,
+                  fontWeight: FontWeight.w800,
                   color: Colors.black,
                 ),
               ),
             ),
-
-            const SizedBox(width: 10),
-
+            const SizedBox(width: 8),
             const Icon(
               Icons.arrow_forward_rounded,
               color: MoodlyColors.green,
-              size: 34,
+              size: 28,
             ),
           ],
         ),
@@ -243,81 +235,85 @@ class _TwoFactorCard extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const _TwoFactorCard({required this.value, required this.onChanged});
+  const _TwoFactorCard({
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final isSmall = MediaQuery.of(context).size.width < 380;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 110),
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 26,
-            offset: const Offset(0, 16),
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Container(
+            width: isSmall ? 46 : 50,
+            height: isSmall ? 46 : 50,
+            decoration: BoxDecoration(
+              color: MoodlyColors.greenLight,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(
+              Icons.verified_user_rounded,
+              color: MoodlyColors.green,
+              size: 27,
+            ),
+          ),
+
+          const SizedBox(width: 14),
+
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Aktifkan 2FA',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: width < 360 ? 18 : 21,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      const Icon(
-                        Icons.verified_rounded,
-                        color: MoodlyColors.green,
-                        size: 22,
-                      ),
-                    ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aktifkan 2FA',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: isSmall ? 17 : 19,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Tambahkan lapisan keamanan ekstra ke akun anda.',
-                    style: TextStyle(
-                      fontSize: width < 360 ? 13 : 15,
-                      height: 1.35,
-                      color: Colors.black,
-                    ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Tambahkan lapisan keamanan ekstra ke akun Anda.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: isSmall ? 12 : 13,
+                    height: 1.3,
+                    color: Colors.black.withValues(alpha: 0.70),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
           Transform.scale(
-            scale: 0.82,
+            scale: isSmall ? 0.68 : 0.72,
             child: Switch(
               value: value,
-              activeColor: MoodlyColors.green,
+              activeColor: Colors.white,
+              activeTrackColor: MoodlyColors.green,
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: Colors.black.withValues(alpha: 0.45),
+              trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
               onChanged: onChanged,
             ),
           ),
@@ -342,37 +338,41 @@ class _DeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      padding: const EdgeInsets.fromLTRB(18, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
+            color: Colors.black.withValues(alpha: 0.09),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: isSmall ? 44 : 48,
+            height: isSmall ? 44 : 48,
             decoration: BoxDecoration(
               color: MoodlyColors.greenLight,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: MoodlyColors.green, size: 30),
+            child: Icon(
+              icon,
+              color: MoodlyColors.green,
+              size: isSmall ? 26 : 28,
+            ),
           ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
 
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -381,20 +381,18 @@ class _DeviceCard extends StatelessWidget {
                       child: Text(
                         title,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
+                        style: TextStyle(
+                          fontSize: isSmall ? 15 : 16,
+                          fontWeight: FontWeight.w800,
                           color: Colors.black,
                         ),
                       ),
                     ),
-
                     if (badge != null) ...[
-                      const SizedBox(width: 8),
-
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
+                          horizontal: 8,
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
@@ -404,7 +402,7 @@ class _DeviceCard extends StatelessWidget {
                         child: Text(
                           badge!,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
@@ -413,13 +411,15 @@ class _DeviceCard extends StatelessWidget {
                     ],
                   ],
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   subtitle,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: isSmall ? 12 : 13,
+                    color: Colors.black.withValues(alpha: 0.70),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -435,37 +435,37 @@ class _SecurityInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 380;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFC8C8),
+        color: const Color(0xFFFFD8D0),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 26,
-            offset: const Offset(0, 16),
+            color: Colors.black.withValues(alpha: 0.09),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.health_and_safety_rounded,
             color: MoodlyColors.green,
-            size: 40,
+            size: 36,
           ),
-
-          SizedBox(width: 18),
-
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               'Menjaga keamanan akun membantu melindungi data dan ruang pribadi Anda.',
               style: TextStyle(
-                fontSize: 17,
-                height: 1.5,
+                fontSize: isSmall ? 14 : 15,
+                height: 1.45,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
               ),
