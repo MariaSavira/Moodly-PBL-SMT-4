@@ -9,7 +9,7 @@ class OtpService {
 
   static final OtpService instance = OtpService._();
 
-  static const String baseUrl = 'http://192.168.1.4:5000';
+  static const String baseUrl = 'http://192.168.2.61:5000';
 
   Future<void> sendRegisterOtp({
     required String fullName,
@@ -21,9 +21,7 @@ class OtpService {
       final response = await http
           .post(
             url,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'fullName': fullName.trim(),
               'email': email.trim().toLowerCase(),
@@ -31,8 +29,9 @@ class OtpService {
           )
           .timeout(const Duration(seconds: 12));
 
-      final dynamic decodedBody =
-          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final dynamic decodedBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : null;
 
       final message = decodedBody is Map<String, dynamic>
           ? decodedBody['message']?.toString()
@@ -70,9 +69,7 @@ class OtpService {
       final response = await http
           .post(
             url,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'fullName': fullName.trim(),
               'email': email.trim().toLowerCase(),
@@ -83,8 +80,9 @@ class OtpService {
           )
           .timeout(const Duration(seconds: 12));
 
-      final dynamic decodedBody =
-          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      final dynamic decodedBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : null;
 
       final message = decodedBody is Map<String, dynamic>
           ? decodedBody['message']?.toString()
@@ -103,9 +101,7 @@ class OtpService {
     } on TimeoutException {
       throw Exception('Server OTP terlalu lama merespons.');
     } on FormatException {
-      throw Exception(
-        'Respons server verifikasi OTP bukan JSON yang valid.',
-      );
+      throw Exception('Respons server verifikasi OTP bukan JSON yang valid.');
     }
   }
 }

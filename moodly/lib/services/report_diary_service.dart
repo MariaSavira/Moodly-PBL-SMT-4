@@ -1,3 +1,5 @@
+// lib/services/report_diary_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportDiaryService {
@@ -5,49 +7,56 @@ class ReportDiaryService {
 
   static final CollectionReference reportRef = _db.collection("reports");
 
-  // =========================
-  // CREATE REPORT
-  // =========================
-
+  /// ================= CREATE REPORT =================
   static Future<void> createReport({
+    required String type,
+
+    /// USER YANG DILAPORKAN
     required String reportedUser,
-
-    // FOTO PROFIL USER YANG DILAPORKAN
     required String reportedProfile,
+    required String reportedUid,
 
+    /// PELAPOR
+    required String reportedByUid,
+    required String reportedByUsername,
+
+    /// REPORT
     required String reportCategory,
+    required String reportReason,
 
-    required String diaryText,
+    /// CONTENT
+    required String contentText,
 
-    // USER YANG MELAPORKAN
-    required String reportedBy,
-
+    /// TARGET ID
     required String diaryId,
   }) async {
     await reportRef.add({
-      // USER YANG DILAPORKAN
+      /// TYPE
+      "type": type,
+
+      /// REPORTED USER
       "reported_user": reportedUser,
-
-      // FOTO PROFIL USER YANG DILAPORKAN
       "reported_profile": reportedProfile,
+      "reported_uid": reportedUid,
 
-      // KATEGORI REPORT
+      /// REPORTER
+      "reported_by_uid": reportedByUid,
+      "reported_by_username": reportedByUsername,
+
+      /// REPORT DETAIL
       "report_category": reportCategory,
+      "report_reason": reportReason,
 
-      // ISI DIARY
-      "diary_text": diaryText,
+      /// CONTENT
+      "content_text": contentText,
 
-      // USER PELAPOR
-      "reported_by": reportedBy,
-
-      // ID DIARY
+      /// TARGET
       "diary_id": diaryId,
 
-      // WAKTU REPORT
-      "created_at": FieldValue.serverTimestamp(),
-
-      // STATUS REPORT
+      /// SYSTEM
       "status": "pending",
+
+      "created_at": FieldValue.serverTimestamp(),
     });
   }
 }

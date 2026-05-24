@@ -3,15 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CommentService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // =========================
-  // COLLECTION REPORT
-  // =========================
-
-  static final CollectionReference reportRef = _db.collection("reports");
-
-  // =========================
-  // ADD COMMENT
-  // =========================
+  // ================= ADD COMMENT =================
 
   static Future<void> addComment({
     required String diaryId,
@@ -24,12 +16,8 @@ class CommentService {
         .doc(diaryId)
         .collection("comments")
         .add({
-          "diary_id": diaryId,
-
           "username": username,
-
           "profile_image": profileImage,
-
           "comment": comment,
 
           "likes": 0,
@@ -40,9 +28,7 @@ class CommentService {
         });
   }
 
-  // =========================
-  // GET COMMENTS REALTIME
-  // =========================
+  // ================= GET COMMENTS =================
 
   static Stream<QuerySnapshot> getComments(String diaryId) {
     return _db
@@ -53,27 +39,22 @@ class CommentService {
         .snapshots();
   }
 
-  // =========================
-  // LIKE COMMENT
-  // =========================
+  // ================= LIKE COMMENT =================
 
   static Future<void> likeComment({
     required String diaryId,
     required String commentId,
     required bool isLiked,
   }) async {
-    final doc = _db
+    await _db
         .collection("public_diary")
         .doc(diaryId)
         .collection("comments")
-        .doc(commentId);
-
-    await doc.update({"likes": FieldValue.increment(isLiked ? -1 : 1)});
+        .doc(commentId)
+        .update({"likes": FieldValue.increment(isLiked ? -1 : 1)});
   }
 
-  // =========================
-  // ADD REPLY
-  // =========================
+  // ================= ADD REPLY =================
 
   static Future<void> addReply({
     required String diaryId,
@@ -82,62 +63,64 @@ class CommentService {
     required String profileImage,
     required String reply,
   }) async {
-    final doc = _db
+    await _db
         .collection("public_diary")
         .doc(diaryId)
         .collection("comments")
-        .doc(commentId);
+        .doc(commentId)
+        .update({
+          "replies": FieldValue.arrayUnion([
+            {
+              "username": username,
 
-    await doc.update({
-      "replies": FieldValue.arrayUnion([
-        {
-          "username": username,
+              "profile_image": profileImage,
 
-          "profile_image": profileImage,
+              "reply": reply,
 
-          "reply": reply,
+              "likes": 0,
 
-          "likes": 0,
-
-          "created_at": FieldValue.serverTimestamp(),
-        },
-      ]),
-    });
+              "created_at": FieldValue.serverTimestamp(),
+            },
+          ]),
+        });
   }
 
-  // =========================
-  // REPORT COMMENT
-  // =========================
+  // ================= DELETE COMMENT =================
 
-  static Future<void> reportComment({
+  static Future<void> deleteComment({
     required String diaryId,
     required String commentId,
-    required String reportedUser,
-    required String reportedProfile,
-    required String commentText,
-    required String reportedBy,
-    required String reportCategory,
   }) async {
-    await reportRef.add({
-      "type": "comment",
+    try {
+      await _db
+          .collection("public_diary")
+          .doc(diaryId)
+          .collection("comments")
+          .doc(commentId)
+          .delete();
+    } catch (e) {
+      throw Exception("Gagal menghapus komentar: $e");
+    }
+  }
 
-      "diary_id": diaryId,
+  // ================= DELETE REPLY =================
 
-      "comment_id": commentId,
-
-      "reported_user": reportedUser,
-
-      "reported_profile": reportedProfile,
-
-      "comment_text": commentText,
-
-      "reported_by": reportedBy,
-
-      "report_category": reportCategory,
-
-      "status": "pending",
-
-      "created_at": FieldValue.serverTimestamp(),
-    });
+  static Future<void> deleteReply({
+    required String diaryId,
+    required String commentId,
+    required Map<String, dynamic> replyData,
+  }) async {
+    try {
+      await _db
+          .collection("public_diary")
+          .doc(diaryId)
+          .collection("comments")
+          .doc(commentId)
+          .update({
+            "replies": FieldValue.arrayRemove([replyData]),
+          });
+    } catch (e) {
+      throw Exception("Gagal menghapus balasan: $e");
+    }
   }
 }

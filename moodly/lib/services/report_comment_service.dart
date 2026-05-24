@@ -3,39 +3,64 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ReportCommentService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static final CollectionReference reportRef = _db.collection(
-    "reported_comments",
-  );
+  static final CollectionReference reportRef = _db.collection("reports");
 
-  /// ================= REPORT COMMENT =================
+  /// ================= REPORT COMMENT / REPLY =================
   static Future<void> createReport({
+    required String type,
+
+    /// USER YANG DILAPORKAN
     required String reportedUser,
     required String reportedProfile,
+    required String reportedUid,
+
+    /// PELAPOR
+    required String reportedByUid,
+    required String reportedByUsername,
+
+    /// REPORT
     required String reportCategory,
-    required String commentText,
-    required String reportedBy,
+    required String reportReason,
+
+    /// CONTENT
+    required String contentText,
+
+    /// TARGET
     required String diaryId,
     required String commentId,
+
+    /// OPTIONAL
+    String? replyId,
   }) async {
     await reportRef.add({
-      "reportedUser": reportedUser,
+      /// TYPE
+      "type": type,
 
-      "reportedProfile": reportedProfile,
+      /// REPORTED USER
+      "reported_user": reportedUser,
+      "reported_profile": reportedProfile,
+      "reported_uid": reportedUid,
 
-      "reportCategory": reportCategory,
+      /// REPORTER
+      "reported_by_uid": reportedByUid,
+      "reported_by_username": reportedByUsername,
 
-      "commentText": commentText,
+      /// REPORT DETAIL
+      "report_category": reportCategory,
+      "report_reason": reportReason,
 
-      "reportedBy": reportedBy,
+      /// CONTENT
+      "content_text": contentText,
 
-      "diaryId": diaryId,
+      /// TARGET
+      "diary_id": diaryId,
+      "comment_id": commentId,
+      "reply_id": replyId,
 
-      "commentId": commentId,
-
-      "reportedAt": FieldValue.serverTimestamp(),
-
-      // STATUS REPORT
+      /// SYSTEM
       "status": "pending",
+
+      "created_at": FieldValue.serverTimestamp(),
     });
   }
 }

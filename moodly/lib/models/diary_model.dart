@@ -1,59 +1,70 @@
+// lib/models/diary_model.dart
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class DiaryModel {
   final String id;
 
-  final String title;
+  // ================= UID =================
+  final String uid;
 
+  final String title;
   final String content;
 
   final String time;
-
   final int date;
-
   final String month;
-
   final int year;
 
   final bool isPublic;
 
   final String username;
 
-  // PROFILE
+  // ================= IMAGE =================
+  final String imageUrl;
   final String profileImage;
 
-  // LIKE & COMMENT
+  /// MULTI IMAGE
+  final List<String> images;
+
+  final DateTime createdAt;
+
+  final List likedBy;
+
   int likes;
-
   int comments;
-
   bool isLiked;
 
   DiaryModel({
     required this.id,
 
-    required this.title,
+    // ================= UID =================
+    this.uid = '',
 
+    required this.title,
     required this.content,
 
     required this.time,
-
     required this.date,
-
     required this.month,
-
     required this.year,
 
     required this.isPublic,
 
     required this.username,
 
-    // PROFILE
+    // ================= IMAGE =================
+    required this.imageUrl,
     required this.profileImage,
 
-    // LIKE & COMMENT
+    /// MULTI IMAGE
+    required this.images,
+
+    required this.createdAt,
+    required this.likedBy,
+
     this.likes = 0,
-
     this.comments = 0,
-
     this.isLiked = false,
   });
 
@@ -61,35 +72,74 @@ class DiaryModel {
     return DiaryModel(
       id: id,
 
-      title: data["title"] ?? "",
+      // ================= UID =================
+      uid: data['uid']?.toString() ?? '',
 
-      content: data["content"] ?? "",
+      title: data['title']?.toString() ?? '',
+      content: data['content']?.toString() ?? '',
 
-      time: data["time"] ?? "",
+      time: data['time']?.toString() ?? '',
 
-      date: (data["date"] ?? 1) is int
-          ? data["date"]
-          : int.tryParse(data["date"].toString()) ?? 1,
+      date: data['date'] ?? 1,
 
-      month: data["month"] ?? "",
+      month: data['month']?.toString() ?? '',
 
-      year: (data["year"] ?? DateTime.now().year) is int
-          ? data["year"]
-          : int.tryParse(data["year"].toString()) ?? DateTime.now().year,
+      year: data['year'] ?? 2025,
 
-      isPublic: data["isPublic"] ?? false,
+      isPublic: data['isPublic'] ?? false,
 
-      username: data["username"] ?? "Unknown",
+      username: data['username']?.toString() ?? 'Anonymous',
 
-      // PROFILE
-      profileImage: data["profileImage"] ?? "",
+      // ================= IMAGE =================
+      imageUrl: data['image_url']?.toString() ?? '',
 
-      // LIKE & COMMENT
-      likes: data["likes"] ?? 0,
+      profileImage: data['profileImage']?.toString() ?? '',
 
-      comments: data["comments"] ?? 0,
+      /// MULTI IMAGE
+      images: List<String>.from(data['images'] ?? []),
 
-      isLiked: false,
+      likes: data['likes'] ?? 0,
+
+      comments: data['comments'] ?? 0,
+
+      likedBy: data['likedBy'] ?? [],
+
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
+  }
+
+  // ================= TO MAP =================
+
+  Map<String, dynamic> toMap() {
+    return {
+      "id": id,
+      "uid": uid,
+
+      "title": title,
+      "content": content,
+
+      "time": time,
+      "date": date,
+      "month": month,
+      "year": year,
+
+      "isPublic": isPublic,
+
+      "username": username,
+
+      // ================= IMAGE =================
+      "image_url": imageUrl,
+      "profileImage": profileImage,
+
+      /// MULTI IMAGE
+      "images": images,
+
+      "likes": likes,
+      "comments": comments,
+
+      "likedBy": likedBy,
+
+      "createdAt": createdAt,
+    };
   }
 }
