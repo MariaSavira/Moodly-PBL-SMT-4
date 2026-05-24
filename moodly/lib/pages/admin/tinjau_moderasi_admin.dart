@@ -38,18 +38,33 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
 
     try {
       await FirebaseFirestore.instance
-          .collection('reportedUserInfo')
-          .doc(widget.moderasi.uid)
+          .collection('reports')
+          .doc(widget.moderasi.id)
           .update({
-        'userData.hasWarning': true,
-        'userData.warningMessage': _aksiDipilih!
-            ? 'Akun Anda dibanned sementara selama $_durasiDipilih'
-            : 'Akses Anda dibatasi selama $_durasiDipilih',
-        'userData.warningUpdatedAt': FieldValue.serverTimestamp(),
-        'userData.chatNotice': _aksiDipilih!
-            ? 'Akun Anda dibanned sementara. Harap perhatikan aturan komunitas.'
-            : 'Akses Anda dibatasi. Harap berhati-hati dalam berkomunikasi.',
+        'status': 'selesai',
+        'catatanAdmin': _aksiDipilih!
+            ? 'User dibanned selama $_durasiDipilih'
+            : 'Akses dibatasi selama $_durasiDipilih',
       });
+
+      final targetUid = widget.moderasi.targetId;
+
+      if (targetUid.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('reportedUserInfo')
+            .doc(targetUid)
+            .set({
+          'userData.hasWarning': true,
+          'userData.warningMessage': _aksiDipilih!
+              ? 'Akun Anda dibanned sementara selama $_durasiDipilih'
+              : 'Akses Anda dibatasi selama $_durasiDipilih',
+          'userData.warningUpdatedAt': FieldValue.serverTimestamp(),
+          'userData.chatNotice': _aksiDipilih!
+              ? 'Akun Anda dibanned sementara'
+              : 'Akses Anda dibatasi',
+          'userData.status': _aksiDipilih! ? 'banned' : 'restricted',
+        }, SetOptions(merge: true));
+      }
 
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -80,6 +95,8 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
               _buildTitle(),
               const SizedBox(height: 20),
               _buildProfileCard(),
+              const SizedBox(height: 20),
+              _buildReportDetail(),
               const SizedBox(height: 20),
               if (_aksiDipilih == null) ...[
                 _buildAksiSection(),
@@ -154,7 +171,7 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
         ),
         const SizedBox(width: 8),
         Text(
-          'Moderasi :',
+          'Tinjau Moderasi',
           style: GoogleFonts.fredoka(
             fontSize: 24,
             fontWeight: FontWeight.w700,
@@ -168,6 +185,7 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
 
   Widget _buildProfileCard() {
     final m = widget.moderasi;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -184,24 +202,17 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Center(
-              child: m.avatarId.isNotEmpty
-                  ? ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  m.avatarId,
-                  width: 74,
-                  height: 74,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _defaultAvatarLarge(),
-                ),
-              )
-                  : _defaultAvatarLarge(),
+            child: const Center(
+              child: Text('☁',
+                  style: TextStyle(
+                      fontSize: 40,
+                      color: Color(0xFF2B2B2B),
+                      fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 10),
           Text(
-            m.nickname,
+            m.reportedUser.isNotEmpty ? m.reportedUser : 'User',
             style: GoogleFonts.openSans(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -209,17 +220,94 @@ class _TinjauModerasiAdminState extends State<TinjauModerasiAdmin> {
               color: const Color(0xFF49A828),
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'UID: ${m.targetId}',
+            style: GoogleFonts.openSans(
+              fontSize: 10,
+              color: Colors.grey.shade600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _defaultAvatarLarge() {
-    return const Text('☁',
-        style: TextStyle(
-            fontSize: 40,
-            color: Color(0xFF2B2B2B),
-            fontWeight: FontWeight.w700));
+  Widget _buildReportDetail() {
+    final m = widget.moderasi;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Detail Laporan',
+            style: GoogleFonts.fredoka(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF486253),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _infoRow('Kategori', m.reportCategory),
+          const SizedBox(height: 6),
+          _infoRow('Alasan', m.reportReason),
+          const SizedBox(height: 6),
+          _infoRow('Pelapor', m.reportedByUsername),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              m.contentText,
+              style: GoogleFonts.openSans(
+                fontSize: 12,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            '$label:',
+            style: GoogleFonts.openSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.openSans(
+              fontSize: 12,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAksiSection() {
