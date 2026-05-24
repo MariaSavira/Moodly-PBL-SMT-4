@@ -5,12 +5,14 @@ class MoodlyBottomNavbar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final VoidCallback onEmergencyTap;
+  final Color? outerBackgroundColor;
 
   const MoodlyBottomNavbar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.onEmergencyTap,
+    this.outerBackgroundColor,
   });
 
   static const Color _navBg = Color(0xFFE2EFCF);
@@ -118,68 +120,71 @@ class MoodlyBottomNavbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    return Container(
+    color: outerBackgroundColor ?? Colors.transparent,
+    child: SafeArea(
       top: false,
       child: SizedBox(
-        height: 108,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
-          children: [
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 10,
-              child: Container(
-                height: 76,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: _navBg,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: _softShadow,
-                ),
-                child: Row(
-                  children: [
-                    _navItem(
-                      context: context,
-                      icon: Icons.home_rounded,
-                      label: 'Beranda',
-                      selected: currentIndex == 0,
-                      onPressed: () => onTap(0),
-                    ),
-                    _navItem(
-                      context: context,
-                      icon: Icons.book_rounded,
-                      label: 'Diary',
-                      selected: currentIndex == 1,
-                      onPressed: () => onTap(1),
-                    ),
-                    const SizedBox(width: 76),
-                    _navItem(
-                      context: context,
-                      icon: Icons.forum_rounded,
-                      label: 'Connect',
-                      selected: currentIndex == 3,
-                      onPressed: () => onTap(3),
-                    ),
-                    _navItem(
-                      context: context,
-                      icon: Icons.local_florist_rounded,
-                      label: 'Afirmasi',
-                      selected: currentIndex == 4,
-                      onPressed: () => onTap(4),
-                    ),
-                  ],
+          height: 108,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 10,
+                child: Container(
+                  height: 76,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: _navBg,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: _softShadow,
+                  ),
+                  child: Row(
+                    children: [
+                      _navItem(
+                        context: context,
+                        icon: Icons.home_rounded,
+                        label: 'Beranda',
+                        selected: currentIndex == 0,
+                        onPressed: () => onTap(0),
+                      ),
+                      _navItem(
+                        context: context,
+                        icon: Icons.book_rounded,
+                        label: 'Diary',
+                        selected: currentIndex == 1,
+                        onPressed: () => onTap(1),
+                      ),
+                      const SizedBox(width: 76),
+                      _navItem(
+                        context: context,
+                        icon: Icons.forum_rounded,
+                        label: 'Connect',
+                        selected: currentIndex == 3,
+                        onPressed: () => onTap(3),
+                      ),
+                      _navItem(
+                        context: context,
+                        icon: Icons.local_florist_rounded,
+                        label: 'Afirmasi',
+                        selected: currentIndex == 4,
+                        onPressed: () => onTap(4),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 24,
-              child: _sosButton(context),
-            ),
-          ],
+              Positioned(
+                bottom: 24,
+                child: _sosButton(context),
+              ),
+            ],
+          ),
         ),
-      ),
+      )
     );
   }
 }

@@ -698,13 +698,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         statusBarColor: Color(0xFFF3FADC),
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFFF3FADC),
+        systemNavigationBarColor: Color(0xFFDCE9BE),
         systemNavigationBarIconBrightness: Brightness.dark,
-        systemNavigationBarDividerColor: Color(0xFFE0EBBB),
+        systemNavigationBarDividerColor: Color(0xFFDCE9BE),
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF3FADC),
-        extendBody: true,
+        extendBody: false,
         resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: Stack(
@@ -712,38 +712,41 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               Positioned.fill(child: Container(color: const Color(0xFFF3FADC))),
 
               // TOP CONTENT
+              // HEADER
               Positioned(
                 top: 16,
                 left: 20,
                 right: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Opacity(
-                      opacity: showProfileOverlay ? 0.0 : 1.0,
-                      child: IgnorePointer(
-                        ignoring: showProfileOverlay,
-                        child: _buildHeader(),
-                      ),
-                    ),
-                    const SizedBox(height: 72),
-                    Opacity(
-                      opacity: showProfileOverlay ? 0.0 : 1.0,
-                      child: IgnorePointer(
-                        ignoring: showProfileOverlay,
-                        child: Column(
-                          children: [
-                            _buildCenterContent(),
-                            const SizedBox(height: 22),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: _buildProfileButton(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Opacity(
+                  opacity: showProfileOverlay ? 0.0 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: showProfileOverlay,
+                    child: _buildHeader(),
+                  ),
+                ),
+              ),
+
+              // CENTER PROFILE CONTENT
+              Opacity(
+                opacity: showProfileOverlay ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: showProfileOverlay,
+                  child: Align(
+                    alignment: const Alignment(0, -0.18),
+                    child: _buildCenterContent(),
+                  ),
+                ),
+              ),
+
+              Opacity(
+                opacity: showProfileOverlay ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: showProfileOverlay,
+                  child: Positioned(
+                    right: 24,
+                    bottom: 315,
+                    child: _buildProfileButton(),
+                  ),
                 ),
               ),
 
@@ -761,6 +764,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           currentIndex: selectedNavIndex,
           onTap: _onNavbarTap,
           onEmergencyTap: _onEmergencyTap,
+          outerBackgroundColor: const Color(0xFFDCE9BE),
         ),
       ),
     );
@@ -800,7 +804,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   Widget _buildCenterContent() {
     return Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 18),
           Container(
             width: 105,
             height: 105,
@@ -818,17 +824,22 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               child: Image.asset(
                 selectedProfileImage.isNotEmpty
                     ? selectedProfileImage
-                    : 'assets/profile_pic/PP.png', // <- placeholder sementara kalau state belum selesai load
+                    : 'assets/profile_pic/PP.png',
                 fit: BoxFit.cover,
               ),
             ),
           ),
           const SizedBox(height: 18),
-          Text(profileName, style: Theme.of(context).textTheme.headlineLarge),
+          Text(
+            profileName,
+            style: Theme.of(context).textTheme.headlineLarge,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 6),
           Text(
             'Mulailah Mengobrol!',
             style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -928,10 +939,10 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
   Widget _buildFilterCard() {
     return Container(
-      height: 282,
+      height: 300,
       decoration: const BoxDecoration(
         color: Color(0xFFDCE9BE),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Stack(
         children: [
@@ -940,7 +951,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
+                    top: Radius.circular(28),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -954,21 +965,24 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Filter Gender',
-                  style: Theme.of(context).textTheme.bodySmall,
+                Row(
+                  children: [
+                    Text(
+                      'Filter Gender',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                _buildGenderOptions(),
                 const SizedBox(height: 16),
+                _buildGenderOptions(),
+                const SizedBox(height: 14),
                 _buildCTAButton(),
-                const SizedBox(height: 10),
-                _buildHelperText(),
                 const SizedBox(height: 8),
+                _buildHelperText(),
               ],
             ),
           ),

@@ -5,6 +5,7 @@ import '../core/styles/app_text.dart';
 import '../core/services/moodly_notification_service.dart';
 import '../widgets/shared/moodly_user_avatar.dart';
 import '../core/services/streak_service.dart';
+import '../core/services/user_appeal_service.dart';
 import '../widgets/moodly_bottom_navbar.dart';
 import '../services/afirmasi/afirmasi_service.dart';
 import 'afirmasi/widgets/cute_top_popup.dart';
@@ -32,6 +33,7 @@ class _HomepageState extends State<Homepage> {
   DateTime selectedDate = DateTime.now();
 
   bool _hasUnreadNotifications = false;
+  bool _actionPopupChecked = false;
 
   static const String _moodDocumentId = 'BeZzql14Y8xGyoLUDb0L';
 
@@ -61,6 +63,7 @@ class _HomepageState extends State<Homepage> {
 
   Future<void> _bootstrapSignals() async {
     await MoodlyNotificationService.instance.syncForCurrentUser();
+    await _checkModerationActionPopup();
   }
 
   Future<void> _loadPremiumStatus() async {
@@ -77,6 +80,187 @@ class _HomepageState extends State<Homepage> {
 
     setState(() {
       _isPremiumUser = (data['isPremium'] ?? false) == true;
+    });
+  }
+
+  Future<void> _checkModerationActionPopup() async {
+    if (_actionPopupChecked) return;
+    _actionPopupChecked = true;
+
+    final item = await UserAppealService.instance.getLatestActiveAction();
+    if (item == null) return;
+    if (!mounted) return;
+
+    final actionLabel =
+        UserAppealService.instance.buildCurrentActionLabel(item);
+    final appealLabel =
+        UserAppealService.instance.buildAppealStatusLabel(item);
+    final reportTitle =
+        UserAppealService.instance.buildReportTitle(item);
+    final reportSummary =
+        UserAppealService.instance.buildReportSummary(item);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.38),
+        builder: (_) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: _softShadow,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _pinkSoft,
+                    ),
+                    child: const Icon(
+                      Icons.shield_rounded,
+                      size: 36,
+                      color: _greenDark,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Kamu telah dilaporkan',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontSize: 22,
+                          color: _textDark,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    reportTitle,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: _textDark,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    reportSummary,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: _textSoft,
+                          height: 1.45,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _pinkSoft,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          actionLabel,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: _textDark,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _greenSoft,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          appealLabel,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: _textDark,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            backgroundColor: _pinkSoft,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            'Nanti',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: _textDark,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReportHistoryPage(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _green,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            'Lihat Detail',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
     });
   }
 
@@ -1237,7 +1421,7 @@ class _HomepageState extends State<Homepage> {
                   Text(
                     isToday
                         ? 'Bagaimana harimu berjalan?'
-                        : 'Bagaimana harimu di $_selectedDateLabel()?',
+                        : 'Bagaimana harimu di ${_selectedDateLabel()}?',
                     style: AppText.subtitle(context).copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -1295,8 +1479,8 @@ class _HomepageState extends State<Homepage> {
                 ),
                 child: Text(
                   _hasSelectedMood
-                      ? 'Edit mood $_selectedDateLabel()'
-                      : 'Isi mood $_selectedDateLabel()',
+                      ? 'Edit mood ${_selectedDateLabel()}'
+                      : 'Isi mood ${_selectedDateLabel()}',
                   style: AppText.bodyAlt(context).copyWith(
                     fontSize: 11,
                     color: _textDark,

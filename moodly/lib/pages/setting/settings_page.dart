@@ -242,7 +242,7 @@ class SettingsPage extends StatelessWidget {
                           _SettingsItem(
                             icon: Icons.error_outline_rounded,
                             iconColor: _settingsGreenDark,
-                            title: 'Riwayat Pelapor',
+                            title: 'Laporan & Banding',
                             onTap: () {
                               Navigator.push(
                                 context,
