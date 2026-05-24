@@ -18,6 +18,7 @@ const Color _editPinkSoft = Color(0xFFFFEEF2);
 const Color _editTextDark = Color(0xFF1F1F1F);
 const Color _editTextSoft = Color(0xFF6F746E);
 const Color _editBrand = Color(0xFFC65F59);
+const String _editPlaceholderAsset = 'assets/profile_pic/PP_default.jpg';
 
 List<BoxShadow> get _editShadow => const [
       BoxShadow(
@@ -26,6 +27,35 @@ List<BoxShadow> get _editShadow => const [
         blurRadius: 20,
       ),
     ];
+  
+TextStyle? _editHeadline(BuildContext context, {Color? color, double? fontSize}) {
+  return Theme.of(context).textTheme.headlineLarge?.copyWith(
+    color: color ?? _editTextDark,
+    fontSize: fontSize,
+  );
+}
+
+TextStyle? _editTitle(BuildContext context, {Color? color, double? fontSize}) {
+  return Theme.of(context).textTheme.titleMedium?.copyWith(
+    color: color ?? _editTextDark,
+    fontSize: fontSize,
+  );
+}
+
+TextStyle? _editBody(BuildContext context, {Color? color, double? fontSize, double? height}) {
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(
+    color: color ?? _editTextSoft,
+    fontSize: fontSize,
+    height: height,
+  );
+}
+
+TextStyle? _editButton(BuildContext context, {Color? color, double? fontSize}) {
+  return Theme.of(context).textTheme.labelLarge?.copyWith(
+    color: color ?? Colors.white,
+    fontSize: fontSize,
+  );
+}
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -77,6 +107,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
+    nameController.text =
+        user.displayName?.trim().isNotEmpty == true
+            ? user.displayName!.trim()
+            : (user.email?.split('@').first ?? '');
+
+    emailController.text = user.email ?? '';
+    phoneController.text = user.phoneNumber ?? '';
+    _photoUrl = user.photoURL;
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -85,24 +124,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       final data = doc.data();
 
+      debugPrint('EDIT PROFILE UID: ${user.uid}');
+      debugPrint('EDIT PROFILE PHONE RAW: ${data?['phoneNumber']}');
+      debugPrint('EDIT PROFILE DATA: $data');
+
       nameController.text =
-          data?['fullName'] ??
-          user.displayName ??
-          user.email?.split('@').first ??
-          '';
+          (data?['fullName'] as String?)?.trim().isNotEmpty == true
+              ? (data?['fullName'] as String).trim()
+              : nameController.text;
 
-      emailController.text = data?['email'] ?? user.email ?? '';
-      phoneController.text = data?['phoneNumber'] ?? '';
+      emailController.text =
+          (data?['email'] as String?)?.trim().isNotEmpty == true
+              ? (data?['email'] as String).trim()
+              : emailController.text;
 
-      _photoUrl = data?['photoUrl'] ?? user.photoURL;
+      final rawPhone = data?['phoneNumber'];
+      final phoneFromFirestore = rawPhone?.toString().trim();
+
+      phoneController.text =
+          (phoneFromFirestore != null && phoneFromFirestore.isNotEmpty && phoneFromFirestore.toLowerCase() != 'null')
+              ? phoneFromFirestore
+              : phoneController.text;
+
+      _photoUrl = (data?['photoUrl'] as String?)?.trim().isNotEmpty == true
+          ? (data?['photoUrl'] as String).trim()
+          : _photoUrl;
+
       _avatarAsset = data?['avatarId'];
-    } catch (_) {
-      showCuteTopPopup(
-        context,
-        title: 'Gagal',
-        message: 'Gagal memuat profil',
-        type: CutePopupType.error,
-      );
+    } catch (e, st) {
+      debugPrint('EDIT PROFILE LOAD ERROR: $e');
+      debugPrintStack(stackTrace: st);
     }
 
     if (mounted) setState(() => _isLoading = false);
@@ -190,7 +241,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (mounted) setState(() => _isSaving = false);
   }
 
-  ImageProvider? _buildPreviewImage() {
+  ImageProvider _buildPreviewImage() {
     if (_pickedImageBytes != null) return MemoryImage(_pickedImageBytes!);
     if (_pickedImageFile != null) return FileImage(_pickedImageFile!);
     if (_photoUrl != null && _photoUrl!.isNotEmpty) {
@@ -199,7 +250,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (_avatarAsset != null && _avatarAsset!.isNotEmpty) {
       return AssetImage(_avatarAsset!);
     }
-    return null;
+    return const AssetImage(_editPlaceholderAsset);
   }
 
   @override
@@ -253,16 +304,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       color: Colors.white,
                                     ),
                                     child: ClipOval(
-                                      child: _buildPreviewImage() != null
-                                          ? Image(
-                                              image: _buildPreviewImage()!,
-                                              fit: BoxFit.cover,
-                                            )
-                                          : const Icon(
-                                              Icons.person_rounded,
-                                              size: 76,
-                                              color: _editTextDark,
-                                            ),
+                                      child: Image(
+                                        image: _buildPreviewImage(),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Icon(
+                                          Icons.person_rounded,
+                                          size: 76,
+                                          color: _editTextDark,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -330,13 +380,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       strokeWidth: 2.4,
                                     ),
                                   )
-                                : const Text(
-                                    'Simpan Perubahan',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                                : Text(
+                                  'Simpan Perubahan',
+                                  style: _editButton(context, color: Colors.white, fontSize: 17),
+                                ),
                           ),
                         ),
                       ],
@@ -369,21 +416,14 @@ class _EditHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        const Text(
+        Text(
           'Ubah Profil',
-          style: TextStyle(
-            color: _editGreenDark,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
+          style: _editTitle(context, color: _editGreenDark, fontSize: 17),
         ),
         const Spacer(),
-        const Text(
+        Text(
           'Moodly',
-          style: TextStyle(
-            color: _editBrand,
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
+          style: _editHeadline(context, color: _editBrand, fontSize: 32)?.copyWith(
             letterSpacing: -1,
           ),
         ),
@@ -429,19 +469,11 @@ class _InputCard extends StatelessWidget {
               controller: controller,
               readOnly: readOnly,
               keyboardType: keyboardType,
-              style: const TextStyle(
-                fontSize: 16,
-                color: _editTextDark,
-                fontWeight: FontWeight.w500,
-              ),
+              style: _editBody(context, color: _editTextDark, fontSize: 16),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: label,
-                hintStyle: const TextStyle(
-                  color: _editTextSoft,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+                hintStyle: _editBody(context, color: _editTextSoft, fontSize: 15),
               ),
             ),
           ),

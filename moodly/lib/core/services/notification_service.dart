@@ -17,30 +17,40 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/launcher_icon',
-    );
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+    const settings = InitializationSettings(android: androidSettings);
 
-    const settings = InitializationSettings(
-      android: androidSettings,
-    );
+    await notificationsPlugin.initialize(settings: settings);
 
-    await notificationsPlugin.initialize(
-      settings: settings,
-    );
-
-    await notificationsPlugin
+    final androidPlugin = notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+      try {
+        await androidPlugin.requestExactAlarmsPermission();
+      } catch (_) {
+        // Beberapa versi plugin / Android API tidak punya method ini.
+      }
+    }
 
     _isInitialized = true;
+  }
+
+  Future<void> _ensureInitialized() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
   }
 
   Future<void> showInstantNotification({
     required String title,
     required String body,
   }) async {
+    await _ensureInitialized();
+
     await notificationsPlugin.show(
       id: 0,
       title: title,
@@ -52,96 +62,101 @@ class NotificationService {
           channelDescription: 'Notification channel for Moodly',
           importance: Importance.max,
           priority: Priority.high,
+          icon: '@mipmap/launcher_icon',
         ),
       ),
     );
   }
 
   Future<void> scheduleDailyMoodReminder() async {
-    await notificationsPlugin.zonedSchedule(
+    await _scheduleDaily(
       id: 1,
       title: 'Moodly 🌿',
       body: 'Jangan lupa catat suasana hatimu hari ini.',
-      scheduledDate: _nextInstanceOfTime(
-        hour: 20,
-        minute: 0,
-      ),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_mood_channel',
-          'Daily Mood Reminder',
-          channelDescription: 'Pengingat pencatatan mood harian',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
+      channelId: 'daily_mood_channel',
+      channelName: 'Daily Mood Reminder',
+      channelDescription: 'Pengingat pencatatan mood harian',
+      hour: 20,
+      minute: 0,
     );
   }
 
   Future<void> scheduleMorningAwarenessReminder() async {
-    await notificationsPlugin.zonedSchedule(
+    await _scheduleDaily(
       id: 2,
       title: 'Selamat pagi 🌱',
       body: 'Ambil napas sebentar dan mulai hari dengan tenang.',
-      scheduledDate: _nextInstanceOfTime(
-        hour: 8,
-        minute: 0,
-      ),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'morning_awareness_channel',
-          'Morning Awareness Reminder',
-          channelDescription: 'Pengingat kesadaran pagi',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
+      channelId: 'morning_awareness_channel',
+      channelName: 'Morning Awareness Reminder',
+      channelDescription: 'Pengingat kesadaran pagi',
+      hour: 8,
+      minute: 0,
     );
   }
 
   Future<void> scheduleAchievementReminder() async {
-    await notificationsPlugin.zonedSchedule(
+    await _scheduleDaily(
       id: 3,
       title: 'Moodly Achievement ✨',
       body: 'Rayakan progres kecilmu hari ini. Kamu sudah berusaha.',
-      scheduledDate: _nextInstanceOfTime(
-        hour: 19,
-        minute: 0,
+      channelId: 'achievement_channel',
+      channelName: 'Achievement Reminder',
+      channelDescription: 'Pengingat pencapaian Moodly',
+      hour: 19,
+      minute: 0,
+    );
+  }
+
+  Future<void> _scheduleDaily({
+    required int id,
+    required String title,
+    required String body,
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
+    required int hour,
+    required int minute,
+  }) async {
+    await _ensureInitialized();
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: '@mipmap/launcher_icon',
       ),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'achievement_channel',
-          'Achievement Reminder',
-          channelDescription: 'Pengingat pencapaian Moodly',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
+    );
+
+    final scheduleTime = _nextInstanceOfTime(hour: hour, minute: minute);
+
+    await notificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduleTime,
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'moodly_daily',
     );
   }
 
   Future<void> cancelDailyMoodReminder() async {
-    await notificationsPlugin.cancel(
-      id: 1,
-    );
+    await _ensureInitialized();
+    await notificationsPlugin.cancel(id: 1);
   }
 
   Future<void> cancelMorningAwarenessReminder() async {
-    await notificationsPlugin.cancel(
-      id: 2,
-    );
+    await _ensureInitialized();
+    await notificationsPlugin.cancel(id: 2);
   }
 
   Future<void> cancelAchievementReminder() async {
-    await notificationsPlugin.cancel(
-      id: 3,
-    );
+    await _ensureInitialized();
+    await notificationsPlugin.cancel(id: 3);
   }
 
   tz.TZDateTime _nextInstanceOfTime({
@@ -160,9 +175,7 @@ class NotificationService {
     );
 
     if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(
-        const Duration(days: 1),
-      );
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
     return scheduledDate;

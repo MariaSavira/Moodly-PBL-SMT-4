@@ -715,6 +715,51 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
+  Widget _headerUserName() {
+    final authUser = FirebaseAuth.instance.currentUser;
+    final uid = authUser?.uid;
+
+    final textStyle = AppText.title(context).copyWith(
+      fontSize: 24,
+      fontWeight: FontWeight.w700,
+      color: Colors.black,
+    );
+
+    if (uid == null) {
+      return Text('Pengguna Moodly', style: textStyle);
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data();
+
+        final fullName = (data?['fullName'] as String?)?.trim();
+        final nickname = (data?['nickname'] as String?)?.trim();
+        final displayName = authUser?.displayName?.trim();
+        final email = authUser?.email?.trim();
+
+        final resolvedName =
+            (fullName != null && fullName.isNotEmpty)
+                ? fullName
+                : (nickname != null && nickname.isNotEmpty)
+                    ? nickname
+                    : (displayName != null && displayName.isNotEmpty)
+                        ? displayName
+                        : (email != null && email.isNotEmpty)
+                            ? email.split('@').first
+                            : 'Pengguna Moodly';
+
+        return Text(
+          resolvedName,
+          style: textStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
+    );
+  }
+
   Widget _headerSection() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -758,14 +803,7 @@ class _HomepageState extends State<Homepage> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                'Kucing Oren Imut',
-                style: AppText.title(context).copyWith(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                ),
-              ),
+              _headerUserName(),
             ],
           ),
         ),

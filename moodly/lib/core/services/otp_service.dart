@@ -9,7 +9,7 @@ class OtpService {
 
   static final OtpService instance = OtpService._();
 
-  static const String baseUrl = 'http://192.168.1.6:5000';
+  static const String baseUrl = 'http://192.168.1.4:5000';
 
   Future<void> sendRegisterOtp({
     required String fullName,

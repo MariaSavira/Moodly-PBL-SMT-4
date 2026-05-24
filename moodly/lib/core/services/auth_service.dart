@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -29,7 +30,6 @@ class AuthService {
     if (_isGoogleInitialized) return;
 
     await _googleSignIn.initialize();
-
     _isGoogleInitialized = true;
   }
 
@@ -37,11 +37,17 @@ class AuthService {
     final user = _auth.currentUser;
     if (user == null) return 'user';
 
-    final doc = await _firestore.collection('users').doc(user.uid).get();
-    if (!doc.exists || doc.data() == null) return 'user';
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists || doc.data() == null) return 'user';
 
-    final data = doc.data()!;
-    return (data['role'] as String?) ?? 'user';
+      final data = doc.data()!;
+      return (data['role'] as String?) ?? 'user';
+    } catch (e, st) {
+      debugPrint('GET CURRENT USER ROLE ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      return 'user';
+    }
   }
 
   Future<AuthResult> signIn({
@@ -63,14 +69,40 @@ class AuthService {
         );
       }
 
-      final user = await _getUserFromFirestore(firebaseUser.uid);
+      final fallbackUser = UserModel(
+        uid: firebaseUser.uid,
+        fullName:
+            firebaseUser.displayName ??
+            firebaseUser.email?.split('@').first ??
+            '',
+        email: firebaseUser.email ?? '',
+        phoneNumber: firebaseUser.phoneNumber,
+        photoUrl: firebaseUser.photoURL,
+        createdAt: firebaseUser.metadata.creationTime,
+        isEmailVerified: firebaseUser.emailVerified,
+        role: 'user',
+      );
+
+      await _safeSyncUserDoc(
+        firebaseUser: firebaseUser,
+        fallbackUser: fallbackUser,
+        phoneNumber: firebaseUser.phoneNumber,
+      );
+
+      final user = await _safeGetUserModel(
+        firebaseUser,
+        fallbackPhoneNumber: firebaseUser.phoneNumber,
+      );
+
       return AuthResult.success(user);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SIGN IN ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Terjadi kesalahan. Silakan coba lagi.',
         errorType: AuthErrorType.unknown,
@@ -128,19 +160,26 @@ class AuthService {
         role: 'user',
       );
 
-      await _saveUserToFirestore(
+      await _safeSyncUserDoc(
         firebaseUser: firebaseUser,
         fallbackUser: newUser,
         phoneNumber: cleanPhoneNumber,
       );
 
-      return AuthResult.success(newUser);
+      final savedUser = await _safeGetUserModel(
+        firebaseUser,
+        fallbackPhoneNumber: cleanPhoneNumber,
+      );
+
+      return AuthResult.success(savedUser);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SIGN UP ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Terjadi kesalahan. Silakan coba lagi.',
         errorType: AuthErrorType.unknown,
@@ -152,11 +191,8 @@ class AuthService {
     try {
       await _ensureGoogleInitialized();
 
-      final GoogleSignInAccount googleUser =
-          await _googleSignIn.authenticate();
-
-      final GoogleSignInAuthentication googleAuth =
-          googleUser.authentication;
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final String? idToken = googleAuth.idToken;
 
@@ -168,9 +204,7 @@ class AuthService {
         );
       }
 
-      final credential = GoogleAuthProvider.credential(
-        idToken: idToken,
-      );
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
 
       final userCredential = await _auth.signInWithCredential(credential);
       final firebaseUser = userCredential.user;
@@ -192,12 +226,12 @@ class AuthService {
         role: 'user',
       );
 
-      await _saveUserToFirestore(
+      await _safeSyncUserDoc(
         firebaseUser: firebaseUser,
         fallbackUser: userModel,
       );
 
-      final savedUser = await _getUserFromFirestore(firebaseUser.uid);
+      final savedUser = await _safeGetUserModel(firebaseUser);
       return AuthResult.success(savedUser);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
@@ -216,7 +250,9 @@ class AuthService {
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('GOOGLE SIGN IN ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Login Google gagal. Silakan coba lagi. Detail: $e',
         errorType: AuthErrorType.unknown,
@@ -273,19 +309,21 @@ class AuthService {
         role: 'user',
       );
 
-      await _saveUserToFirestore(
+      await _safeSyncUserDoc(
         firebaseUser: firebaseUser,
         fallbackUser: userModel,
       );
 
-      final savedUser = await _getUserFromFirestore(firebaseUser.uid);
+      final savedUser = await _safeGetUserModel(firebaseUser);
       return AuthResult.success(savedUser);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('FACEBOOK SIGN IN ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Login Facebook gagal. Detail: $e',
         errorType: AuthErrorType.unknown,
@@ -309,7 +347,9 @@ class AuthService {
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SEND PASSWORD RESET ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Gagal mengirim email reset password. Silakan coba lagi.',
         errorType: AuthErrorType.unknown,
@@ -345,7 +385,9 @@ class AuthService {
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SEND EMAIL VERIFICATION ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Gagal mengirim verifikasi email. Silakan coba lagi.',
         errorType: AuthErrorType.unknown,
@@ -388,7 +430,7 @@ class AuthService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      final userModel = await _getUserFromFirestore(refreshedUser.uid);
+      final userModel = await _safeGetUserModel(refreshedUser);
 
       return AuthResult.success(userModel);
     } on FirebaseAuthException catch (e) {
@@ -396,9 +438,80 @@ class AuthService {
         message: _mapFirebaseError(e.code),
         errorType: _mapErrorType(e.code),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('CHECK EMAIL VERIFICATION ERROR: $e');
+      debugPrintStack(stackTrace: st);
       return AuthResult.failure(
         message: 'Gagal mengecek verifikasi email. Silakan coba lagi.',
+        errorType: AuthErrorType.unknown,
+      );
+    }
+  }
+
+  Future<AuthResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+
+      if (user == null) {
+        return AuthResult.failure(
+          message: 'Pengguna tidak ditemukan. Silakan login kembali.',
+          errorType: AuthErrorType.userNotFound,
+        );
+      }
+
+      final email = user.email?.trim();
+      final hasPasswordProvider =
+          user.providerData.any((item) => item.providerId == 'password');
+
+      if (!hasPasswordProvider || email == null || email.isEmpty) {
+        return AuthResult.failure(
+          message:
+              'Akun ini tidak menggunakan login email dan kata sandi, jadi kata sandi tidak bisa diubah dari halaman ini.',
+          errorType: AuthErrorType.unknown,
+        );
+      }
+
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword.trim(),
+      );
+
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword.trim());
+      await user.reload();
+
+      try {
+        await _firestore.collection('users').doc(user.uid).set({
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {
+        // biarkan, password sudah sukses diubah
+      }
+
+      final refreshedUser = _auth.currentUser ?? user;
+      return AuthResult.success(
+        UserModel(
+          uid: refreshedUser.uid,
+          fullName: refreshedUser.displayName ?? '',
+          email: refreshedUser.email ?? email,
+          photoUrl: refreshedUser.photoURL,
+          isEmailVerified: refreshedUser.emailVerified,
+          role: 'user',
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      return AuthResult.failure(
+        message: _mapFirebaseError(e.code),
+        errorType: _mapErrorType(e.code),
+      );
+    } catch (e, st) {
+      debugPrint('CHANGE PASSWORD ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      return AuthResult.failure(
+        message: 'Gagal mengubah kata sandi. Silakan coba lagi.',
         errorType: AuthErrorType.unknown,
       );
     }
@@ -423,7 +536,56 @@ class AuthService {
       await _ensureGoogleInitialized();
       await _googleSignIn.signOut();
     } catch (_) {
-      // Diabaikan supaya logout Firebase tetap jalan.
+      // diabaikan supaya logout Firebase tetap jalan
+    }
+  }
+
+  Future<UserModel> _safeGetUserModel(
+    User firebaseUser, {
+    String? fallbackPhoneNumber,
+  }) async {
+    try {
+      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        return UserModel.fromMap(doc.data()!, firebaseUser.uid);
+      }
+    } catch (e, st) {
+      debugPrint('AUTH READ USER DOC ERROR: $e');
+      debugPrintStack(stackTrace: st);
+    }
+
+    final displayName = firebaseUser.displayName?.trim();
+    final email = firebaseUser.email?.trim();
+
+    return UserModel(
+      uid: firebaseUser.uid,
+      fullName: (displayName != null && displayName.isNotEmpty)
+          ? displayName
+          : ((email != null && email.isNotEmpty) ? email.split('@').first : ''),
+      email: email ?? '',
+      phoneNumber: fallbackPhoneNumber ?? firebaseUser.phoneNumber,
+      photoUrl: firebaseUser.photoURL,
+      createdAt: firebaseUser.metadata.creationTime,
+      isEmailVerified: firebaseUser.emailVerified,
+      role: 'user',
+    );
+  }
+
+  Future<void> _safeSyncUserDoc({
+    required User firebaseUser,
+    required UserModel fallbackUser,
+    String? phoneNumber,
+  }) async {
+    try {
+      await _saveUserToFirestore(
+        firebaseUser: firebaseUser,
+        fallbackUser: fallbackUser,
+        phoneNumber: phoneNumber,
+      );
+    } catch (e, st) {
+      debugPrint('AUTH SYNC USER DOC ERROR: $e');
+      debugPrintStack(stackTrace: st);
     }
   }
 
@@ -472,7 +634,9 @@ class AuthService {
       uid: uid,
       fullName: firebaseUser?.displayName ?? '',
       email: firebaseUser?.email ?? '',
+      phoneNumber: firebaseUser?.phoneNumber,
       photoUrl: firebaseUser?.photoURL,
+      createdAt: firebaseUser?.metadata.creationTime,
       isEmailVerified: firebaseUser?.emailVerified ?? false,
       role: 'user',
     );
@@ -488,6 +652,8 @@ class AuthService {
         return 'Email sudah digunakan.';
       case 'network-request-failed':
         return 'Tidak ada koneksi internet. Periksa jaringan Anda.';
+      case 'requires-recent-login':
+        return 'Sesi login Anda sudah terlalu lama. Silakan login ulang lalu coba lagi.';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.';
       case 'user-disabled':
@@ -521,6 +687,8 @@ class AuthService {
         return AuthErrorType.networkError;
       case 'too-many-requests':
         return AuthErrorType.tooManyRequests;
+      case 'email-not-verified':
+        return AuthErrorType.emailNotVerified;
       default:
         return AuthErrorType.unknown;
     }

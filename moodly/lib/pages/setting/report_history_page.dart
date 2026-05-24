@@ -1,48 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../core/services/user_appeal_service.dart';
+import '../afirmasi/widgets/cute_top_popup.dart';
 import '../pages.dart';
-
-const Color _historyBg = Color(0xFFF4F8EA);
-const Color _historyCard = Colors.white;
-const Color _historyGreen = Color(0xFF7BC25D);
-const Color _historyGreenDark = Color(0xFF5E9E49);
-const Color _historyGreenSoft = Color(0xFFDDEFCF);
-const Color _historyMintSoft = Color(0xFFE9F7E8);
-const Color _historyPinkSoft = Color(0xFFFFEEF2);
-const Color _historyPeachSoft = Color(0xFFFFE9DD);
-const Color _historyYellowSoft = Color(0xFFF9F0CC);
-const Color _historyTextDark = Color(0xFF1F1F1F);
-const Color _historyTextSoft = Color(0xFF6F746E);
-const Color _historyBrand = Color(0xFFC65F59);
-
-List<BoxShadow> get _historyShadow => const [
-  BoxShadow(
-    color: Color.fromRGBO(0, 0, 0, 0.08),
-    offset: Offset(0, 8),
-    blurRadius: 20,
-    spreadRadius: 0,
-  ),
-];
-
-TextStyle? _hh1(BuildContext context, {Color color = _historyTextDark}) {
-  return Theme.of(context).textTheme.headlineLarge?.copyWith(color: color);
-}
-
-TextStyle? _hh2(BuildContext context, {Color color = _historyTextDark}) {
-  return Theme.of(context).textTheme.titleMedium?.copyWith(color: color);
-}
-
-TextStyle? _hbody(BuildContext context, {Color color = _historyTextSoft}) {
-  return Theme.of(context).textTheme.bodyMedium?.copyWith(color: color);
-}
-
-TextStyle? _hbodyAlt(BuildContext context, {Color color = _historyTextDark}) {
-  return Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
-}
-
-TextStyle? _hbutton(BuildContext context, {Color color = Colors.white}) {
-  return Theme.of(context).textTheme.labelLarge?.copyWith(color: color);
-}
+import 'moodly_settings_support.dart';
 
 class ReportHistoryPage extends StatefulWidget {
   const ReportHistoryPage({super.key});
@@ -53,56 +14,116 @@ class ReportHistoryPage extends StatefulWidget {
 
 class _ReportHistoryPageState extends State<ReportHistoryPage> {
   bool _isLoading = true;
-  String selectedTab = 'Semua';
+  String _selectedTab = 'all';
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
 
   List<Map<String, dynamic>> _reportsAgainstMe = [];
   List<Map<String, dynamic>> _reportsByMe = [];
   List<Map<String, dynamic>> _appeals = [];
 
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Laporan & Banding',
+      'description': 'Lihat laporan terhadap akunmu, laporan yang kamu kirim, dan status banding yang pernah diajukan.',
+      'all': 'Semua',
+      'pending': 'Pending',
+      'approved': 'Disetujui',
+      'rejected': 'Ditolak',
+      'againstMe': 'Laporan terhadap akunmu',
+      'byMe': 'Laporan yang kamu kirim',
+      'appeals': 'Banding yang kamu ajukan',
+      'emptyAgainst': 'Belum ada laporan terhadap akunmu pada filter ini.',
+      'emptyByMe': 'Belum ada laporan yang kamu kirim pada filter ini.',
+      'emptyAppeals': 'Belum ada banding yang sesuai dengan filter ini.',
+      'applyAppeal': 'Ajukan Banding',
+      'status': 'Status',
+      'category': 'Kategori',
+      'reporter': 'Pelapor',
+      'content': 'Isi laporan',
+      'date': 'Tanggal',
+      'appealReason': 'Alasan banding',
+      'loadPartial': 'Sebagian riwayat gagal dimuat. Data yang berhasil masih tetap ditampilkan.',
+    },
+    'en': {
+      'header': 'Reports & Appeals',
+      'description': 'Review reports against your account, reports you submitted, and appeal statuses that exist in your account history.',
+      'all': 'All',
+      'pending': 'Pending',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'againstMe': 'Reports against your account',
+      'byMe': 'Reports you submitted',
+      'appeals': 'Appeals you submitted',
+      'emptyAgainst': 'No reports against your account for this filter.',
+      'emptyByMe': 'No reports you submitted for this filter.',
+      'emptyAppeals': 'No appeals match this filter.',
+      'applyAppeal': 'Submit Appeal',
+      'status': 'Status',
+      'category': 'Category',
+      'reporter': 'Reporter',
+      'content': 'Report content',
+      'date': 'Date',
+      'appealReason': 'Appeal reason',
+      'loadPartial': 'Part of the history failed to load. Whatever succeeded is still shown.',
+    },
+  };
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadAll();
   }
 
-  Future<void> _loadData() async {
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  Future<List<Map<String, dynamic>>> _safeLoad(
+    Future<List<Map<String, dynamic>>> Function() loader,
+  ) async {
     try {
-      final reportsAgainstMe =
-          await UserAppealService.instance.getReportsAgainstMe();
-      final reportsByMe =
-          await UserAppealService.instance.getReportsSubmittedByMe();
-      final appeals =
-          await UserAppealService.instance.getAppealsAgainstMe();
-
-      if (!mounted) return;
-
-      setState(() {
-        _reportsAgainstMe = reportsAgainstMe;
-        _reportsByMe = reportsByMe;
-        _appeals = appeals;
-      });
+      return await loader();
     } catch (e) {
-      debugPrint('Gagal load report history: $e');
+      debugPrint('ReportHistory load error: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
 
-      if (!mounted) return;
+  Future<void> _loadAll() async {
+    final language = await MoodlySettingsPrefs.loadLanguageCode();
 
-      setState(() {
-        _reportsAgainstMe = [];
-        _reportsByMe = [];
-        _appeals = [];
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+    final reportsAgainstMe = await _safeLoad(
+      () => UserAppealService.instance.getReportsAgainstMe(),
+    );
+    final reportsByMe = await _safeLoad(
+      () => UserAppealService.instance.getReportsSubmittedByMe(),
+    );
+    final appeals = await _safeLoad(
+      () => UserAppealService.instance.getAppealsAgainstMe(),
+    );
+
+    if (!mounted) return;
+
+    final hadError = reportsAgainstMe.isEmpty && reportsByMe.isEmpty && appeals.isEmpty;
+    setState(() {
+      _languageCode = language;
+      _reportsAgainstMe = reportsAgainstMe;
+      _reportsByMe = reportsByMe;
+      _appeals = appeals;
+      _isLoading = false;
+    });
+
+    if (hadError) {
+      showCuteTopPopup(
+        context,
+        title: 'Oops',
+        message: _t('loadPartial'),
+        type: CutePopupType.error,
+      );
     }
   }
 
   String _formatDate(dynamic value) {
-    DateTime date;
-
     if (value == null) return '-';
+    DateTime date;
     if (value.runtimeType.toString() == 'Timestamp') {
       date = value.toDate();
     } else if (value is DateTime) {
@@ -113,474 +134,179 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
       return '-';
     }
 
-    const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-
+    const monthsId = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const monthsEn = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = _languageCode == 'en' ? monthsEn : monthsId;
     return '${date.day} ${months[date.month]} ${date.year}';
   }
 
-  bool _matchReportTab(Map<String, dynamic> item) {
-    final status = (item['status'] ?? '').toString().trim().toLowerCase();
+  String _normalizeStatus(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value.contains('selesai') || value.contains('disetujui') || value.contains('approved')) return 'approved';
+    if (value.contains('ditolak') || value.contains('rejected')) return 'rejected';
+    if (value.contains('pending') || value.contains('diproses') || value.contains('process')) return 'pending';
+    return 'all';
+  }
 
-    switch (selectedTab) {
-      case 'Pending':
-        return status == 'pending' || status == 'diproses';
-      case 'Disetujui':
-        return status == 'selesai';
-      case 'Ditolak':
-        return status == 'ditolak';
+  String _localizeStatus(String raw) {
+    switch (_normalizeStatus(raw)) {
+      case 'approved':
+        return _t('approved');
+      case 'rejected':
+        return _t('rejected');
+      case 'pending':
+        return _t('pending');
       default:
-        return true;
+        return raw.isEmpty ? '-' : raw;
     }
   }
 
-  bool _matchAppealTab(Map<String, dynamic> item) {
-    final status = (item['statusBanding'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
-
-    switch (selectedTab) {
-      case 'Pending':
-        return status == 'pending';
-      case 'Disetujui':
-        return status == 'disetujui';
-      case 'Ditolak':
-        return status == 'ditolak';
-      default:
-        return true;
-    }
-  }
-
-  Color _reportStatusBg(String label) {
-    switch (label) {
-      case 'Pending':
-        return _historyYellowSoft;
-      case 'Diproses':
-        return _historyYellowSoft;
-      case 'Selesai':
-        return _historyMintSoft;
-      case 'Ditolak':
-        return _historyPinkSoft;
-      default:
-        return _historyGreenSoft;
-    }
-  }
-
-  Color _appealStatusBg(String label) {
-    switch (label) {
-      case 'Pending':
-        return _historyYellowSoft;
-      case 'Disetujui':
-        return _historyMintSoft;
-      case 'Ditolak':
-        return _historyPinkSoft;
-      default:
-        return _historyGreenSoft;
-    }
-  }
-
-  Widget _background() {
-    return Stack(
-      children: [
-        Positioned(
-          top: -30,
-          right: -30,
-          child: Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _historyPinkSoft.withOpacity(0.7),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 240,
-          left: -70,
-          child: Container(
-            width: 170,
-            height: 170,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _historyMintSoft.withOpacity(0.85),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 70,
-          right: -60,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _historyGreenSoft.withOpacity(0.55),
-            ),
-          ),
-        ),
-      ],
-    );
+  bool _matchTab(String raw) {
+    if (_selectedTab == 'all') return true;
+    return _normalizeStatus(raw) == _selectedTab;
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredReportsAgainstMe =
-        _reportsAgainstMe.where(_matchReportTab).toList();
-
-    final filteredReportsByMe =
-        _reportsByMe.where(_matchReportTab).toList();
-
-    final filteredAppeals = _appeals.where(_matchAppealTab).toList();
+    final palette = MoodlySettingsPalette.of();
+    final filteredAgainst = _reportsAgainstMe.where((item) => _matchTab((item['status'] ?? '').toString())).toList();
+    final filteredByMe = _reportsByMe.where((item) => _matchTab((item['status'] ?? '').toString())).toList();
+    final filteredAppeals = _appeals.where((item) => _matchTab((item['statusBanding'] ?? '').toString())).toList();
 
     return Scaffold(
-      backgroundColor: _historyBg,
+      backgroundColor: palette.bg,
       body: Stack(
         children: [
-          _background(),
+          MoodlySettingsBackground(palette: palette),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HistoryHeader(onBack: () => Navigator.pop(context)),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Lihat laporan terhadap akunmu dan status banding yang pernah kamu ajukan.',
-                    style: _hh2(
-                      context,
-                    )?.copyWith(height: 1.45, color: _historyTextDark),
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: _historyShadow,
-                    ),
-                    child: Row(
-                      children: [
-                        _HistoryTab(
-                          label: 'Semua',
-                          selected: selectedTab == 'Semua',
-                          onTap: () => setState(() => selectedTab = 'Semua'),
-                        ),
-                        _HistoryTab(
-                          label: 'Pending',
-                          selected: selectedTab == 'Pending',
-                          onTap: () => setState(() => selectedTab = 'Pending'),
-                        ),
-                        _HistoryTab(
-                          label: 'Disetujui',
-                          selected: selectedTab == 'Disetujui',
-                          onTap: () =>
-                              setState(() => selectedTab = 'Disetujui'),
-                        ),
-                        _HistoryTab(
-                          label: 'Ditolak',
-                          selected: selectedTab == 'Ditolak',
-                          onTap: () => setState(() => selectedTab = 'Ditolak'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text(
-                    'Laporan terhadap akunmu',
-                    style: _hh1(context)?.copyWith(fontSize: 22),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_isLoading)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 32),
-                        child: CircularProgressIndicator(),
+            child: Center(
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width > 430 ? 430 : MediaQuery.of(context).size.width,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MoodlySettingsHeader(
+                        palette: palette,
+                        title: _t('header'),
+                        onBack: () => Navigator.pop(context),
                       ),
-                    )
-                  else if (filteredReportsAgainstMe.isEmpty)
-                    _EmptySectionCard(
-                      text:
-                          'Belum ada laporan terhadap akunmu pada filter ini.',
-                    )
-                  else
-                    ...filteredReportsAgainstMe.map((item) {
-                      final sourceLabel = UserAppealService.instance.buildReportSourceLabel(item);
-                      final contentLabel = UserAppealService.instance.buildReportContentLabel(item);
-                      final categoryLabel = UserAppealService.instance.buildReportCategoryLabel(item);
-                      final reporter = UserAppealService.instance.buildReporterName(item);
-                      final reportStatus = UserAppealService.instance.buildReportStatusLabel(item);
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: _historyCard,
-                          borderRadius: BorderRadius.circular(26),
-                          boxShadow: _historyShadow,
+                      const SizedBox(height: 22),
+                      MoodlySettingsCard(
+                        palette: palette,
+                        child: Text(
+                          _t('description'),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: palette.textSoft,
+                                height: 1.45,
+                              ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(height: 18),
+                      MoodlySettingsCard(
+                        palette: palette,
+                        padding: const EdgeInsets.all(7),
+                        child: Row(
                           children: [
-                            Text('Kamu telah dilaporkan', style: _hh2(context)),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Terdapat seseorang yang melaporkanmu.',
-                              style: _hbody(context),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              sourceLabel,
-                              style: _hh2(context)?.copyWith(fontSize: 20),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Isi laporan: $contentLabel',
-                              style: _hbodyAlt(context)?.copyWith(height: 1.5),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Kategori: $categoryLabel',
-                              style: _hbody(context),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Pelapor: $reporter',
-                              style: _hbody(context),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: _reportStatusBg(reportStatus),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Text(
-                                    reportStatus,
-                                    style: _hbodyAlt(context)?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  _formatDate(item['createdAt']),
-                                  style: _hbody(context),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            if (UserAppealService.instance.canSubmitAppeal(item))
-                              SizedBox(
-                                width: double.infinity,
-                                height: 48,
-                                child: ElevatedButton(
-                                  onPressed: () async {
+                            _TabChip(palette: palette, label: _t('all'), selected: _selectedTab == 'all', onTap: () => setState(() => _selectedTab = 'all')),
+                            _TabChip(palette: palette, label: _t('pending'), selected: _selectedTab == 'pending', onTap: () => setState(() => _selectedTab = 'pending')),
+                            _TabChip(palette: palette, label: _t('approved'), selected: _selectedTab == 'approved', onTap: () => setState(() => _selectedTab = 'approved')),
+                            _TabChip(palette: palette, label: _t('rejected'), selected: _selectedTab == 'rejected', onTap: () => setState(() => _selectedTab = 'rejected')),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _Section(
+                        palette: palette,
+                        title: _t('againstMe'),
+                        isLoading: _isLoading,
+                        emptyText: _t('emptyAgainst'),
+                        children: filteredAgainst.map((item) {
+                          final source = UserAppealService.instance.buildReportSourceLabel(item);
+                          final content = UserAppealService.instance.buildReportContentLabel(item);
+                          final category = UserAppealService.instance.buildReportCategoryLabel(item);
+                          final reporter = UserAppealService.instance.buildReporterName(item);
+                          final status = UserAppealService.instance.buildReportStatusLabel(item);
+
+                          return _HistoryCard(
+                            palette: palette,
+                            title: source,
+                            lines: [
+                              '${_t('content')}: $content',
+                              '${_t('category')}: $category',
+                              '${_t('reporter')}: $reporter',
+                              '${_t('status')}: ${_localizeStatus(status)}',
+                              '${_t('date')}: ${_formatDate(item['createdAt'])}',
+                            ],
+                            actionLabel: UserAppealService.instance.canSubmitAppeal(item) ? _t('applyAppeal') : null,
+                            onActionTap: UserAppealService.instance.canSubmitAppeal(item)
+                                ? () async {
                                     final changed = await Navigator.push<bool>(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => AjukanBandingPage(report: item),
                                       ),
                                     );
-
                                     if (changed == true) {
-                                      _loadData();
+                                      _loadAll();
                                     }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _historyGreen,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Ajukan Banding',
-                                    style: _hbutton(context),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Laporan yang kamu kirim',
-                    style: _hh1(context)?.copyWith(fontSize: 22),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_isLoading)
-                    const SizedBox.shrink()
-                  else if (filteredReportsByMe.isEmpty)
-                    _EmptySectionCard(
-                      text: 'Belum ada laporan yang kamu kirim pada filter ini.',
-                    )
-                  else
-                    ...filteredReportsByMe.map((item) {
-                      final sourceLabel = UserAppealService.instance.buildReportSourceLabel(item);
-                      final contentLabel = UserAppealService.instance.buildReportContentLabel(item);
-                      final categoryLabel = UserAppealService.instance.buildReportCategoryLabel(item);
-                      final reportStatus =
-                          UserAppealService.instance.buildReportStatusLabel(item);
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: _historyCard,
-                          borderRadius: BorderRadius.circular(26),
-                          boxShadow: _historyShadow,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              sourceLabel,
-                              style: _hh2(context),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              contentLabel,
-                              style: _hbodyAlt(context)?.copyWith(height: 1.5),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Kategori: $categoryLabel',
-                              style: _hbody(context),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _reportStatusBg(reportStatus),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Text(
-                                    reportStatus,
-                                    style: _hbodyAlt(context)?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  _formatDate(item['createdAt']),
-                                  style: _hbody(context),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Banding yang kamu ajukan',
-                    style: _hh1(context)?.copyWith(fontSize: 22),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_isLoading)
-                    const SizedBox.shrink()
-                  else if (filteredAppeals.isEmpty)
-                    _EmptySectionCard(
-                      text: 'Belum ada banding yang sesuai dengan filter ini.',
-                    )
-                  else
-                  ...filteredReportsByMe.map((item) {
-                    final sourceLabel =
-                        UserAppealService.instance.buildReportSourceLabel(item);
-                    final contentLabel =
-                        UserAppealService.instance.buildReportContentLabel(item);
-                    final categoryLabel =
-                        UserAppealService.instance.buildReportCategoryLabel(item);
-                    final reportStatus =
-                        UserAppealService.instance.buildReportStatusLabel(item);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: _historyCard,
-                        borderRadius: BorderRadius.circular(26),
-                        boxShadow: _historyShadow,
+                                  }
+                                : null,
+                          );
+                        }).toList(),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            sourceLabel,
-                            style: _hh2(context),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            contentLabel,
-                            style: _hbodyAlt(context)?.copyWith(height: 1.5),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Kategori: $categoryLabel',
-                            style: _hbody(context),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _reportStatusBg(reportStatus),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  reportStatus,
-                                  style: _hbodyAlt(context)?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                _formatDate(item['createdAt']),
-                                style: _hbody(context),
-                              ),
+                      const SizedBox(height: 20),
+                      _Section(
+                        palette: palette,
+                        title: _t('byMe'),
+                        isLoading: _isLoading,
+                        emptyText: _t('emptyByMe'),
+                        children: filteredByMe.map((item) {
+                          final source = UserAppealService.instance.buildReportSourceLabel(item);
+                          final content = UserAppealService.instance.buildReportContentLabel(item);
+                          final category = UserAppealService.instance.buildReportCategoryLabel(item);
+                          final status = UserAppealService.instance.buildReportStatusLabel(item);
+                          return _HistoryCard(
+                            palette: palette,
+                            title: source,
+                            lines: [
+                              '${_t('content')}: $content',
+                              '${_t('category')}: $category',
+                              '${_t('status')}: ${_localizeStatus(status)}',
+                              '${_t('date')}: ${_formatDate(item['createdAt'])}',
                             ],
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }),
-                ],
+                      const SizedBox(height: 20),
+                      _Section(
+                        palette: palette,
+                        title: _t('appeals'),
+                        isLoading: _isLoading,
+                        emptyText: _t('emptyAppeals'),
+                        children: filteredAppeals.map((item) {
+                          final source = UserAppealService.instance.buildReportSourceLabel(item);
+                          final content = UserAppealService.instance.buildReportContentLabel(item);
+                          final category = UserAppealService.instance.buildReportCategoryLabel(item);
+                          final status = (item['statusBanding'] ?? '').toString();
+                          final appealReason = (item['alasanBanding'] ?? '').toString().trim();
+                          return _HistoryCard(
+                            palette: palette,
+                            title: source,
+                            lines: [
+                              '${_t('content')}: $content',
+                              '${_t('category')}: $category',
+                              if (appealReason.isNotEmpty) '${_t('appealReason')}: $appealReason',
+                              '${_t('status')}: ${_localizeStatus(status)}',
+                              '${_t('date')}: ${_formatDate(item['createdAt'] ?? item['appealCreatedAt'])}',
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -590,41 +316,14 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
   }
 }
 
-class _HistoryHeader extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const _HistoryHeader({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: const Icon(
-            Icons.arrow_back_rounded,
-            color: _historyGreenDark,
-            size: 26,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Laporan & Banding',
-          style: _hh2(context, color: _historyGreenDark),
-        ),
-        const Spacer(),
-        Text('Moodly', style: _hh1(context, color: _historyBrand)),
-      ],
-    );
-  }
-}
-
-class _HistoryTab extends StatelessWidget {
+class _TabChip extends StatelessWidget {
+  final MoodlySettingsPalette palette;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  const _HistoryTab({
+  const _TabChip({
+    required this.palette,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -632,26 +331,21 @@ class _HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSmall = MediaQuery.of(context).size.width < 380;
-
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 40,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? _historyGreen : Colors.transparent,
+            color: selected ? palette.greenSoft : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
-          alignment: Alignment.center,
           child: Text(
             label,
-            style: _hbodyAlt(
-              context,
-              color: selected ? Colors.white : _historyTextDark,
-            )?.copyWith(fontWeight: FontWeight.w800),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: selected ? palette.greenDark : palette.textSoft,
+                ),
           ),
         ),
       ),
@@ -659,24 +353,102 @@ class _HistoryTab extends StatelessWidget {
   }
 }
 
-class _EmptySectionCard extends StatelessWidget {
-  final String text;
+class _Section extends StatelessWidget {
+  final MoodlySettingsPalette palette;
+  final String title;
+  final bool isLoading;
+  final String emptyText;
+  final List<Widget> children;
 
-  const _EmptySectionCard({required this.text});
+  const _Section({
+    required this.palette,
+    required this.title,
+    required this.isLoading,
+    required this.emptyText,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isSmall = MediaQuery.of(context).size.width < 380;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MoodlySectionTitle(palette: palette, title: title),
+        const SizedBox(height: 12),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator(color: palette.greenDark)),
+          )
+        else if (children.isEmpty)
+          MoodlySettingsCard(
+            palette: palette,
+            child: Text(
+              emptyText,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: palette.textSoft),
+            ),
+          )
+        else
+          Column(
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1) const SizedBox(height: 12),
+              ],
+            ],
+          ),
+      ],
+    );
+  }
+}
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _historyCard,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _historyShadow,
+class _HistoryCard extends StatelessWidget {
+  final MoodlySettingsPalette palette;
+  final String title;
+  final List<String> lines;
+  final String? actionLabel;
+  final VoidCallback? onActionTap;
+
+  const _HistoryCard({
+    required this.palette,
+    required this.title,
+    required this.lines,
+    this.actionLabel,
+    this.onActionTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MoodlySettingsCard(
+      palette: palette,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: palette.textDark),
+          ),
+          const SizedBox(height: 10),
+          for (final line in lines) ...[
+            Text(
+              line,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: palette.textSoft,
+                    height: 1.45,
+                  ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (actionLabel != null && onActionTap != null) ...[
+            const SizedBox(height: 8),
+            MoodlyPrimaryButton(
+              palette: palette,
+              label: actionLabel!,
+              onPressed: onActionTap,
+            ),
+          ],
+        ],
       ),
-      child: Text(text, style: _hbodyAlt(context)?.copyWith(height: 1.45)),
     );
   }
 }
