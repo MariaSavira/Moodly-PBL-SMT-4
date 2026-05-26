@@ -21,6 +21,8 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
   List<Map<String, dynamic>> _reportsByMe = [];
   List<Map<String, dynamic>> _appeals = [];
 
+  bool _hadLoadError = false;
+
   static const Map<String, Map<String, String>> _copy = {
     'id': {
       'header': 'Laporan & Banding',
@@ -71,7 +73,21 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _loadAll();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
   }
 
   String _t(String key) => _copy[_languageCode]?[key] ?? key;
@@ -83,11 +99,13 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
       return await loader();
     } catch (e) {
       debugPrint('ReportHistory load error: $e');
+      _hadLoadError = true;
       return <Map<String, dynamic>>[];
     }
   }
 
   Future<void> _loadAll() async {
+    _hadLoadError = false;
     final language = await MoodlySettingsPrefs.loadLanguageCode();
 
     final reportsAgainstMe = await _safeLoad(
@@ -102,7 +120,6 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
 
     if (!mounted) return;
 
-    final hadError = reportsAgainstMe.isEmpty && reportsByMe.isEmpty && appeals.isEmpty;
     setState(() {
       _languageCode = language;
       _reportsAgainstMe = reportsAgainstMe;
@@ -111,7 +128,7 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
       _isLoading = false;
     });
 
-    if (hadError) {
+    if (_hadLoadError) {
       showCuteTopPopup(
         context,
         title: 'Oops',

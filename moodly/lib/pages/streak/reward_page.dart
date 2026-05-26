@@ -27,6 +27,34 @@ class _RewardPageState extends State<RewardPage> {
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
 
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Hadiah',
+      'regularReward': 'Hadiah Reguler',
+      'premiumReward': 'Hadiah Premium',
+      'points': 'poin',
+      'redeemSuccess': 'Hadiah berhasil ditukar',
+      'redeemFailed': 'Penukaran gagal',
+      'giftPremium': 'Hadiahkan Premium',
+      'understood': 'Mengerti',
+      'ok': 'Sip',
+    },
+    'en': {
+      'header': 'Rewards',
+      'regularReward': 'Regular Rewards',
+      'premiumReward': 'Premium Rewards',
+      'points': 'points',
+      'redeemSuccess': 'Reward redeemed successfully',
+      'redeemFailed': 'Redemption failed',
+      'giftPremium': 'Gift Premium',
+      'understood': 'Understood',
+      'ok': 'Got it',
+    },
+  };
+
+  String _t(String languageCode, String key) =>
+      _copy[languageCode]?[key] ?? key;
+
   _RewardSectionTab _selectedTab = _RewardSectionTab.reguler;
   final TextEditingController _giftUserIdController = TextEditingController();
 

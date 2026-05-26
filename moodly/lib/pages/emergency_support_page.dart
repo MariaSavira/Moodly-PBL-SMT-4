@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'setting/moodly_settings_support.dart';
 import 'afirmasi/widgets/cute_top_popup.dart';
 
 class EmergencySupportPage extends StatelessWidget {
@@ -15,35 +15,74 @@ class EmergencySupportPage extends StatelessWidget {
   static const Color _textDark = Color(0xFF1F1F1F);
   static const Color _textSoft = Color(0xFF677164);
 
-  List<BoxShadow> get _softShadow => const [
-        BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.10),
-          offset: Offset(0, 6),
-          blurRadius: 18,
-          spreadRadius: 0,
-        ),
-      ];
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Bantuan Darurat',
+      'copyTitle': 'Nomor disalin',
+      'copyFallback': 'Nomor',
+      'copyMessageSuffix': 'siap ditempel ke teleponmu.',
+      'sectionContacts': 'Kontak darurat',
+      'sectionSteps': 'Langkah cepat',
+      'contact1Title': 'Kontak orang terdekat',
+      'contact1Subtitle':
+          'Isi dengan keluarga / sahabat yang paling cepat dihubungi',
+      'contact2Title': 'Hotline profesional',
+      'contact2Subtitle':
+          'Ganti dengan hotline kesehatan mental yang sudah divalidasi timmu',
+      'contact3Title': 'Layanan darurat umum',
+      'contact3Subtitle': 'Ganti dengan nomor darurat lokal yang relevan',
+    },
+    'en': {
+      'header': 'Emergency Support',
+      'copyTitle': 'Number copied',
+      'copyFallback': 'Number',
+      'copyMessageSuffix': 'is ready to paste into your phone.',
+      'sectionContacts': 'Emergency contacts',
+      'sectionSteps': 'Quick steps',
+      'contact1Title': 'Trusted person contact',
+      'contact1Subtitle':
+          'Fill this with the family member / friend you can reach fastest',
+      'contact2Title': 'Professional hotline',
+      'contact2Subtitle':
+          'Replace this with a mental health hotline already validated by your team',
+      'contact3Title': 'General emergency service',
+      'contact3Subtitle': 'Replace this with a relevant local emergency number',
+    },
+  };
 
-  static const List<Map<String, String>> _contacts = [
+  String _t(String languageCode, String key) =>
+      _copy[languageCode]?[key] ?? key;
+
+  List<BoxShadow> get _softShadow => const [
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.10),
+      offset: Offset(0, 6),
+      blurRadius: 18,
+      spreadRadius: 0,
+    ),
+  ];
+
+  List<Map<String, String>> _contacts(String languageCode) => [
     {
-      'title': 'Kontak orang terdekat',
-      'subtitle': 'Isi dengan keluarga / sahabat yang paling cepat dihubungi',
+      'title': _t(languageCode, 'contact1Title'),
+      'subtitle': _t(languageCode, 'contact1Subtitle'),
       'number': 'ISI-NOMOR-KONTAK-DARURAT',
     },
     {
-      'title': 'Hotline profesional',
-      'subtitle': 'Ganti dengan hotline kesehatan mental yang sudah divalidasi timmu',
+      'title': _t(languageCode, 'contact2Title'),
+      'subtitle': _t(languageCode, 'contact2Subtitle'),
       'number': 'ISI-NOMOR-HOTLINE-VALID',
     },
     {
-      'title': 'Layanan darurat umum',
-      'subtitle': 'Ganti dengan nomor darurat lokal yang relevan',
+      'title': _t(languageCode, 'contact3Title'),
+      'subtitle': _t(languageCode, 'contact3Subtitle'),
       'number': 'ISI-NOMOR-DARURAT-LOKAL',
     },
   ];
 
   Future<void> _copyNumber(
     BuildContext context,
+    String languageCode,
     String title,
     String number,
   ) async {
@@ -52,8 +91,8 @@ class EmergencySupportPage extends StatelessWidget {
 
     showCuteTopPopup(
       context,
-      title: 'Nomor disalin',
-      message: '$title siap ditempel ke teleponmu.',
+      title: _t(languageCode, 'copyTitle'),
+      message: '$title ${_t(languageCode, 'copyMessageSuffix')}',
       type: CutePopupType.success,
     );
   }
@@ -61,14 +100,15 @@ class EmergencySupportPage extends StatelessWidget {
   Widget _sectionTitle(BuildContext context, String text) {
     return Text(
       text,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: _textDark,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(color: _textDark),
     );
   }
 
   Widget _contactCard(
     BuildContext context, {
+    required String languageCode,
     required Map<String, String> contact,
     required Color tint,
     required IconData icon,
@@ -86,10 +126,7 @@ class EmergencySupportPage extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(
-              color: tint,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
             child: Icon(icon, color: _textDark),
           ),
           const SizedBox(width: 12),
@@ -99,17 +136,17 @@ class EmergencySupportPage extends StatelessWidget {
               children: [
                 Text(
                   contact['title'] ?? '',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: _textDark,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: _textDark),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   contact['subtitle'] ?? '',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _textSoft,
-                        height: 1.45,
-                      ),
+                    color: _textSoft,
+                    height: 1.45,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -126,7 +163,8 @@ class EmergencySupportPage extends StatelessWidget {
                       Expanded(
                         child: Text(
                           contact['number'] ?? '',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: _textDark,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -135,7 +173,8 @@ class EmergencySupportPage extends StatelessWidget {
                       GestureDetector(
                         onTap: () => _copyNumber(
                           context,
-                          contact['title'] ?? 'Nomor',
+                          languageCode,
+                          contact['title'] ?? _t(languageCode, 'copyFallback'),
                           contact['number'] ?? '',
                         ),
                         child: const Icon(
@@ -182,9 +221,9 @@ class EmergencySupportPage extends StatelessWidget {
             child: Text(
               number,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _textDark,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: _textDark,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -195,17 +234,17 @@ class EmergencySupportPage extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _textDark,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: _textDark,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   desc,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: _textSoft,
-                        height: 1.45,
-                      ),
+                    color: _textSoft,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -215,141 +254,164 @@ class EmergencySupportPage extends StatelessWidget {
     );
   }
 
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return ValueListenableBuilder<String>(
+      valueListenable: MoodlySettingsPrefs.languageNotifier,
+      builder: (context, languageCode, _) {
+        final contacts = _contacts(languageCode);
+
+        return Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.88),
-                        shape: BoxShape.circle,
-                        boxShadow: _softShadow,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: _textDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Bantuan Darurat',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.88),
+                            shape: BoxShape.circle,
+                            boxShadow: _softShadow,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
                             color: _textDark,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _t(languageCode, 'header'),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineLarge?.copyWith(color: _textDark),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: _card,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: _softShadow,
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          decoration: const BoxDecoration(
+                            color: _pinkSoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            color: Color(0xFFE26D7D),
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          languageCode == 'en'
+                              ? 'If your situation feels urgent, do not face it alone.'
+                              : 'Kalau situasimu terasa mendesak, jangan hadapi sendirian.',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(color: _textDark),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          languageCode == 'en'
+                              ? 'This page is here to help you act quickly: calm down, contact a safe person, then seek professional support.'
+                              : 'Halaman ini dibuat untuk membantumu bertindak cepat: tenangkan diri, hubungi orang aman, lalu cari bantuan profesional.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: _textSoft, height: 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _sectionTitle(context, _t(languageCode, 'sectionSteps')),
+                  const SizedBox(height: 10),
+                  _stepCard(
+                    context,
+                    number: '1',
+                    title: languageCode == 'en'
+                        ? 'Pause and breathe slowly'
+                        : 'Berhenti dan atur napas',
+                    desc: languageCode == 'en'
+                        ? 'Give yourself a few seconds to reduce the rush before deciding what to do next.'
+                        : 'Beri dirimu jeda beberapa detik untuk menurunkan panik sebelum menentukan langkah berikutnya.',
+                    bg: _greenSoft,
+                  ),
+                  const SizedBox(height: 10),
+                  _stepCard(
+                    context,
+                    number: '2',
+                    title: languageCode == 'en'
+                        ? 'Contact someone safe'
+                        : 'Hubungi orang yang aman',
+                    desc: languageCode == 'en'
+                        ? 'Reach out to family, a close friend, or someone who can stay with you.'
+                        : 'Hubungi keluarga, sahabat, atau orang yang bisa menemanimu sekarang.',
+                    bg: _pinkSoft,
+                  ),
+                  const SizedBox(height: 10),
+                  _stepCard(
+                    context,
+                    number: '3',
+                    title: languageCode == 'en'
+                        ? 'Use professional help if needed'
+                        : 'Gunakan bantuan profesional bila perlu',
+                    desc: languageCode == 'en'
+                        ? 'If the condition feels severe, use a hotline or emergency service immediately.'
+                        : 'Kalau kondisi terasa berat, gunakan hotline atau layanan darurat secepatnya.',
+                    bg: _peachSoft,
+                  ),
+                  const SizedBox(height: 18),
+                  _sectionTitle(context, _t(languageCode, 'sectionContacts')),
+                  const SizedBox(height: 10),
+                  _contactCard(
+                    context,
+                    languageCode: languageCode,
+                    contact: contacts[0],
+                    tint: _greenSoft,
+                    icon: Icons.people_alt_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _contactCard(
+                    context,
+                    languageCode: languageCode,
+                    contact: contacts[1],
+                    tint: _pinkSoft,
+                    icon: Icons.support_agent_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _contactCard(
+                    context,
+                    languageCode: languageCode,
+                    contact: contacts[2],
+                    tint: _peachSoft,
+                    icon: Icons.local_hospital_rounded,
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: _card,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: _softShadow,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: _pinkSoft,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.favorite_rounded,
-                        color: Color(0xFFE26D7D),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Kalau situasimu terasa mendesak, jangan hadapi sendirian.',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: _textDark,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Halaman ini dibuat untuk membantumu bertindak cepat: tenangkan diri, hubungi orang aman, lalu cari bantuan profesional.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: _textSoft,
-                            height: 1.5,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              _sectionTitle(context, 'Langkah cepat'),
-              const SizedBox(height: 10),
-              _stepCard(
-                context,
-                number: '1',
-                title: 'Jeda 10 detik',
-                desc: 'Letakkan ponsel, tarik napas perlahan, lalu duduk atau berdiri di tempat yang lebih aman.',
-                bg: _greenSoft,
-              ),
-              const SizedBox(height: 10),
-              _stepCard(
-                context,
-                number: '2',
-                title: 'Hubungi orang aman',
-                desc: 'Pilih satu orang yang bisa merespons cepat dan beri tahu bahwa kamu butuh bantuan sekarang.',
-                bg: _peachSoft,
-              ),
-              const SizedBox(height: 10),
-              _stepCard(
-                context,
-                number: '3',
-                title: 'Cari bantuan profesional',
-                desc: 'Gunakan nomor hotline atau layanan darurat yang sudah kamu simpan di bawah.',
-                bg: _pinkSoft,
-              ),
-              const SizedBox(height: 18),
-              _sectionTitle(context, 'Kontak darurat'),
-              const SizedBox(height: 10),
-              _contactCard(
-                context,
-                contact: _contacts[0],
-                tint: _greenSoft,
-                icon: Icons.people_alt_rounded,
-              ),
-              const SizedBox(height: 12),
-              _contactCard(
-                context,
-                contact: _contacts[1],
-                tint: _pinkSoft,
-                icon: Icons.support_agent_rounded,
-              ),
-              const SizedBox(height: 12),
-              _contactCard(
-                context,
-                contact: _contacts[2],
-                tint: _peachSoft,
-                icon: Icons.local_hospital_rounded,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'setting/moodly_settings_support.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/styles/app_text.dart';
 import '../core/services/moodly_notification_service.dart';
@@ -21,6 +23,105 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   int _currentNavIndex = 0;
+
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  static const SystemUiOverlayStyle _homeSystemUi = SystemUiOverlayStyle(
+    statusBarColor: Color(0xFFF3FADC),
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFFF3FADC),
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Color(0xFFF3FADC),
+  );
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'reportedTitle': 'Kamu telah dilaporkan',
+      'later': 'Nanti',
+      'viewDetail': 'Lihat Detail',
+      'goodMorning': 'Selamat pagi,',
+      'goodAfternoon': 'Selamat siang,',
+      'goodEvening': 'Selamat sore,',
+      'goodNight': 'Selamat malam,',
+      'todayAffirmation': 'Untuk hari ini',
+      'points': 'Gunakan poin',
+      'explorePremium': 'Jelajahi paket premium',
+      'pickDate': 'Pilih Tanggal',
+      'myDiary': 'Lihat diarymu',
+      'publicDiary': 'Kunjungi diary publik',
+      'dailyRoom': 'Ruang Harian',
+      'moodAnalysis': 'Lihat Analisa Mood Anda',
+      'moodAnalysisDesc': 'Buka ringkasan mingguan dan bulanan mood-mu.',
+      'todayDiary': 'Diary Hari Ini',
+      'todayDiaryDesc': 'Buka diary untuk menulis catatanmu hari ini.',
+      'selectedDiaryDesc': 'Buka diary untuk melihat atau menulis catatan di tanggal ini.',
+      'defaultTip': 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.',
+      'tipHappy': 'Senang itu valid. Nikmati tanpa merasa bersalah.',
+      'tipNeutral': 'Hari yang biasa tetap layak dihargai.',
+      'tipSad': 'Pelan-pelan. Hari berat tidak membuatmu gagal.',
+      'tipAngry': 'Tarik napas. Jeda sebentar juga bentuk merawat diri.',
+      'jan': 'Jan',
+      'feb': 'Feb',
+      'mar': 'Mar',
+      'apr': 'Apr',
+      'may': 'Mei',
+      'jun': 'Jun',
+      'jul': 'Jul',
+      'aug': 'Agu',
+      'sep': 'Sep',
+      'oct': 'Okt',
+      'nov': 'Nov',
+      'dec': 'Des',
+    },
+    'en': {
+      'reportedTitle': 'You have been reported',
+      'later': 'Later',
+      'viewDetail': 'View Detail',
+      'goodMorning': 'Good morning,',
+      'goodAfternoon': 'Good afternoon,',
+      'goodEvening': 'Good evening,',
+      'goodNight': 'Good night,',
+      'todayAffirmation': 'For today',
+      'points': 'Use points',
+      'explorePremium': 'Explore premium plans',
+      'pickDate': 'Pick Date',
+      'myDiary': 'View your diary',
+      'publicDiary': 'Visit public diary',
+      'dailyRoom': 'Daily Space',
+      'moodAnalysis': 'View Your Mood Analysis',
+      'moodAnalysisDesc': 'Open your weekly and monthly mood summary.',
+      'todayDiary': 'Today\'s Diary',
+      'todayDiaryDesc': 'Open the diary to write your note for today.',
+      'selectedDiaryDesc': 'Open the diary to view or write notes for this date.',
+      'defaultTip': 'Take it slowly. Everything can be talked through later.',
+      'tipHappy': 'Joy is valid. Enjoy it without guilt.',
+      'tipNeutral': 'An ordinary day is still worth appreciating.',
+      'tipSad': 'Slowly. A hard day does not mean you failed.',
+      'tipAngry': 'Take a breath. Pausing is also a form of self-care.',
+      'jan': 'Jan',
+      'feb': 'Feb',
+      'mar': 'Mar',
+      'apr': 'Apr',
+      'may': 'May',
+      'jun': 'Jun',
+      'jul': 'Jul',
+      'aug': 'Aug',
+      'sep': 'Sep',
+      'oct': 'Oct',
+      'nov': 'Nov',
+      'dec': 'Dec',
+    },
+  };
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
 
   bool _isPremiumUser = false;
 
@@ -56,9 +157,16 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _syncHomepageState();
     _bootstrapSignals();
     _loadPremiumStatus();
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
   }
 
   Future<void> _bootstrapSignals() async {
@@ -266,10 +374,10 @@ class _HomepageState extends State<Homepage> {
 
   String get _greetingText {
     final hour = DateTime.now().hour;
-    if (hour >= 4 && hour < 11) return 'Selamat pagi,';
-    if (hour >= 11 && hour < 15) return 'Selamat siang,';
-    if (hour >= 15 && hour < 18) return 'Selamat sore,';
-    return 'Selamat malam,';
+    if (hour >= 4 && hour < 11) return _t('goodMorning');
+    if (hour >= 11 && hour < 15) return _t('goodAfternoon');
+    if (hour >= 15 && hour < 18) return _t('goodEvening');
+    return _t('goodNight');
   }
 
   String _dateKey(DateTime date) {
@@ -281,19 +389,19 @@ class _HomepageState extends State<Homepage> {
   }
 
   String _selectedDateLabel() {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
+    final months = [
+      _t('jan'),
+      _t('feb'),
+      _t('mar'),
+      _t('apr'),
+      _t('may'),
+      _t('jun'),
+      _t('jul'),
+      _t('aug'),
+      _t('sep'),
+      _t('oct'),
+      _t('nov'),
+      _t('dec'),
     ];
     return '${selectedDate.day} ${months[selectedDate.month - 1]}';
   }
@@ -301,15 +409,15 @@ class _HomepageState extends State<Homepage> {
   String _defaultTipForMood(String? mood) {
     switch (mood) {
       case 'Senang':
-        return 'Senang itu valid. Nikmati tanpa merasa bersalah.';
+        return _t('tipHappy');
       case 'Netral':
-        return 'Hari yang biasa tetap layak dihargai.';
+        return _t('tipNeutral');
       case 'Sedih':
-        return 'Pelan-pelan. Hari berat tidak membuatmu gagal.';
+        return _t('tipSad');
       case 'Marah':
-        return 'Tarik napas. Jeda sebentar juga bentuk merawat diri.';
+        return _t('tipAngry');
       default:
-        return 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.';
+        return _t('defaultTip');
     }
   }
 
@@ -340,6 +448,21 @@ class _HomepageState extends State<Homepage> {
         return const Color(0xFFF06E7F);
       default:
         return Colors.transparent;
+    }
+  }
+
+  Color _moodRingColor(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFFF8B658);
+      case 'Netral':
+        return const Color(0xFF9DCB7B);
+      case 'Sedih':
+        return const Color(0xFF8DD9E8);
+      case 'Marah':
+        return const Color(0xFFE8A3AE);
+      default:
+        return const Color(0xFFE8CFC7);
     }
   }
 
@@ -660,10 +783,11 @@ class _HomepageState extends State<Homepage> {
 
   Widget _profileAvatar() {
     final badgeAsset = _moodBadgeAsset(moodHariIni);
+    final ringColor = _moodRingColor(moodHariIni);
 
     return SizedBox(
-      width: 86,
-      height: 86,
+      width: 90,
+      height: 90,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -671,8 +795,8 @@ class _HomepageState extends State<Homepage> {
             right: 0,
             top: 0,
             child: Container(
-              width: 78,
-              height: 78,
+              width: 80,
+              height: 80,
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -691,8 +815,7 @@ class _HomepageState extends State<Homepage> {
                     backgroundColor: Colors.transparent,
                     borderWidth: 0,
                     borderColor: Colors.transparent,
-                    placeholderAsset:
-                        'assets/profile_pic/PP_default.jpg', // <- placeholder homepage
+                    placeholderAsset: 'assets/profile_pic/PP_default.jpg',
                   ),
                 ),
               ),
@@ -700,20 +823,22 @@ class _HomepageState extends State<Homepage> {
           ),
           if (badgeAsset != null)
             Positioned(
-              left: 0,
-              bottom: 10,
+              left: -2,
+              bottom: 8,
               child: Container(
-                width: 34,
-                height: 34,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: _moodBadgeBg(moodHariIni),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(color: ringColor, width: 3),
                   boxShadow: _softShadow,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: Image.asset(badgeAsset, fit: BoxFit.contain),
+                child: ClipOval(
+                  child: Image.asset(
+                    badgeAsset,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ),
@@ -1782,84 +1907,87 @@ class _HomepageState extends State<Homepage> {
       return const OnboardingPage();
     }
 
-    return Scaffold(
-      backgroundColor: _bg,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -50,
-            right: -30,
-            child: Container(
-              width: 190,
-              height: 190,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _pinkSoft.withOpacity(0.52),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _homeSystemUi,
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: Stack(
+          children: [
+            Positioned(
+              top: -50,
+              right: -30,
+              child: Container(
+                width: 190,
+                height: 190,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _pinkSoft.withOpacity(0.52),
+                ),
               ),
             ),
-          ),
-          Positioned(
-            top: 210,
-            left: -65,
-            child: Container(
-              width: 170,
-              height: 170,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _greenMint.withOpacity(0.75),
+            Positioned(
+              top: 210,
+              left: -65,
+              child: Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _greenMint.withOpacity(0.75),
+                ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: 120,
-            right: -70,
-            child: Container(
-              width: 230,
-              height: 230,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _greenSoft.withOpacity(0.55),
+            Positioned(
+              bottom: 120,
+              right: -70,
+              child: Container(
+                width: 230,
+                height: 230,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _greenSoft.withOpacity(0.55),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: ScrollConfiguration(
-              behavior: const _SoftScrollBehavior(),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _headerSection(),
-                          const SizedBox(height: 18),
-                          _streakCommandSection(),
-                          const SizedBox(height: 18),
-                          _calendarNavigator(),
-                          const SizedBox(height: 18),
-                          _diaryBridgeSection(),
-                          const SizedBox(height: 18),
-                          _sectionHeader('Ruang Harian'),
-                          const SizedBox(height: 12),
-                          _moodCluster(),
-                        ],
+            SafeArea(
+              child: ScrollConfiguration(
+                behavior: const _SoftScrollBehavior(),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _headerSection(),
+                            const SizedBox(height: 18),
+                            _streakCommandSection(),
+                            const SizedBox(height: 18),
+                            _calendarNavigator(),
+                            const SizedBox(height: 18),
+                            _diaryBridgeSection(),
+                            const SizedBox(height: 18),
+                            _sectionHeader('Ruang Harian'),
+                            const SizedBox(height: 12),
+                            _moodCluster(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: MoodlyBottomNavbar(
-        currentIndex: _currentNavIndex,
-        onTap: _onNavbarTap,
-        onEmergencyTap: _onEmergencyTap,
-      ),
+          ],
+        ),
+        bottomNavigationBar: MoodlyBottomNavbar(
+          currentIndex: _currentNavIndex,
+          onTap: _onNavbarTap,
+          onEmergencyTap: _onEmergencyTap,
+        ),
+      )
     );
   }
 }

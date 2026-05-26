@@ -15,7 +15,7 @@ class SecurityPage extends StatefulWidget {
 class _SecurityPageState extends State<SecurityPage> {
   bool _isLoadingPrefs = true;
   bool _is2FAEnabled = false;
-  String _languageCode = 'id';
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
 
   static const Map<String, Map<String, String>> _copy = {
     'id': {
@@ -45,7 +45,8 @@ class _SecurityPageState extends State<SecurityPage> {
       'currentSession': 'Sesi saat ini',
       'currentSessionBody': 'Akun ini sedang aktif di perangkat sekarang.',
       'moreLater': 'Riwayat perangkat lain belum tersedia di halaman ini.',
-      'changePasswordHint': 'Fitur ubah kata sandi hanya berlaku untuk akun email dan kata sandi.',
+      'changePasswordHint':
+          'Fitur ubah kata sandi hanya berlaku untuk akun email dan kata sandi.',
     },
     'en': {
       'header': 'Security',
@@ -74,14 +75,29 @@ class _SecurityPageState extends State<SecurityPage> {
       'currentSession': 'Current session',
       'currentSessionBody': 'This account is currently active on this device.',
       'moreLater': 'Other device history is not available on this page yet.',
-      'changePasswordHint': 'Password change only works for email and password accounts.',
+      'changePasswordHint':
+          'Password change only works for email and password accounts.',
     },
   };
 
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _loadPrefs();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
   }
 
   Future<void> _loadPrefs() async {
@@ -105,7 +121,8 @@ class _SecurityPageState extends State<SecurityPage> {
 
   String _providerLabel(User? user) {
     if (user == null) return _t('unknown');
-    final providerIds = user.providerData.map((item) => item.providerId).toList();
+    final providerIds =
+        user.providerData.map((item) => item.providerId).toList();
     if (providerIds.contains('google.com')) return _t('google');
     if (providerIds.contains('facebook.com')) return _t('facebook');
     if (providerIds.contains('password')) return _t('email');
@@ -119,7 +136,7 @@ class _SecurityPageState extends State<SecurityPage> {
     setState(() => _is2FAEnabled = value);
     showCuteTopPopup(
       context,
-      title: value ? _t('header') : _t('header'),
+      title: _t('header'),
       message: value ? _t('extraEnabled') : _t('extraDisabled'),
       type: CutePopupType.success,
     );
@@ -132,7 +149,9 @@ class _SecurityPageState extends State<SecurityPage> {
     final user = FirebaseAuth.instance.currentUser;
     final providerLabel = _providerLabel(user);
     final isVerified = user?.emailVerified ?? false;
-    final hasPasswordProvider = user?.providerData.any((item) => item.providerId == 'password') ?? false;
+    final hasPasswordProvider = user?.providerData
+            .any((item) => item.providerId == 'password') ??
+        false;
 
     if (_isLoadingPrefs) {
       return Scaffold(
@@ -168,14 +187,20 @@ class _SecurityPageState extends State<SecurityPage> {
                           children: [
                             Text(
                               _t('introTitle'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
                                     color: palette.textDark,
                                   ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               _t('introBody'),
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
                                     color: palette.textSoft,
                                     height: 1.45,
                                   ),
@@ -184,7 +209,10 @@ class _SecurityPageState extends State<SecurityPage> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      MoodlySectionTitle(palette: palette, title: _t('password')),
+                      MoodlySectionTitle(
+                        palette: palette,
+                        title: _t('password'),
+                      ),
                       const SizedBox(height: 12),
                       MoodlySettingsCard(
                         palette: palette,
@@ -192,7 +220,9 @@ class _SecurityPageState extends State<SecurityPage> {
                           palette: palette,
                           icon: Icons.lock_reset_rounded,
                           title: _t('passwordTitle'),
-                          subtitle: hasPasswordProvider ? _t('passwordBody') : _t('changePasswordHint'),
+                          subtitle: hasPasswordProvider
+                              ? _t('passwordBody')
+                              : _t('changePasswordHint'),
                           isSelected: true,
                           backgroundColor: palette.mintSoft,
                           onTap: () async {
@@ -215,7 +245,10 @@ class _SecurityPageState extends State<SecurityPage> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      MoodlySectionTitle(palette: palette, title: _t('extraVerification')),
+                      MoodlySectionTitle(
+                        palette: palette,
+                        title: _t('extraVerification'),
+                      ),
                       const SizedBox(height: 12),
                       MoodlySettingsCard(
                         palette: palette,
@@ -230,7 +263,10 @@ class _SecurityPageState extends State<SecurityPage> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      MoodlySectionTitle(palette: palette, title: _t('accountStatus')),
+                      MoodlySectionTitle(
+                        palette: palette,
+                        title: _t('accountStatus'),
+                      ),
                       const SizedBox(height: 12),
                       MoodlySettingsCard(
                         palette: palette,
@@ -262,7 +298,10 @@ class _SecurityPageState extends State<SecurityPage> {
                         palette: palette,
                         child: Text(
                           _t('moreLater'),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
                                 color: palette.textSoft,
                                 height: 1.45,
                               ),
@@ -296,7 +335,8 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment:
+          multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Expanded(
           flex: 4,

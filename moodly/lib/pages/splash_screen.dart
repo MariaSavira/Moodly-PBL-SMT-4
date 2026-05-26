@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'setting/moodly_settings_support.dart';
 import '../core/services/auth_service.dart';
 import 'admin/moderasi_admin.dart';
 import 'homepage.dart';
@@ -29,8 +29,29 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
   late final Animation<Offset> _titleSlide;
   late final Animation<double> _subtitleFade;
 
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'loading': 'Menyiapkan ruang amanmu...',
+    },
+    'en': {
+      'loading': 'Preparing your safe space...',
+    },
+  };
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
   @override
   void initState() {
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     super.initState();
 
     _introController = AnimationController(
@@ -140,6 +161,7 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     _pulseController.dispose();
     _floatController.dispose();
     _sparkleController.dispose();
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
 
@@ -374,8 +396,8 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Menyiapkan ruang amanmu...',
+                      Text(
+                        _t('loading'),
                         style: TextStyle(
                           fontSize: 12,
                           color: Color(0xFF8A9580),

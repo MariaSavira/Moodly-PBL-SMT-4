@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'moodly_settings_support.dart';
 import '../../core/services/cloudinary_service.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 
@@ -27,34 +28,38 @@ List<BoxShadow> get _editShadow => const [
         blurRadius: 20,
       ),
     ];
-  
-TextStyle? _editHeadline(BuildContext context, {Color? color, double? fontSize}) {
+
+TextStyle? _editHeadline(BuildContext context,
+    {Color? color, double? fontSize}) {
   return Theme.of(context).textTheme.headlineLarge?.copyWith(
-    color: color ?? _editTextDark,
-    fontSize: fontSize,
-  );
+        color: color ?? _editTextDark,
+        fontSize: fontSize,
+      );
 }
 
-TextStyle? _editTitle(BuildContext context, {Color? color, double? fontSize}) {
+TextStyle? _editTitle(BuildContext context,
+    {Color? color, double? fontSize}) {
   return Theme.of(context).textTheme.titleMedium?.copyWith(
-    color: color ?? _editTextDark,
-    fontSize: fontSize,
-  );
+        color: color ?? _editTextDark,
+        fontSize: fontSize,
+      );
 }
 
-TextStyle? _editBody(BuildContext context, {Color? color, double? fontSize, double? height}) {
+TextStyle? _editBody(BuildContext context,
+    {Color? color, double? fontSize, double? height}) {
   return Theme.of(context).textTheme.bodyMedium?.copyWith(
-    color: color ?? _editTextSoft,
-    fontSize: fontSize,
-    height: height,
-  );
+        color: color ?? _editTextSoft,
+        fontSize: fontSize,
+        height: height,
+      );
 }
 
-TextStyle? _editButton(BuildContext context, {Color? color, double? fontSize}) {
+TextStyle? _editButton(BuildContext context,
+    {Color? color, double? fontSize}) {
   return Theme.of(context).textTheme.labelLarge?.copyWith(
-    color: color ?? Colors.white,
-    fontSize: fontSize,
-  );
+        color: color ?? Colors.white,
+        fontSize: fontSize,
+      );
 }
 
 class EditProfilePage extends StatefulWidget {
@@ -79,11 +84,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   File? _pickedImageFile;
   Uint8List? _pickedImageBytes;
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Ubah Profil',
+      'fullName': 'Nama Lengkap',
+      'email': 'Alamat Email',
+      'phone': 'Nomor Telepon',
+      'save': 'Simpan Perubahan',
+      'emptyNameTitle': 'Perhatian',
+      'emptyNameBody': 'Nama lengkap tidak boleh kosong',
+      'saveSuccessTitle': 'Berhasil',
+      'saveSuccessBody': 'Profil berhasil diperbarui',
+      'saveFailedTitle': 'Gagal',
+      'saveFailedBody': 'Gagal menyimpan profil',
+    },
+    'en': {
+      'header': 'Edit Profile',
+      'fullName': 'Full Name',
+      'email': 'Email Address',
+      'phone': 'Phone Number',
+      'save': 'Save Changes',
+      'emptyNameTitle': 'Notice',
+      'emptyNameBody': 'Full name cannot be empty',
+      'saveSuccessTitle': 'Success',
+      'saveSuccessBody': 'Profile updated successfully',
+      'saveFailedTitle': 'Failed',
+      'saveFailedBody': 'Failed to save profile',
+    },
+  };
 
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _loadProfile();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
   }
 
   @override
@@ -91,8 +134,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
 
   double _pageWidth(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -107,10 +153,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    nameController.text =
-        user.displayName?.trim().isNotEmpty == true
-            ? user.displayName!.trim()
-            : (user.email?.split('@').first ?? '');
+    nameController.text = user.displayName?.trim().isNotEmpty == true
+        ? user.displayName!.trim()
+        : (user.email?.split('@').first ?? '');
 
     emailController.text = user.email ?? '';
     phoneController.text = user.phoneNumber ?? '';
@@ -123,10 +168,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           .get();
 
       final data = doc.data();
-
-      debugPrint('EDIT PROFILE UID: ${user.uid}');
-      debugPrint('EDIT PROFILE PHONE RAW: ${data?['phoneNumber']}');
-      debugPrint('EDIT PROFILE DATA: $data');
 
       nameController.text =
           (data?['fullName'] as String?)?.trim().isNotEmpty == true
@@ -141,16 +182,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final rawPhone = data?['phoneNumber'];
       final phoneFromFirestore = rawPhone?.toString().trim();
 
-      phoneController.text =
-          (phoneFromFirestore != null && phoneFromFirestore.isNotEmpty && phoneFromFirestore.toLowerCase() != 'null')
-              ? phoneFromFirestore
-              : phoneController.text;
+      phoneController.text = (phoneFromFirestore != null &&
+              phoneFromFirestore.isNotEmpty &&
+              phoneFromFirestore.toLowerCase() != 'null')
+          ? phoneFromFirestore
+          : phoneController.text;
 
       _photoUrl = (data?['photoUrl'] as String?)?.trim().isNotEmpty == true
           ? (data?['photoUrl'] as String).trim()
           : _photoUrl;
 
-      _avatarAsset = data?['avatarId'];
+      _avatarAsset = data?['avatarId']?.toString();
     } catch (e, st) {
       debugPrint('EDIT PROFILE LOAD ERROR: $e');
       debugPrintStack(stackTrace: st);
@@ -188,8 +230,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (nameController.text.trim().isEmpty) {
       showCuteTopPopup(
         context,
-        title: 'Perhatian',
-        message: 'Nama lengkap tidak boleh kosong',
+        title: _t('emptyNameTitle'),
+        message: _t('emptyNameBody'),
         type: CutePopupType.error,
       );
       return;
@@ -221,19 +263,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       showCuteTopPopup(
         context,
-        title: 'Berhasil',
-        message: 'Profil berhasil diperbarui',
+        title: _t('saveSuccessTitle'),
+        message: _t('saveSuccessBody'),
         type: CutePopupType.success,
       );
 
       await Future.delayed(const Duration(milliseconds: 600));
 
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
+      if (mounted) Navigator.pop(context, true);
+    } catch (e, st) {
+      debugPrint('EDIT PROFILE SAVE ERROR: $e');
+      debugPrintStack(stackTrace: st);
+
       showCuteTopPopup(
         context,
-        title: 'Gagal',
-        message: 'Gagal menyimpan profil',
+        title: _t('saveFailedTitle'),
+        message: _t('saveFailedBody'),
         type: CutePopupType.error,
       );
     }
@@ -278,6 +323,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       children: [
                         _EditHeader(
                           onBack: () => Navigator.pop(context),
+                          title: _t('header'),
                         ),
                         const SizedBox(height: 28),
                         Center(
@@ -307,7 +353,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       child: Image(
                                         image: _buildPreviewImage(),
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Icon(
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(
                                           Icons.person_rounded,
                                           size: 76,
                                           color: _editTextDark,
@@ -339,20 +386,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                         const SizedBox(height: 30),
                         _InputCard(
-                          label: 'Nama Lengkap',
+                          label: _t('fullName'),
                           icon: Icons.person_outline_rounded,
                           controller: nameController,
                         ),
                         const SizedBox(height: 16),
                         _InputCard(
-                          label: 'Alamat Email',
+                          label: _t('email'),
                           icon: Icons.mail_outline_rounded,
                           controller: emailController,
                           readOnly: true,
                         ),
                         const SizedBox(height: 16),
                         _InputCard(
-                          label: 'Nomor Telepon',
+                          label: _t('phone'),
                           icon: Icons.phone_rounded,
                           controller: phoneController,
                           keyboardType: TextInputType.phone,
@@ -381,9 +428,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     ),
                                   )
                                 : Text(
-                                  'Simpan Perubahan',
-                                  style: _editButton(context, color: Colors.white, fontSize: 17),
-                                ),
+                                    _t('save'),
+                                    style: _editButton(
+                                      context,
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -398,9 +449,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
 class _EditHeader extends StatelessWidget {
   final VoidCallback onBack;
+  final String title;
 
   const _EditHeader({
     required this.onBack,
+    required this.title,
   });
 
   @override
@@ -417,13 +470,14 @@ class _EditHeader extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'Ubah Profil',
+          title,
           style: _editTitle(context, color: _editGreenDark, fontSize: 17),
         ),
         const Spacer(),
         Text(
           'Moodly',
-          style: _editHeadline(context, color: _editBrand, fontSize: 32)?.copyWith(
+          style: _editHeadline(context, color: _editBrand, fontSize: 32)
+              ?.copyWith(
             letterSpacing: -1,
           ),
         ),
@@ -473,7 +527,8 @@ class _InputCard extends StatelessWidget {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: label,
-                hintStyle: _editBody(context, color: _editTextSoft, fontSize: 15),
+                hintStyle:
+                    _editBody(context, color: _editTextSoft, fontSize: 15),
               ),
             ),
           ),

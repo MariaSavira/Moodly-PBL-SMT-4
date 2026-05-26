@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../pages/setting/moodly_settings_support.dart';
+
 class UserAppealService {
   UserAppealService._();
 
@@ -13,6 +15,8 @@ class UserAppealService {
 
   CollectionReference<Map<String, dynamic>> get _reportsRef =>
       _firestore.collection('reports');
+
+  bool get _isEnglish => MoodlySettingsPrefs.currentLanguageCode == 'en';
 
   Map<String, dynamic> _asMap(dynamic raw) {
     if (raw is Map<String, dynamic>) return raw;
@@ -42,34 +46,128 @@ class UserAppealService {
     return fallback;
   }
 
+  dynamic _pick(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  String _pickString(
+    Map<String, dynamic> data,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    final value = _pick(data, keys);
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+      _mergedDocsByEquality({
+    required String camelField,
+    required String snakeField,
+    required String value,
+  }) async {
+    final snapCamel = await _reportsRef.where(camelField, isEqualTo: value).get();
+    final snapSnake = await _reportsRef.where(snakeField, isEqualTo: value).get();
+
+    final merged = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+    for (final doc in snapCamel.docs) {
+      merged[doc.id] = doc;
+    }
+    for (final doc in snapSnake.docs) {
+      merged[doc.id] = doc;
+    }
+
+    return merged.values.toList();
+  }
+
+  Map<String, dynamic> _normalizeReporterInfo(Map<String, dynamic> data) {
+    final reporterInfo = _asMap(data['reporterInfo']);
+    if (reporterInfo.isNotEmpty) return reporterInfo;
+
+    return {
+      'uid': _pickString(data, ['reporterUid', 'reported_by_uid']),
+      'displayName': _pickString(data, ['reported_by_username']),
+      'email': _pickString(data, ['reporterEmail']),
+      'userData': {
+        'nickname': _pickString(data, ['reported_by_username']),
+        'fullName': _pickString(data, ['reported_by_username']),
+      },
+    };
+  }
+
+  Map<String, dynamic> _normalizeReportedUserInfo(Map<String, dynamic> data) {
+    final reportedUserInfo = _asMap(data['reportedUserInfo']);
+    if (reportedUserInfo.isNotEmpty) return reportedUserInfo;
+
+    return {
+      'uid': _pickString(data, ['reportedUid', 'reported_uid']),
+      'displayName': _pickString(data, ['reported_user']),
+      'photoUrl': _pickString(data, ['reported_profile']),
+      'userData': {
+        'nickname': _pickString(data, ['reported_user']),
+        'fullName': _pickString(data, ['reported_user']),
+        'photoUrl': _pickString(data, ['reported_profile']),
+      },
+    };
+  }
+
+  Map<String, dynamic> _normalizeItem(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    return {
+      'documentId': doc.id,
+      'reportId': _pickString(data, ['reportId', 'report_id'], fallback: doc.id),
+      'status': _pickString(data, ['status'], fallback: 'pending'),
+      'statusBanding': _pickString(data, ['statusBanding']),
+      'tanggalBanding': _pick(data, ['tanggalBanding']),
+      'alasanBanding': _pickString(data, ['alasanBanding']),
+      'tindakanSaatIni': _pickString(data, ['tindakanSaatIni', 'actionType']),
+      'tindakanDipilih': _pickString(data, ['tindakanDipilih']),
+      'catatanAdmin': _pickString(data, ['catatanAdmin']),
+      'createdAt': _pick(data, ['createdAt', 'created_at']),
+      'reportReason': _pickString(
+        data,
+        ['reportReason', 'report_reason', 'alasanLaporan'],
+      ),
+      'reportTag': _pickString(
+        data,
+        ['reportTag', 'report_category', 'kategoriLaporan'],
+      ),
+      'kategoriLaporan': _pickString(
+        data,
+        ['kategoriLaporan', 'report_category', 'reportTag'],
+      ),
+      'reportedMessages': _asListOfMaps(_pick(data, ['reportedMessages'])),
+      'reportedUserInfo': _normalizeReportedUserInfo(data),
+      'reporterInfo': _normalizeReporterInfo(data),
+      'sourceType': _pickString(data, ['sourceType', 'type']),
+      'targetType': _pickString(data, ['targetType']),
+      'contentType': _pickString(data, ['contentType', 'type']),
+      'reportedUid': _pickString(data, ['reportedUid', 'reported_uid']),
+      'reporterUid': _pickString(data, ['reporterUid', 'reported_by_uid']),
+      'raw': data,
+    };
+  }
+
   Future<List<Map<String, dynamic>>> getReportsAgainstMe() async {
     final uid = _uid;
     if (uid == null) return [];
 
-    final snap = await _reportsRef.where('reportedUid', isEqualTo: uid).get();
+    final docs = await _mergedDocsByEquality(
+      camelField: 'reportedUid',
+      snakeField: 'reported_uid',
+      value: uid,
+    );
 
-    final items = snap.docs.map((doc) {
-      final data = doc.data();
-
-      return {
-        'documentId': doc.id,
-        'reportId': data['reportId'] ?? doc.id,
-        'status': (data['status'] ?? 'pending').toString(),
-        'statusBanding': (data['statusBanding'] ?? '').toString(),
-        'tanggalBanding': data['tanggalBanding'],
-        'alasanBanding': (data['alasanBanding'] ?? '').toString(),
-        'tindakanSaatIni': (data['tindakanSaatIni'] ?? '').toString(),
-        'tindakanDipilih': (data['tindakanDipilih'] ?? '').toString(),
-        'catatanAdmin': (data['catatanAdmin'] ?? '').toString(),
-        'createdAt': data['createdAt'],
-        'reportReason': (data['reportReason'] ?? '').toString(),
-        'reportTag': (data['reportTag'] ?? '').toString(),
-        'kategoriLaporan': (data['kategoriLaporan'] ?? '').toString(),
-        'reportedMessages': _asListOfMaps(data['reportedMessages']),
-        'reportedUserInfo': _asMap(data['reportedUserInfo']),
-        'reporterInfo': _asMap(data['reporterInfo']),
-      };
-    }).toList();
+    final items = docs.map(_normalizeItem).toList();
 
     items.sort((a, b) {
       final aDate = _toDateTime(a['createdAt']);
@@ -81,21 +179,16 @@ class UserAppealService {
   }
 
   Future<List<Map<String, dynamic>>> getReportsSubmittedByMe() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = _uid;
     if (uid == null) return [];
 
-    final snap = await FirebaseFirestore.instance
-        .collection('reports')
-        .where('reporterUid', isEqualTo: uid)
-        .get();
+    final docs = await _mergedDocsByEquality(
+      camelField: 'reporterUid',
+      snakeField: 'reported_by_uid',
+      value: uid,
+    );
 
-    final items = snap.docs.map((doc) {
-      final data = doc.data();
-      return {
-        ...data,
-        'documentId': doc.id,
-      };
-    }).toList();
+    final items = docs.map(_normalizeItem).toList();
 
     items.sort((a, b) {
       final aDate = _toDateTime(a['createdAt']);
@@ -143,7 +236,9 @@ class UserAppealService {
     final clean = alasanBanding.trim();
 
     if (clean.isEmpty) {
-      throw Exception('Alasan banding tidak boleh kosong.');
+      throw Exception(_isEnglish
+          ? 'Appeal reason cannot be empty.'
+          : 'Alasan banding tidak boleh kosong.');
     }
 
     await _reportsRef.doc(documentId).update({
@@ -156,7 +251,8 @@ class UserAppealService {
   }
 
   bool canSubmitAppeal(Map<String, dynamic> item) {
-    final statusBanding = (item['statusBanding'] ?? '').toString().toLowerCase();
+    final statusBanding =
+        (item['statusBanding'] ?? '').toString().trim().toLowerCase();
 
     if (statusBanding.isEmpty) return true;
     if (statusBanding == 'ditolak') return true;
@@ -168,12 +264,15 @@ class UserAppealService {
     final reporterInfo = _asMap(item['reporterInfo']);
     final userData = _asMap(reporterInfo['userData']);
 
-    return _firstNonEmpty([
-      reporterInfo['displayName']?.toString(),
-      userData['nickname']?.toString(),
-      userData['fullName']?.toString(),
-      reporterInfo['email']?.toString(),
-    ], fallback: 'Pengguna lain');
+    return _firstNonEmpty(
+      [
+        reporterInfo['displayName']?.toString(),
+        userData['nickname']?.toString(),
+        userData['fullName']?.toString(),
+        reporterInfo['email']?.toString(),
+      ],
+      fallback: _isEnglish ? 'Another user' : 'Pengguna lain',
+    );
   }
 
   String buildReportSourceLabel(Map<String, dynamic> item) {
@@ -183,36 +282,54 @@ class UserAppealService {
       item['contentType']?.toString(),
     ]).toLowerCase();
 
-    if (sourceType.contains('diary')) return 'Diary Online';
-    if (sourceType.contains('chat')) return 'Chat Anonim';
+    if (sourceType.contains('diary')) {
+      return _isEnglish ? 'Online Diary' : 'Diary Online';
+    }
+    if (sourceType.contains('chat')) {
+      return _isEnglish ? 'Anonymous Chat' : 'Chat Anonim';
+    }
+    if (sourceType.contains('comment')) {
+      return _isEnglish ? 'Comment' : 'Komentar';
+    }
 
     final messages = _asListOfMaps(item['reportedMessages']);
-    if (messages.isNotEmpty) return 'Chat Anonim';
+    if (messages.isNotEmpty) {
+      return _isEnglish ? 'Anonymous Chat' : 'Chat Anonim';
+    }
 
-    return 'Konten Pengguna';
+    return _isEnglish ? 'User Content' : 'Konten Pengguna';
   }
 
   String buildReportCategoryLabel(Map<String, dynamic> item) {
-    return _firstNonEmpty([
-      item['reportTag']?.toString(),
-      item['kategoriLaporan']?.toString(),
-      item['reportReason']?.toString(),
-    ], fallback: 'Lainnya');
+    return _firstNonEmpty(
+      [
+        item['reportTag']?.toString(),
+        item['kategoriLaporan']?.toString(),
+        item['reportReason']?.toString(),
+      ],
+      fallback: _isEnglish ? 'Other' : 'Lainnya',
+    );
   }
 
   String buildReportContentLabel(Map<String, dynamic> item) {
     final evidenceText = buildEvidencePreviewText(item).trim();
     if (evidenceText.isNotEmpty &&
         evidenceText != 'Bukti laporan tidak tersedia.' &&
-        evidenceText != 'Pesan tidak memiliki teks.') {
+        evidenceText != 'Pesan tidak memiliki teks.' &&
+        evidenceText != 'Report evidence is not available.' &&
+        evidenceText != 'The message has no text.') {
       return evidenceText;
     }
 
     if (isImageReport(item)) {
-      return 'Pengguna mengirim gambar.';
+      return _isEnglish
+          ? 'The user sent an image.'
+          : 'Pengguna mengirim gambar.';
     }
 
-    return 'Isi laporan tidak tersedia.';
+    return _isEnglish
+        ? 'Report content is not available.'
+        : 'Isi laporan tidak tersedia.';
   }
 
   String buildReportTitle(Map<String, dynamic> item) {
@@ -262,15 +379,23 @@ class UserAppealService {
 
   String buildEvidencePreviewText(Map<String, dynamic> item) {
     final evidence = getPrimaryEvidence(item);
-    if (evidence == null) return 'Bukti laporan tidak tersedia.';
+    if (evidence == null) {
+      return _isEnglish
+          ? 'Report evidence is not available.'
+          : 'Bukti laporan tidak tersedia.';
+    }
 
     final text = (evidence['text'] ?? evidence['messageText'] ?? '')
         .toString()
         .trim();
 
     if (text.isNotEmpty) return text;
-    if (isImageReport(item)) return 'Pengguna mengirim gambar.';
-    return 'Pesan tidak memiliki teks.';
+    if (isImageReport(item)) {
+      return _isEnglish
+          ? 'The user sent an image.'
+          : 'Pengguna mengirim gambar.';
+    }
+    return _isEnglish ? 'The message has no text.' : 'Pesan tidak memiliki teks.';
   }
 
   String buildEvidenceImageUrl(Map<String, dynamic> item) {
@@ -296,35 +421,41 @@ class UserAppealService {
       case 'batasi_user':
       case 'batasiuser':
       case 'warn_user':
-        return 'Akun dibatasi';
+        return _isEnglish ? 'Restricted account' : 'Akun dibatasi';
       case 'ban sementara':
       case 'ban_sementara':
       case 'bansementara':
       case 'suspend_user':
-        return 'Ban sementara';
+        return _isEnglish ? 'Temporary ban' : 'Ban sementara';
       case 'ban permanen':
       case 'ban_permanen':
       case 'banpermanen':
       case 'permanent_ban':
-        return 'Ban permanen';
+        return _isEnglish ? 'Permanent ban' : 'Ban permanen';
       case 'cabut tindakan':
       case 'cabut_tindakan':
       case 'cabuttindakan':
-        return 'Tindakan dicabut';
+        return _isEnglish ? 'Action revoked' : 'Tindakan dicabut';
     }
 
     final status = (item['status'] ?? '').toString().trim().toLowerCase();
     if (status == 'pending' || status == 'diproses') {
-      return 'Laporan sedang ditinjau';
+      return _isEnglish
+          ? 'The report is under review'
+          : 'Laporan sedang ditinjau';
     }
     if (status == 'selesai') {
-      return 'Keputusan admin sudah tersedia';
+      return _isEnglish
+          ? 'An admin decision is available'
+          : 'Keputusan admin sudah tersedia';
     }
     if (status == 'ditolak') {
-      return 'Laporan ditolak admin';
+      return _isEnglish ? 'The report was rejected' : 'Laporan ditolak admin';
     }
 
-    return 'Keputusan belum tersedia';
+    return _isEnglish
+        ? 'Decision not available yet'
+        : 'Keputusan belum tersedia';
   }
 
   String buildAdminDecisionDescription(Map<String, dynamic> item) {
@@ -332,22 +463,38 @@ class UserAppealService {
 
     switch (label) {
       case 'Akun dibatasi':
-        return 'Akun masih bisa digunakan, tetapi ada pembatasan fitur tertentu dari admin.';
+      case 'Restricted account':
+        return _isEnglish
+            ? 'The account can still be used, but certain features are restricted by the admin.'
+            : 'Akun masih bisa digunakan, tetapi ada pembatasan fitur tertentu dari admin.';
       case 'Ban sementara':
-        return 'Akun tidak bisa menggunakan fitur terkait untuk sementara waktu sampai masa pembatasan selesai.';
+      case 'Temporary ban':
+        return _isEnglish
+            ? 'The account cannot use the related feature temporarily until the restriction period ends.'
+            : 'Akun tidak bisa menggunakan fitur terkait untuk sementara waktu sampai masa pembatasan selesai.';
       case 'Ban permanen':
-        return 'Akun kehilangan akses ke fitur terkait secara permanen sampai ada keputusan admin berikutnya.';
+      case 'Permanent ban':
+        return _isEnglish
+            ? 'The account loses access to the related feature permanently until there is another admin decision.'
+            : 'Akun kehilangan akses ke fitur terkait secara permanen sampai ada keputusan admin berikutnya.';
       case 'Tindakan dicabut':
-        return 'Keputusan sebelumnya dibatalkan dan pembatasan terhadap akun sudah dicabut.';
+      case 'Action revoked':
+        return _isEnglish
+            ? 'The previous decision was canceled and the restriction has been removed.'
+            : 'Keputusan sebelumnya dibatalkan dan pembatasan terhadap akun sudah dicabut.';
       default:
-        return 'Belum ada penjelasan keputusan yang bisa ditampilkan.';
+        return _isEnglish
+            ? 'No decision description is available yet.'
+            : 'Belum ada penjelasan keputusan yang bisa ditampilkan.';
     }
   }
 
   String buildAppealSummary(Map<String, dynamic> item) {
     final alasanBanding = (item['alasanBanding'] ?? '').toString().trim();
     if (alasanBanding.isNotEmpty) return alasanBanding;
-    return 'Banding belum memiliki isi.';
+    return _isEnglish
+        ? 'The appeal does not have content yet.'
+        : 'Banding belum memiliki isi.';
   }
 
   String buildReportStatusLabel(Map<String, dynamic> item) {
@@ -355,14 +502,14 @@ class UserAppealService {
 
     switch (raw) {
       case 'diproses':
-        return 'Diproses';
+        return _isEnglish ? 'In Progress' : 'Diproses';
       case 'selesai':
-        return 'Selesai';
+        return _isEnglish ? 'Completed' : 'Selesai';
       case 'ditolak':
-        return 'Ditolak';
+        return _isEnglish ? 'Rejected' : 'Ditolak';
       case 'pending':
       default:
-        return 'Pending';
+        return _isEnglish ? 'Pending' : 'Pending';
     }
   }
 
@@ -371,13 +518,13 @@ class UserAppealService {
 
     switch (raw) {
       case 'pending':
-        return 'Pending';
+        return _isEnglish ? 'Pending' : 'Pending';
       case 'disetujui':
-        return 'Disetujui';
+        return _isEnglish ? 'Approved' : 'Disetujui';
       case 'ditolak':
-        return 'Ditolak';
+        return _isEnglish ? 'Rejected' : 'Ditolak';
       default:
-        return 'Belum ada banding';
+        return _isEnglish ? 'No appeal yet' : 'Belum ada banding';
     }
   }
 
@@ -397,28 +544,44 @@ class UserAppealService {
 
     switch (status) {
       case 'pending':
-        return 'Laporan sedang ditinjau';
+        return _isEnglish
+            ? 'The report is under review'
+            : 'Laporan sedang ditinjau';
       case 'diproses':
-        return 'Laporan sedang diproses';
+        return _isEnglish
+            ? 'The report is being processed'
+            : 'Laporan sedang diproses';
       case 'selesai':
-        return 'Keputusan admin sudah tersedia';
+        return _isEnglish
+            ? 'An admin decision is available'
+            : 'Keputusan admin sudah tersedia';
       case 'ditolak':
-        return 'Laporan ditolak admin';
+        return _isEnglish ? 'The report was rejected' : 'Laporan ditolak admin';
       default:
-        return 'Belum ada tindakan admin';
+        return _isEnglish
+            ? 'There is no admin action yet'
+            : 'Belum ada tindakan admin';
     }
   }
 
   String _beautifyAction(String raw) {
     switch (raw) {
       case 'batasiUser':
-        return 'Akun dibatasi';
+      case 'batasi user':
+      case 'batasi_user':
+        return _isEnglish ? 'Restricted account' : 'Akun dibatasi';
       case 'banSementara':
-        return 'Ban sementara';
+      case 'ban sementara':
+      case 'ban_sementara':
+        return _isEnglish ? 'Temporary ban' : 'Ban sementara';
       case 'banPermanen':
-        return 'Ban permanen';
+      case 'ban permanen':
+      case 'ban_permanen':
+        return _isEnglish ? 'Permanent ban' : 'Ban permanen';
       case 'cabutTindakan':
-        return 'Tindakan dicabut';
+      case 'cabut tindakan':
+      case 'cabut_tindakan':
+        return _isEnglish ? 'Action revoked' : 'Tindakan dicabut';
       default:
         return raw;
     }

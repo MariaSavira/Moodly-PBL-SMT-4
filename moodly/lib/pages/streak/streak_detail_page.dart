@@ -24,6 +24,30 @@ class StreakDetailPage extends StatelessWidget {
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
 
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Detail Streak',
+      'activeStreak': 'Streak aktif',
+      'freezeTitle': 'Freeze Streak',
+      'badgeTitle': 'Milestone Badge',
+      'todayHistory': 'Riwayat Hari Ini',
+      'notUnlocked': 'Belum terbuka',
+      'days': 'hari',
+    },
+    'en': {
+      'header': 'Streak Detail',
+      'activeStreak': 'Active streak',
+      'freezeTitle': 'Streak Freeze',
+      'badgeTitle': 'Milestone Badge',
+      'todayHistory': 'Today\'s History',
+      'notUnlocked': 'Locked',
+      'days': 'days',
+    },
+  };
+
+  String _t(String languageCode, String key) =>
+      _copy[languageCode]?[key] ?? key;
+
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
           color: Color.fromRGBO(0, 0, 0, 0.10),

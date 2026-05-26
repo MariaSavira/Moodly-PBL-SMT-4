@@ -72,12 +72,21 @@ class _AjukanBandingPageState extends State<AjukanBandingPage> {
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _loadPrefs();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
 

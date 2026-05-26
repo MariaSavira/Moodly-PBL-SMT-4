@@ -4,6 +4,7 @@ import 'reward_page.dart';
 import '../../widgets/streak/streak_feedback_popup.dart';
 import 'streak_detail_page.dart';
 import '../../core/services/streak_service.dart';
+import '../setting/moodly_settings_support.dart';
 
 class StreakPage extends StatelessWidget {
   const StreakPage({super.key});
@@ -19,6 +20,36 @@ class StreakPage extends StatelessWidget {
   static const Color _mintSoft = Color(0xFFEFFAF7);
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
+  
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'pageTitle': 'Streak',
+      'activeStreak': 'Streak aktifmu',
+      'pointsAndRewards': 'Poin & Hadiah',
+      'dailyMission': 'Misi Hari Ini',
+      'dailyStreak': 'Streak Harian',
+      'freezeTitle': 'Freeze Streak',
+      'rewardLabel': 'Hadiah',
+      'exchangePremium': 'Tukar Premium',
+      'exchangeGift': 'Tukar Hadiah',
+      'noBadge': 'Belum ada badge',
+    },
+    'en': {
+      'pageTitle': 'Streak',
+      'activeStreak': 'Your active streak',
+      'pointsAndRewards': 'Points & Rewards',
+      'dailyMission': 'Today\'s Missions',
+      'dailyStreak': 'Daily Streak',
+      'freezeTitle': 'Streak Freeze',
+      'rewardLabel': 'Rewards',
+      'exchangePremium': 'Redeem Premium',
+      'exchangeGift': 'Redeem Reward',
+      'noBadge': 'No badge yet',
+    },
+  };
+
+  String _t(String languageCode, String key) =>
+      _copy[languageCode]?[key] ?? key;
 
   static final GlobalKey _walkStreakKey = GlobalKey();
   static final GlobalKey _walkFreezeKey = GlobalKey();

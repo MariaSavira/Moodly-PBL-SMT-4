@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'moodly_settings_support.dart';
 
 const String _prefLanguageKey = 'moodly_settings_language_code';
 
@@ -52,8 +53,7 @@ class _LanguagePageState extends State<LanguagePage> {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedLanguage = prefs.getString(_prefLanguageKey);
+    final savedLanguage = await MoodlySettingsPrefs.loadLanguageCode();
 
     if (!mounted) return;
 
@@ -65,8 +65,7 @@ class _LanguagePageState extends State<LanguagePage> {
   Future<void> _applyLanguage() async {
     setState(() => _isSaving = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefLanguageKey, _selectedLanguageCode);
+    await MoodlySettingsPrefs.saveLanguageCode(_selectedLanguageCode);
 
     if (!mounted) return;
 

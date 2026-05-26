@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const String moodlyThemePrefKey = 'moodly_settings_theme_mode';
 const String moodlyLanguagePrefKey = 'moodly_settings_language_code';
 const String moodlyTwoFactorPrefKey = 'moodly_security_two_factor_enabled';
 
@@ -11,22 +12,26 @@ class MoodlySettingsPrefs {
   static bool _twoFactorCache = false;
   static bool _primed = false;
 
-  // Backward-compatible getters for older page files.
+  static final ValueNotifier<String> languageNotifier =
+      ValueNotifier<String>('id');
+
+  // Backward-compatible getters
+  static String get currentThemeMode => 'light';
   static String get currentLanguageCode => _languageCache;
   static bool get isHydrated => _primed;
-
-  // Safety alias because some page files use this typo.
   static bool get isHydated => _primed;
 
-  // Additional aliases used by newer variants.
+  static String get themeCache => 'light';
   static String get languageCache => _languageCache;
   static bool get twoFactorCache => _twoFactorCache;
 
   static Future<void> hydrate() async {
     if (_primed) return;
     final prefs = await SharedPreferences.getInstance();
-    _languageCache = prefs.getString(moodlyLanguagePrefKey) == 'en' ? 'en' : 'id';
+    _languageCache =
+        prefs.getString(moodlyLanguagePrefKey) == 'en' ? 'en' : 'id';
     _twoFactorCache = prefs.getBool(moodlyTwoFactorPrefKey) ?? false;
+    languageNotifier.value = _languageCache;
     _primed = true;
   }
 
@@ -34,13 +39,23 @@ class MoodlySettingsPrefs {
     await hydrate();
   }
 
+  static Future<String> loadThemeMode() async {
+    return 'light';
+  }
+
   static Future<String> loadLanguageCode() async {
     await hydrate();
     return _languageCache;
   }
 
+  static Future<void> saveThemeMode(String value) async {
+    // no-op, dark mode removed
+    _primed = true;
+  }
+
   static Future<void> saveLanguageCode(String value) async {
     _languageCache = value == 'en' ? 'en' : 'id';
+    languageNotifier.value = _languageCache;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(moodlyLanguagePrefKey, _languageCache);
     _primed = true;
@@ -59,47 +74,46 @@ class MoodlySettingsPrefs {
   }
 }
 
-  class MoodlySettingsPalette {
-    final Color bg;
-    final Color card;
-    final Color cardBorder;
-    final Color green;
-    final Color greenDark;
-    final Color greenSoft;
-    final Color mintSoft;
-    final Color pinkSoft;
-    final Color peachSoft;
-    final Color yellowSoft;
-    final Color textDark;
-    final Color textSoft;
-    final Color brand;
-    final Color preferenceIcon;
-    final Color logout;
-    final Color scaffoldOverlay;
-    final List<BoxShadow> shadow;
+class MoodlySettingsPalette {
+  final Color bg;
+  final Color card;
+  final Color cardBorder;
+  final Color green;
+  final Color greenDark;
+  final Color greenSoft;
+  final Color mintSoft;
+  final Color pinkSoft;
+  final Color peachSoft;
+  final Color yellowSoft;
+  final Color textDark;
+  final Color textSoft;
+  final Color brand;
+  final Color preferenceIcon;
+  final Color logout;
+  final Color scaffoldOverlay;
+  final List<BoxShadow> shadow;
 
-    const MoodlySettingsPalette({
-      required this.bg,
-      required this.card,
-      required this.cardBorder,
-      required this.green,
-      required this.greenDark,
-      required this.greenSoft,
-      required this.mintSoft,
-      required this.pinkSoft,
-      required this.peachSoft,
-      required this.yellowSoft,
-      required this.textDark,
-      required this.textSoft,
-      required this.brand,
-      required this.preferenceIcon,
-      required this.logout,
-      required this.scaffoldOverlay,
-      required this.shadow,
-    });
+  const MoodlySettingsPalette({
+    required this.bg,
+    required this.card,
+    required this.cardBorder,
+    required this.green,
+    required this.greenDark,
+    required this.greenSoft,
+    required this.mintSoft,
+    required this.pinkSoft,
+    required this.peachSoft,
+    required this.yellowSoft,
+    required this.textDark,
+    required this.textSoft,
+    required this.brand,
+    required this.preferenceIcon,
+    required this.logout,
+    required this.scaffoldOverlay,
+    required this.shadow,
+  });
 
-
-  static MoodlySettingsPalette of() {
+  static MoodlySettingsPalette of([String? _ignoredThemeMode]) {
     return const MoodlySettingsPalette(
       bg: Color(0xFFF4F8EA),
       card: Colors.white,
@@ -132,7 +146,10 @@ class MoodlySettingsPrefs {
 class MoodlySettingsBackground extends StatelessWidget {
   final MoodlySettingsPalette palette;
 
-  const MoodlySettingsBackground({super.key, required this.palette});
+  const MoodlySettingsBackground({
+    super.key,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -301,7 +318,7 @@ class MoodlyPrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: palette.greenDark,
+          backgroundColor: palette.green,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -408,10 +425,13 @@ class MoodlyOptionTile extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: backgroundColor ?? (isSelected ? palette.pinkSoft : palette.mintSoft),
+          color: backgroundColor ??
+              (isSelected ? palette.pinkSoft : palette.mintSoft),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isSelected ? palette.greenDark.withOpacity(0.24) : Colors.transparent,
+            color: isSelected
+                ? palette.greenDark.withOpacity(0.24)
+                : Colors.transparent,
           ),
         ),
         child: Row(
@@ -439,22 +459,26 @@ class MoodlyOptionTile extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: palette.textDark,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: palette.textDark,
+                                  ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           subtitle!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: palette.textSoft,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: palette.textSoft,
+                                  ),
                         ),
                       ],
                     ),
             ),
             Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              isSelected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
               color: isSelected ? palette.greenDark : palette.textSoft,
               size: 22,
             ),
@@ -547,6 +571,7 @@ class MoodlySettingsInput extends StatelessWidget {
   final TextInputType keyboardType;
   final int maxLines;
   final bool enabled;
+  final bool readOnly;
 
   const MoodlySettingsInput({
     super.key,
@@ -560,6 +585,7 @@ class MoodlySettingsInput extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.maxLines = 1,
     this.enabled = true,
+    this.readOnly = false,
   });
 
   @override
@@ -587,6 +613,7 @@ class MoodlySettingsInput extends StatelessWidget {
             keyboardType: keyboardType,
             maxLines: maxLines,
             enabled: enabled,
+            readOnly: readOnly,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: palette.textDark,
                 ),
@@ -595,18 +622,21 @@ class MoodlySettingsInput extends StatelessWidget {
               hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: palette.textSoft,
                   ),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               prefixIcon: Icon(icon, color: palette.greenDark),
               suffixIcon: onToggleObscure == null
                   ? null
                   : IconButton(
                       onPressed: onToggleObscure,
                       icon: Icon(
-                        obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        obscureText
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: palette.textSoft,
                       ),
                     ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              border: InputBorder.none,
             ),
           ),
         ),

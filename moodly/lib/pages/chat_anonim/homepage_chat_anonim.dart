@@ -9,6 +9,7 @@ import 'dart:async';
 import '../afirmasi/widgets/cute_top_popup.dart';
 import 'package:flutter/gestures.dart';
 import '../pages.dart';
+import '../setting/moodly_settings_support.dart';
 
 // App entry point.
 void main() {
@@ -695,13 +696,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFFF3FADC),
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFFDCE9BE),
-        systemNavigationBarIconBrightness: Brightness.dark,
-        systemNavigationBarDividerColor: Color(0xFFDCE9BE),
-      ),
+      statusBarColor: Color(0xFFF3FADC),
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFFDCE9BE),
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarDividerColor: Color(0xFFDCE9BE),
+    ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF3FADC),
         extendBody: false,
@@ -738,13 +739,13 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 ),
               ),
 
-              Opacity(
-                opacity: showProfileOverlay ? 0.0 : 1.0,
-                child: IgnorePointer(
-                  ignoring: showProfileOverlay,
-                  child: Positioned(
-                    right: 24,
-                    bottom: 315,
+              Positioned(
+                right: 24,
+                bottom: 286,
+                child: Opacity(
+                  opacity: showProfileOverlay ? 0.0 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: showProfileOverlay,
                     child: _buildProfileButton(),
                   ),
                 ),
