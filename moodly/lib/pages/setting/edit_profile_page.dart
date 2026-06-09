@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'moodly_settings_support.dart';
 import '../../core/services/cloudinary_service.dart';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 
 const Color _editBg = Color(0xFFF4F8EA);
@@ -72,7 +73,6 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
-  final phoneController = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
 
@@ -91,7 +91,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       'header': 'Ubah Profil',
       'fullName': 'Nama Lengkap',
       'email': 'Alamat Email',
-      'phone': 'Nomor Telepon',
       'save': 'Simpan Perubahan',
       'emptyNameTitle': 'Perhatian',
       'emptyNameBody': 'Nama lengkap tidak boleh kosong',
@@ -104,7 +103,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       'header': 'Edit Profile',
       'fullName': 'Full Name',
       'email': 'Email Address',
-      'phone': 'Phone Number',
       'save': 'Save Changes',
       'emptyNameTitle': 'Notice',
       'emptyNameBody': 'Full name cannot be empty',
@@ -133,7 +131,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    phoneController.dispose();
     MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
@@ -158,7 +155,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         : (user.email?.split('@').first ?? '');
 
     emailController.text = user.email ?? '';
-    phoneController.text = user.phoneNumber ?? '';
     _photoUrl = user.photoURL;
 
     try {
@@ -178,15 +174,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           (data?['email'] as String?)?.trim().isNotEmpty == true
               ? (data?['email'] as String).trim()
               : emailController.text;
-
-      final rawPhone = data?['phoneNumber'];
-      final phoneFromFirestore = rawPhone?.toString().trim();
-
-      phoneController.text = (phoneFromFirestore != null &&
-              phoneFromFirestore.isNotEmpty &&
-              phoneFromFirestore.toLowerCase() != 'null')
-          ? phoneFromFirestore
-          : phoneController.text;
 
       _photoUrl = (data?['photoUrl'] as String?)?.trim().isNotEmpty == true
           ? (data?['photoUrl'] as String).trim()
@@ -250,7 +237,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'fullName': nameController.text.trim(),
         'email': emailController.text.trim(),
-        'phoneNumber': phoneController.text.trim(),
         'photoUrl': uploadedPhotoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -331,33 +317,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onTap: _pickImage,
                             child: Stack(
                               children: [
-                                Container(
-                                  width: 132,
-                                  height: 132,
-                                  padding: const EdgeInsets.all(5),
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Color(0xFF92D373),
-                                        Color(0xFFD9EDC5),
-                                      ],
-                                    ),
-                                  ),
+                                MoodlyInventoryFrameAvatar(
+                                  uid: FirebaseAuth.instance.currentUser?.uid,
+                                  size: 132,
+                                  innerPadding: 5,
                                   child: Container(
+                                    width: 132,
+                                    height: 132,
+                                    padding: const EdgeInsets.all(5),
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.white,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFF92D373),
+                                          Color(0xFFD9EDC5),
+                                        ],
+                                      ),
                                     ),
-                                    child: ClipOval(
-                                      child: Image(
-                                        image: _buildPreviewImage(),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(
-                                          Icons.person_rounded,
-                                          size: 76,
-                                          color: _editTextDark,
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                      ),
+                                      child: ClipOval(
+                                        child: Image(
+                                          image: _buildPreviewImage(),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(
+                                            Icons.person_rounded,
+                                            size: 76,
+                                            color: _editTextDark,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -396,13 +387,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           icon: Icons.mail_outline_rounded,
                           controller: emailController,
                           readOnly: true,
-                        ),
-                        const SizedBox(height: 16),
-                        _InputCard(
-                          label: _t('phone'),
-                          icon: Icons.phone_rounded,
-                          controller: phoneController,
-                          keyboardType: TextInputType.phone,
                         ),
                         const SizedBox(height: 34),
                         SizedBox(

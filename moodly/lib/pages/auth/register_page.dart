@@ -82,6 +82,17 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  String _mapOtpError(Object e) {
+    final raw = e.toString().replaceFirst('Exception: ', '').trim();
+
+    if (raw.contains('Backend OTP belum dikonfigurasi') ||
+        raw.contains('OTP_BASE_URL belum diset')) {
+      return 'Backend OTP belum tersambung. Kalau kamu sedang testing di browser, pastikan backend berjalan di http://localhost:5000.';
+    }
+
+    return raw;
+  }
+
   Future<void> _handleSignUp() async {
     FocusScope.of(context).unfocus();
 
@@ -185,7 +196,7 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (e) {
       if (!mounted) return;
 
-      final rawMessage = e.toString().replaceFirst('Exception: ', '').trim();
+      final rawMessage = _mapOtpError(e);
 
       debugPrint('REGISTER OTP ERROR: $rawMessage');
 

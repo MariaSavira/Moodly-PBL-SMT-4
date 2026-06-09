@@ -1,8 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/services/streak_service.dart';
+import '../../core/services/premium_service.dart';
+import '../premium/premium_catalog.dart';
+import '../premium/premium_page.dart';
+import '../afirmasi/widgets/cute_top_popup.dart';
+import '../setting/moodly_settings_support.dart';
+import 'mood_insight_detail.dart';
+import 'mood_statistic_premium.dart';
 
 class MoodAnalysis extends StatefulWidget {
   const MoodAnalysis({super.key});
@@ -12,1017 +22,1037 @@ class MoodAnalysis extends StatefulWidget {
 }
 
 class _MoodAnalysisState extends State<MoodAnalysis> {
-  int _selectedIndex = 1;
   bool _isPremium = false;
   bool _isLoading = true;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  DateTime _selectedMonth = DateTime.now();
-  late int _selectedWeek;
+  final Map<String, String> _moodDatabase = {};
 
-  Map<String, String> _moodDatabase = {};
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
 
-  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'title': 'Analisis Mood',
+      'tabWeek': 'Pekan',
+      'tabMonth': 'Bulan',
+      'month1': 'Januari',
+      'month2': 'Februari',
+      'month3': 'Maret',
+      'month4': 'April',
+      'month5': 'Mei',
+      'month6': 'Juni',
+      'month7': 'Juli',
+      'month8': 'Agustus',
+      'month9': 'September',
+      'month10': 'Oktober',
+      'month11': 'November',
+      'month12': 'Desember',
+      'moodSenang': 'Senang',
+      'moodNetral': 'Netral',
+      'moodSedih': 'Sedih',
+      'moodMarah': 'Marah',
+      'heroTitle': 'Lihat pola mood-mu dengan lebih lembut',
+      'heroSub':
+          'Versi reguler ini fokus ke ringkasan bulanan yang gampang dipahami. Yang penting kebaca, bukan sok kompleks.',
+      'overviewTitle': 'Ringkasan bulan ini',
+      'recordedDays': 'Hari tercatat',
+      'dominantMood': 'Mood dominan',
+      'consistency': 'Konsistensi',
+      'chartTitle': 'Grafik tren mood',
+      'chartSub':
+          'Grafik ini membaca perubahan mood yang tercatat sepanjang bulan. Semakin tinggi titiknya, semakin ringan mood-nya.',
+      'distributionTitle': 'Sebaran mood',
+      'quickInsightTitle': 'Insight singkat',
+      'detailCta': 'Lihat insight lebih detail',
+      'weekLockedTitle': 'Analisis pekanan premium',
+      'weekLockedDesc':
+          'Tab pekan dibuka lewat statistik premium. Biar premium-nya ada isi, bukan cuma mahkota formalitas.',
+      'refresh': 'Muat ulang',
+      'emptyTitle': 'Belum ada mood tercatat',
+      'emptyDesc':
+          'Tidak apa-apa. Mulai dari satu check-in dulu, baru nanti polanya pelan-pelan kelihatan.',
+      'summaryWarm':
+          'Bulan ini terasa cukup hangat. Ada tanda kalau ritmemu sedang lebih aman dan ringan.',
+      'summaryNeutral':
+          'Bulan ini cenderung netral. Tidak terlalu naik, tidak terlalu jatuh. Kadang stabil itu sudah baik.',
+      'summaryHeavy':
+          'Bulan ini terasa lebih berat. Fokus ke langkah kecil lebih masuk akal daripada memaksa semuanya beres sekaligus.',
+      'summaryMixed':
+          'Bulan ini campur. Ada hari yang ringan, ada yang berat, jadi pola jeda dan pemicu mulai penting dibaca.',
+      'periodLabel': 'Periode',
+      'noMood': 'Belum ada mood',
+    },
+    'en': {
+      'title': 'Mood Analysis',
+      'tabWeek': 'Week',
+      'tabMonth': 'Month',
+      'month1': 'January',
+      'month2': 'February',
+      'month3': 'March',
+      'month4': 'April',
+      'month5': 'May',
+      'month6': 'June',
+      'month7': 'July',
+      'month8': 'August',
+      'month9': 'September',
+      'month10': 'October',
+      'month11': 'November',
+      'month12': 'December',
+      'moodSenang': 'Happy',
+      'moodNetral': 'Neutral',
+      'moodSedih': 'Sad',
+      'moodMarah': 'Angry',
+      'heroTitle': 'Read your mood pattern more gently',
+      'heroSub':
+          'This regular version focuses on a monthly summary that is easy to understand. Readable first, dramatic later.',
+      'overviewTitle': 'This month at a glance',
+      'recordedDays': 'Recorded days',
+      'dominantMood': 'Dominant mood',
+      'consistency': 'Consistency',
+      'chartTitle': 'Mood trend chart',
+      'chartSub':
+          'This chart reads the recorded mood changes throughout the month. Higher points mean lighter moods.',
+      'distributionTitle': 'Mood distribution',
+      'quickInsightTitle': 'Quick insight',
+      'detailCta': 'See more detailed insight',
+      'weekLockedTitle': 'Weekly analysis is premium',
+      'weekLockedDesc':
+          'The week tab opens through premium statistics. Premium should have actual value, not just ceremonial crown energy.',
+      'refresh': 'Refresh',
+      'emptyTitle': 'No mood recorded yet',
+      'emptyDesc':
+          'That is okay. Start with one check-in first, then the pattern can reveal itself slowly.',
+      'summaryWarm':
+          'This month feels fairly warm. There are signs that your rhythm has been safer and lighter.',
+      'summaryNeutral':
+          'This month leans more neutral. Not too high, not too low. Sometimes steady is already good.',
+      'summaryHeavy':
+          'This month feels heavier. Focusing on small steps makes more sense than forcing everything to be fixed at once.',
+      'summaryMixed':
+          'This month feels mixed. Some days were light, some were heavy, so patterns and pauses matter more now.',
+      'periodLabel': 'Period',
+      'noMood': 'No mood yet',
+    },
+  };
 
   @override
   void initState() {
     super.initState();
-    _checkPremiumStatus();
-    _loadMoods();
-    final now = DateTime.now();
-    _selectedMonth = DateTime(now.year, now.month, 1);
-    _selectedWeek = _calculateWeekNumber(now);
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
+    _hydrateLanguage();
+    _loadEverything();
   }
 
-  String _getEmojiImagePath(String? mood) {
-    if (mood == null) return '';
-    switch (mood) {
-      case 'Senang': return 'assets/emoji/emoji_senang.png';
-      case 'Netral': return 'assets/emoji/emoji_netral.png';
-      case 'Sedih': return 'assets/emoji/emoji_sedih.png';
-      case 'Marah': return 'assets/emoji/emoji_marah.png';
-      default: return 'assets/emoji/emoji_netral.png';
+  Future<void> _loadEverything() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _loadMoods(),
+      _loadPremiumStatus(),
+    ]);
+    await _tryMarkMonthlyInsightMission();
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _hydrateLanguage() async {
+    final language = await MoodlySettingsPrefs.loadLanguageCode();
+    if (!mounted) return;
+    setState(() {
+      _languageCode = language == 'en' ? 'en' : 'id';
+    });
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
+  Future<void> _tryMarkMonthlyInsightMission() async {
+    final now = DateTime.now();
+    final isViewingCurrentMonth =
+        _selectedMonth.year == now.year && _selectedMonth.month == now.month;
+
+    if (!isViewingCurrentMonth) return;
+    if (_monthlyRecordedCount() <= 0) return;
+
+    await StreakService.instance.markMonthlyMoodInsightViewed();
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  ThemeData get _theme => Theme.of(context);
+
+  TextStyle? get _headline => _theme.textTheme.headlineLarge?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        fontSize: 22,
+      );
+
+  TextStyle? get _title => _theme.textTheme.titleMedium?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        fontSize: 17,
+      );
+
+  TextStyle? get _body => _theme.textTheme.bodyMedium?.copyWith(
+        color: const Color(0xFF6E746B),
+        height: 1.45,
+      );
+
+  TextStyle? get _bodyDark => _theme.textTheme.bodyMedium?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        height: 1.45,
+      );
+
+  TextStyle? get _bodyAlt => _theme.textTheme.bodySmall?.copyWith(
+        color: const Color(0xFF1F1F1F),
+      );
+
+  List<String> get _monthNames => [
+        _t('month1'),
+        _t('month2'),
+        _t('month3'),
+        _t('month4'),
+        _t('month5'),
+        _t('month6'),
+        _t('month7'),
+        _t('month8'),
+        _t('month9'),
+        _t('month10'),
+        _t('month11'),
+        _t('month12'),
+      ];
+
+  String _monthLabel(DateTime date) {
+    return '${_monthNames[date.month - 1]} ${date.year}';
+  }
+
+  String _displayMood(String mood) {
+    switch (mood) {
+      case 'Senang':
+        return _t('moodSenang');
+      case 'Netral':
+        return _t('moodNetral');
+      case 'Sedih':
+        return _t('moodSedih');
+      case 'Marah':
+        return _t('moodMarah');
+      default:
+        return mood;
+    }
+  }
+
+  Color _moodAccent(String mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFF75B85E);
+      case 'Netral':
+        return const Color(0xFFC6A74E);
+      case 'Sedih':
+        return const Color(0xFF86AE9E);
+      case 'Marah':
+        return const Color(0xFFD98087);
+      default:
+        return const Color(0xFF98A095);
+    }
+  }
+
+  Color _moodSoft(String mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFFE9F7E8);
+      case 'Netral':
+        return const Color(0xFFFFF4DF);
+      case 'Sedih':
+        return const Color(0xFFE8F4F0);
+      case 'Marah':
+        return const Color(0xFFFFEEF2);
+      default:
+        return const Color(0xFFF7FAF1);
+    }
+  }
+
+  double _moodScore(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return 4;
+      case 'Netral':
+        return 3;
+      case 'Sedih':
+        return 2;
+      case 'Marah':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  String _moodPrefix(String uid) => 'mood_${uid}_';
+
+  DocumentReference<Map<String, dynamic>> _moodDoc(String uid) {
+    return FirebaseFirestore.instance.collection('moods').doc(uid);
   }
 
   Future<void> _loadMoods() async {
-    Map<String, String> moods = {};
+    final temp = <String, String>{};
 
     try {
+      final uid = _uid;
+      if (uid == null) {
+        if (!mounted) return;
+        setState(() {
+          _moodDatabase.clear();
+        });
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
-      for (var key in keys) {
-        final dateKey = key.replaceFirst('mood_', '');
+      final moodPrefix = _moodPrefix(uid);
+
+      final localKeys = prefs.getKeys().where((k) => k.startsWith(moodPrefix));
+      for (final key in localKeys) {
+        final dateKey = key.replaceFirst(moodPrefix, '');
         final mood = prefs.getString(key);
-        if (mood != null) {
-          moods[dateKey] = mood;
+        if (mood != null && mood.trim().isNotEmpty) {
+          temp[dateKey] = mood.trim();
         }
       }
 
-      final doc = await FirebaseFirestore.instance
-          .collection('moods')
-          .doc(_documentId)
-          .get();
+      final doc = await _moodDoc(uid).get();
 
       if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
+        final data = doc.data();
         final entries = data?['entries'] as Map<String, dynamic>? ?? {};
-
         entries.forEach((key, value) {
-          moods[key] = value.toString();
+          final mood = value.toString().trim();
+          if (mood.isNotEmpty) {
+            temp[key] = mood;
+          }
         });
-
-        print("✅ Loaded ${entries.length} entries from Firestore for Analysis");
       }
+    } catch (_) {}
 
-      setState(() {
-        _moodDatabase = moods;
-      });
-
-      print("📊 Total moods loaded for analysis: ${moods.length}");
-    } catch (e) {
-      print("❌ Error loading moods for analysis: $e");
-    }
+    if (!mounted) return;
+    _moodDatabase
+      ..clear()
+      ..addAll(temp);
   }
 
-  Future<void> _checkPremiumStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool isPremium = prefs.getBool('isPremium') ?? false;
-
-    setState(() {
-      _isPremium = isPremium;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _upgradeToPremium() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isPremium', true);
-
-    setState(() {
-      _isPremium = true;
-      _selectedIndex = 0;
-    });
-  }
-
-  Future<void> _resetPremium() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isPremium', false);
-
-    setState(() {
+  Future<void> _loadPremiumStatus() async {
+    try {
+      await PremiumService.instance.refreshPremiumStatus();
+      final access = await PremiumService.instance.getAccess();
+      _isPremium = access.hasPremiumAccess;
+    } catch (_) {
       _isPremium = false;
-      _selectedIndex = 1;
-    });
-  }
-
-  void _showUpgradeDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Icons.diamond, color: Colors.amber.shade700, size: 32),
-            const SizedBox(width: 8),
-            Text(
-              'Upgrade Premium',
-              style: GoogleFonts.fredoka(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dapatkan akses ke fitur eksklusif:',
-              style: GoogleFonts.openSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildFeatureItem(Icons.bar_chart, 'Analisis mood mingguan'),
-            _buildFeatureItem(Icons.insights, 'Insight mendalam'),
-            _buildFeatureItem(Icons.notifications_active, 'Notifikasi personal'),
-
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.pink.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.pink.shade400, width: 1),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.local_offer, color: Colors.pinkAccent.shade200),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Gratis untuk demo PBL!',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.pinkAccent.shade200,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Nanti',
-              style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _upgradeToPremium();
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Text(
-                        '🎉 Premium activated!',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: Colors.pink.shade200,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink.shade100,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: Text(
-              'Aktifkan Sekarang',
-              style: GoogleFonts.fredoka(
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.pinkAccent.shade200),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: GoogleFonts.openSans(
-              fontSize: 13,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getMoodColor(String mood) {
-    switch (mood) {
-      case 'Senang': return Colors.green.shade300;
-      case 'Netral': return Colors.orange.shade200;
-      case 'Sedih': return Colors.blue.shade300;
-      case 'Marah': return Colors.red.shade300;
-      default: return Colors.grey.shade200;
     }
   }
 
-  double _getMoodValue(String mood) {
-    switch (mood) {
-      case 'Senang': return 1.0;
-      case 'Netral': return 0.6;
-      case 'Sedih': return 0.4;
-      case 'Marah': return 0.2;
-      default: return 0.0;
-    }
+  int _daysInSelectedMonth() {
+    return DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
   }
 
-  int _calculateWeekNumber(DateTime date) {
-    final firstDayOfMonth = DateTime(date.year, date.month, 1);
-    return ((date.day + firstDayOfMonth.weekday - 1) / 7).ceil();
+  String _dateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  List<Map<String, dynamic>> _getWeeklyData() {
-    List<Map<String, dynamic>> data = [];
-
-    final firstDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-    final lastDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
-
-    int daysBeforeWeek = (_selectedWeek - 1) * 7;
-    int startDay = daysBeforeWeek + 1;
-
-    for (int i = 0; i < 7; i++) {
-      int day = startDay + i;
-
-      if (day > lastDayOfMonth.day || day < 1) {
-        data.add({
-          'day': _getDayName((firstDayOfMonth.weekday + i) % 7 == 0 ? 7 : (firstDayOfMonth.weekday + i) % 7),
-          'date': day,
-          'mood': null,
-          'emoji': '',
-          'color': Colors.grey.shade100,
-          'value': 0.0,
-          'isEmpty': true,
-        });
-      } else {
-        final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
-        final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-        final mood = _moodDatabase[dateKey];
-        final hasMood = mood != null;
-
-        data.add({
-          'day': _getDayName(date.weekday),
-          'date': day,
-          'mood': mood,
-          'emoji': hasMood ? _getEmojiImagePath(mood) : '',
-          'color': hasMood ? _getMoodColor(mood) : Colors.grey.shade100,
-          'value': hasMood ? _getMoodValue(mood) : 0.0,
-          'isEmpty': !hasMood,
-        });
-      }
-    }
-
-    return data;
-  }
-
-  Map<String, int> _getMonthlyStats() {
-    Map<String, int> stats = {'Senang': 0, 'Netral': 0, 'Sedih': 0, 'Marah': 0};
+  Map<String, int> _monthlyStats() {
+    final stats = {
+      'Senang': 0,
+      'Netral': 0,
+      'Sedih': 0,
+      'Marah': 0,
+    };
 
     _moodDatabase.forEach((key, mood) {
-      if (key.startsWith('${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}')) {
+      if (key.startsWith(
+        '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}',
+      )) {
         stats[mood] = (stats[mood] ?? 0) + 1;
       }
     });
+
     return stats;
   }
 
-  String _getInsightMessage() {
-    final stats = _getMonthlyStats();
-    final totalDays = stats.values.fold(0, (sum, count) => sum + count);
-
-    if (totalDays == 0) {
-      return "Yuk, mulai catat moodmu hari ini!";
-    }
-
-    final sedihMarah = stats['Sedih']! + stats['Marah']!;
-    final senang = stats['Senang']!;
-
-    if (sedihMarah > senang) {
-      return "Aku melihat kamu sedang merasa agak berat hari ini.";
-    } else if (senang > sedihMarah * 2) {
-      return "Wah, kamu sedang dalam kondisi sangat positif! Pertahankan ya!";
-    } else {
-      return "Hari-harimu cukup stabil, tapi masih ada ruang untuk lebih bahagia.";
-    }
+  int _monthlyRecordedCount() {
+    return _monthlyStats().values.fold(0, (sum, item) => sum + item);
   }
 
-  Map<String, double> _getReflectionPercentages() {
-    final stats = _getMonthlyStats();
-    final totalDays = stats.values.fold(0, (sum, count) => sum + count);
-
-    if (totalDays == 0) {
-      return {'heavy': 0.0, 'growth': 1.0};
-    }
-
-    final heavy = stats['Sedih']! + stats['Marah']!;
-    final heavyPercent = heavy / totalDays;
-    final growthPercent = 1.0 - heavyPercent;
-
-    return {
-      'heavy': heavyPercent,
-      'growth': growthPercent,
-    };
+  String _dominantMoodRaw() {
+    final stats = _monthlyStats().entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    if (stats.isEmpty || stats.first.value == 0) return '-';
+    return stats.first.key;
   }
 
-  String _getDayName(int weekday) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[weekday - 1];
+  String _dominantMoodDisplay() {
+    final raw = _dominantMoodRaw();
+    return raw == '-' ? '-' : _displayMood(raw);
   }
 
-  String _getMonthName(int month) {
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    return months[month - 1];
+  double _consistencyRate() {
+    final recorded = _monthlyRecordedCount();
+    final now = DateTime.now();
+
+    final maxTrackableDays = (_selectedMonth.year == now.year &&
+            _selectedMonth.month == now.month)
+        ? now.day
+        : _daysInSelectedMonth();
+
+    if (maxTrackableDays <= 0) return 0;
+    return recorded / maxTrackableDays;
   }
 
-  int _getTotalWeeksInMonth() {
-    final daysInMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
-    return (daysInMonth / 7).ceil();
+  List<_MoodChartPoint> _monthlySeries() {
+    final totalDays = _daysInSelectedMonth();
+
+    return List.generate(totalDays, (index) {
+      final day = index + 1;
+      final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
+      final mood = _moodDatabase[_dateKey(date)];
+
+      return _MoodChartPoint(
+        label: '$day',
+        score: _moodScore(mood),
+        mood: mood,
+      );
+    });
+  }
+
+  List<String> _axisLabels() {
+    final days = _daysInSelectedMonth();
+
+    final anchors = <int>{
+      1,
+      math.max(2, (days * 0.25).round()),
+      math.max(3, (days * 0.5).round()),
+      math.max(4, (days * 0.75).round()),
+      days,
+    }.toList()
+      ..sort();
+
+    return anchors.map((e) => '$e').toList();
+  }
+
+  String _summaryText() {
+    final recorded = _monthlyRecordedCount();
+    if (recorded == 0) return _t('emptyDesc');
+
+    final stats = _monthlyStats();
+    final heavy = (stats['Sedih'] ?? 0) + (stats['Marah'] ?? 0);
+    final warm = (stats['Senang'] ?? 0) + (stats['Netral'] ?? 0);
+    final dominant = _dominantMoodRaw();
+
+    if (heavy > warm) return _t('summaryHeavy');
+    if (dominant == 'Senang') return _t('summaryWarm');
+    if (dominant == 'Netral') return _t('summaryNeutral');
+    return _t('summaryMixed');
   }
 
   void _changeMonth(int offset) {
     setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
-      _selectedWeek = 1;
+      _selectedMonth =
+          DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
     });
+    _tryMarkMonthlyInsightMission();
   }
 
-  void _changeWeek(int offset) {
-    setState(() {
-      _selectedWeek += offset;
+  Future<void> _openWeeklyPremium() async {
+    if (!_isPremium) {
+      showCuteTopPopup(
+        context,
+        title: _t('weekLockedTitle'),
+        message: _t('weekLockedDesc'),
+        type: CutePopupType.info,
+      );
 
-      if (_selectedWeek < 1) {
-        _changeMonth(-1);
-        _selectedWeek = _getTotalWeeksInMonth();
-      } else if (_selectedWeek > _getTotalWeeksInMonth()) {
-        _changeMonth(1);
-        _selectedWeek = 1;
-      }
-    });
+      Future.delayed(const Duration(milliseconds: 350), () async {
+        if (!mounted) return;
+
+        await openMoodlyPremiumPage(
+          context,
+          source: PremiumEntrySource.moodAnalysisLocked,
+        );
+
+        if (!mounted) return;
+        await _loadPremiumStatus();
+      });
+
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MoodStatisticPremium()),
+    );
+  }
+
+  void _openInsightDetail() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MoodInsightDetail(
+          periodLabel: _monthLabel(_selectedMonth),
+          moodStats: _monthlyStats(),
+          recordedCount: _monthlyRecordedCount(),
+          consistencyRate: _consistencyRate(),
+          dominantMoodRaw: _dominantMoodRaw(),
+          isPremiumContext: false,
+        ),
+      ),
+    );
+  }
+
+  Widget _segment({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    bool premium = false,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: active
+                ? (premium ? const Color(0xFFFFF0D9) : const Color(0xFFDDEFCF))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (premium) ...[
+                const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Color(0xFFE29F22),
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: _bodyAlt?.copyWith(
+                  color: const Color(0xFF1F1F1F),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _overviewCard() {
+    final recorded = _monthlyRecordedCount();
+    final consistency = (_consistencyRate() * 100).round();
+    final dominantRaw = _dominantMoodRaw();
+    final dominantBg = dominantRaw == '-' ? const Color(0xFFF7FAF1) : _moodSoft(dominantRaw);
+    final dominantFg = dominantRaw == '-' ? const Color(0xFF6E746B) : _moodAccent(dominantRaw);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.08),
+            offset: Offset(0, 8),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_t('overviewTitle'), style: _title?.copyWith(fontSize: 19)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _statChip(
+                  label: _t('recordedDays'),
+                  value: '$recorded',
+                  bg: const Color(0xFFE9F7E8),
+                  fg: const Color(0xFF2D6B20),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _statChip(
+                  label: _t('dominantMood'),
+                  value: _dominantMoodDisplay(),
+                  bg: dominantBg,
+                  fg: dominantFg,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _statChip(
+                  label: _t('consistency'),
+                  value: '$consistency%',
+                  bg: const Color(0xFFFFF4DF),
+                  fg: const Color(0xFF8A5A09),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statChip({
+    required String label,
+    required String value,
+    required Color bg,
+    required Color fg,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: _body?.copyWith(color: fg)),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: _title?.copyWith(
+              color: fg,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _trendCard() {
+    final points = _monthlySeries();
+    final hasData = points.any((e) => e.score > 0);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.08),
+            offset: Offset(0, 8),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_t('chartTitle'), style: _title?.copyWith(fontSize: 19)),
+          const SizedBox(height: 6),
+          Text(_t('chartSub'), style: _body),
+          const SizedBox(height: 16),
+          if (!hasData)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FAF1),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_t('emptyTitle'), style: _title),
+                  const SizedBox(height: 6),
+                  Text(_t('emptyDesc'), style: _bodyDark),
+                ],
+              ),
+            )
+          else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 58,
+                  height: 220,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_displayMood('Senang'), style: _body?.copyWith(fontSize: 11)),
+                      Text(_displayMood('Netral'), style: _body?.copyWith(fontSize: 11)),
+                      Text(_displayMood('Sedih'), style: _body?.copyWith(fontSize: 11)),
+                      Text(_displayMood('Marah'), style: _body?.copyWith(fontSize: 11)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 220,
+                    child: CustomPaint(
+                      painter: _MoodTrendPainter(
+                        points: points,
+                        lineColor: const Color(0xFF75B85E),
+                        gridColor: const Color(0xFFEAEDE3),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: _axisLabels()
+                  .map(
+                    (label) => Expanded(
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: _body?.copyWith(fontSize: 10),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _distributionCard() {
+    final stats = _monthlyStats();
+    final total = math.max(_monthlyRecordedCount(), 1);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.08),
+            offset: Offset(0, 8),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_t('distributionTitle'), style: _title?.copyWith(fontSize: 19)),
+          const SizedBox(height: 14),
+          _distributionRow('Senang', stats['Senang'] ?? 0, total),
+          _distributionRow('Netral', stats['Netral'] ?? 0, total),
+          _distributionRow('Sedih', stats['Sedih'] ?? 0, total),
+          _distributionRow('Marah', stats['Marah'] ?? 0, total),
+        ],
+      ),
+    );
+  }
+
+  Widget _distributionRow(String mood, int count, int total) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(_displayMood(mood), style: _bodyDark)),
+              Text('$count', style: _bodyAlt),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: count / total,
+              minHeight: 10,
+              backgroundColor: const Color(0xFFEAEDE3),
+              color: _moodAccent(mood),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard() {
+    final dominantRaw = _dominantMoodRaw();
+    final accent = dominantRaw == '-' ? const Color(0xFF84C96C) : _moodAccent(dominantRaw);
+    final bg = dominantRaw == '-' ? const Color(0xFFF7FAF1) : _moodSoft(dominantRaw);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.08),
+            offset: Offset(0, 8),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_t('quickInsightTitle'), style: _title?.copyWith(fontSize: 19)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Text(
+              _summaryText(),
+              style: _bodyDark?.copyWith(color: const Color(0xFF364134)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _openInsightDetail,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              child: Text(_t('detailCta')),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final monthLabel = _monthLabel(_selectedMonth);
+
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF9FBE7),
-        body: Center(
+        backgroundColor: const Color(0xFFF4F8EA),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(_t('title'), style: _headline),
+        ),
+        body: const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBE7),
+      backgroundColor: const Color(0xFFF4F8EA),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Mood Analysis',
-          style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
-        ),
+        title: Text(_t('title'), style: _headline),
         actions: [
-          if (!_isPremium)
-            Container(
-              margin: const EdgeInsets.only(right: 12),
-              child: ElevatedButton.icon(
-                onPressed: _showUpgradeDialog,
-                icon: Icon(Icons.diamond, size: 16, color: Colors.black),
-                label: Text(
-                  'Premium',
-                  style: GoogleFonts.fredoka(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-            ),
-
-          if (!kReleaseMode)
-            IconButton(
-              icon: Icon(Icons.refresh, color: Colors.purple),
-              onPressed: () async {
-                await _loadMoods();
-                await _resetPremium();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Data di-refresh & Premium status direset')),
-                );
-              },
-              tooltip: 'Refresh Data (Debug)',
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTabSelector(),
-              const SizedBox(height: 10),
-
-              if (_selectedIndex == 0) _buildWeekNavigation() else _buildMonthNavigation(),
-
-              const SizedBox(height: 16),
-
-              if (_selectedIndex == 0) _buildWeeklyChart() else _buildMonthlyStats(),
-
-              const SizedBox(height: 20),
-
-              _buildMoodInsight(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(30)),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                if (_isPremium) {
-                  setState(() => _selectedIndex = 0);
-                } else {
-                  _showUpgradeDialog();
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 0 && _isPremium
-                      ? Colors.pink.shade200
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Pekan',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: (_selectedIndex == 0 && _isPremium)
-                            ? Colors.black
-                            : Colors.grey,
-                      ),
-                    ),
-                    if (!_isPremium) ...[
-                      const SizedBox(width: 4),
-                      Icon(Icons.lock, size: 12, color: Colors.amber.shade700),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedIndex = 1),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 1
-                      ? Colors.pink.shade200
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Center(
-                  child: Text(
-                    'Bulan',
-                    style: GoogleFonts.fredoka(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _selectedIndex == 1 ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeekNavigation() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(color: Colors.lightGreen.shade300, borderRadius: BorderRadius.circular(30)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20),
-            onPressed: () => _changeWeek(-1),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-          Text(
-            'Minggu $_selectedWeek, ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-            style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20),
-            onPressed: () => _changeWeek(1),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA04CA2)),
+            tooltip: _t('refresh'),
+            onPressed: _loadEverything,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMonthNavigation() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(color: Colors.lightGreen.shade300, borderRadius: BorderRadius.circular(30)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20),
-            onPressed: () => _changeMonth(-1),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-          Text(
-            '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-            style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20),
-            onPressed: () => _changeMonth(1),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeeklyChart() {
-    final weeklyData = _getWeeklyData();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.lightGreen.shade100, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 180,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: weeklyData.map((item) => _buildBar(item)).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: weeklyData.map((item) => SizedBox(
-              width: 30,
-              child: Text(
-                item['isEmpty'] && item['date'] < 1 || item['date'] > DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day
-                    ? ''
-                    : item['day'],
-                textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54),
-              ),
-            )).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMonthlyStats() {
-    final stats = _getMonthlyStats();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.lightGreen.shade200, borderRadius: BorderRadius.circular(24)),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(child: _buildStatCard(_getEmojiImagePath('Senang'), '${stats['Senang']} Hari', 'Hari penuh kebahagiaan.', Colors.green.shade100)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(_getEmojiImagePath('Netral'), '${stats['Netral']} Hari', 'Hari yang terasa biasa saja.', Colors.yellow.shade100)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _buildStatCard(_getEmojiImagePath('Sedih'), '${stats['Sedih']} Hari', 'Hari dengan perasaan sedih.', Colors.green.shade50)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(_getEmojiImagePath('Marah'), '${stats['Marah']} Hari', 'Hari dengan emosi marah.', Colors.red.shade100)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String emojiPath, String title, String description, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Image.asset(
-            emojiPath,
-            width: 48,
-            height: 48,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.sentiment_satisfied, size: 32);
-            },
-          ),
-          const SizedBox(height: 8),
-          Text(title, style: GoogleFonts.fredoka(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 4),
-          Text(description, style: GoogleFonts.openSans(fontSize: 10, color: Colors.black87)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBar(Map<String, dynamic> item) {
-    final double barValue = item['value'];
-    final double maxHeight = 140.0;
-    final double barHeight = maxHeight * barValue;
-    final bool isEmpty = item['isEmpty'] ?? false;
-    final double emojiSize = 28.0;
-    final double barWidth = 32.0;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        SizedBox(
-          width: barWidth + 10,
-          height: maxHeight + 35,
-          child: Stack(
-            alignment: Alignment.bottomCenter,
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: barWidth,
-                height: maxHeight,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(barWidth / 2),
-                    bottom: Radius.circular(8),
-                  ),
-                ),
-              ),
-              if (!isEmpty && barHeight > 0)
-                Positioned(
-                  bottom: 0,
-                  child: Container(
-                    width: barWidth,
-                    height: barHeight,
-                    decoration: BoxDecoration(
-                      color: item['color'],
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(barWidth / 2),
-                        bottom: barHeight < barWidth / 2
-                            ? Radius.circular(barHeight / 2)
-                            : Radius.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              if (!isEmpty && barHeight > 0)
-                Positioned(
-                  bottom: barHeight - (emojiSize / 2.5),
-                  child: Image.asset(
-                    item['emoji'],
-                    width: emojiSize,
-                    height: emojiSize,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMoodInsight() {
-    final reflection = _getReflectionPercentages();
-    final heavyPercent = reflection['heavy']!;
-    final growthPercent = reflection['growth']!;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.pink.shade50,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
+          Positioned(
+            top: -40,
+            right: -30,
             child: Container(
-              width: 40,
-              height: 4,
+              width: 180,
+              height: 180,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFEEF2).withOpacity(0.72),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          Text(
-            'Mood Insight',
-            style: GoogleFonts.fredoka(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Positioned(
+            top: 280,
+            left: -70,
+            child: Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFE9F7E8).withOpacity(0.80),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-
-          Text(
-            _getInsightMessage(),
-            style: GoogleFonts.openSans(
-              fontSize: 14,
-              color: Colors.black54,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.green.shade200,
-              borderRadius: BorderRadius.circular(20),
-            ),
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Current Reflection',
-                  style: GoogleFonts.fredoka(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color.fromRGBO(0, 0, 0, 0.08),
+                        offset: Offset(0, 8),
+                        blurRadius: 20,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_t('heroTitle'), style: _headline),
+                            const SizedBox(height: 8),
+                            Text(_t('heroSub'), style: _body),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          color: _monthlyRecordedCount() == 0
+                              ? const Color(0xFFF7FAF1)
+                              : const Color(0xFFFFF6F8),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${_monthlyRecordedCount()}',
+                              style: _headline?.copyWith(fontSize: 26),
+                            ),
+                            Text(
+                              _monthlyRecordedCount() == 0
+                                  ? _t('noMood')
+                                  : _t('recordedDays'),
+                              textAlign: TextAlign.center,
+                              style: _body?.copyWith(fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: CustomPaint(
-                              painter: _BottomFilledCirclePainter(
-                                color: Colors.green.shade600,
-                                progress: heavyPercent,
-                                backgroundColor: Colors.green.shade100,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${(heavyPercent * 100).toInt()}%',
-                                  style: GoogleFonts.fredoka(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Beban Emosi',
-                            style: GoogleFonts.openSans(
-                              fontSize: 12,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color.fromRGBO(0, 0, 0, 0.06),
+                        offset: Offset(0, 6),
+                        blurRadius: 16,
                       ),
-                    ),
-                    Container(
-                      width: 2,
-                      height: 50,
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(1),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      _segment(
+                        label: _t('tabWeek'),
+                        active: false,
+                        premium: true,
+                        onTap: _openWeeklyPremium,
                       ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: CustomPaint(
-                              painter: _BottomFilledCirclePainter(
-                                color: Colors.green.shade600,
-                                progress: growthPercent,
-                                backgroundColor: Colors.green.shade100,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${(growthPercent * 100).toInt()}%',
-                                  style: GoogleFonts.fredoka(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Ruang Pertumbuhan',
-                            style: GoogleFonts.openSans(
-                              fontSize: 12,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                      _segment(
+                        label: _t('tabMonth'),
+                        active: true,
+                        onTap: () {},
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDEFCF),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left_rounded),
+                        onPressed: () => _changeMonth(-1),
+                      ),
+                      Expanded(
+                        child: Text(
+                          monthLabel,
+                          textAlign: TextAlign.center,
+                          style: _title,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right_rounded),
+                        onPressed: () => _changeMonth(1),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _overviewCard(),
+                const SizedBox(height: 16),
+                _trendCard(),
+                const SizedBox(height: 16),
+                _distributionCard(),
+                const SizedBox(height: 16),
+                _summaryCard(),
               ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Aktivitas untuk Kamu',
-            style: GoogleFonts.fredoka(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.1,
-            children: [
-              _buildActivityCard(
-                Icons.nights_stay_rounded,
-                'Tidur',
-                '8 jam direkomendasikan',
-                Colors.purple,
-              ),
-              _buildActivityCard(
-                Icons.restaurant_rounded,
-                'Makanan',
-                'Nutrisi tubuhmu',
-                Colors.orange,
-              ),
-              _buildActivityCard(
-                Icons.fitness_center_rounded,
-                'Olahraga',
-                'Lepaskan ketegangan',
-                Colors.blue,
-              ),
-              _buildActivityCard(
-                Icons.music_note_rounded,
-                'Musik',
-                'Frekuensi penyembuhan',
-                Colors.pink,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityCard(IconData icon, String title, String subtitle, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: GoogleFonts.fredoka(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: GoogleFonts.openSans(
-              fontSize: 10,
-              color: Colors.black54,
             ),
           ),
         ],
@@ -1031,43 +1061,92 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
   }
 }
 
-class _BottomFilledCirclePainter extends CustomPainter {
-  final Color color;
-  final double progress;
-  final Color backgroundColor;
+class _MoodChartPoint {
+  final String label;
+  final double score;
+  final String? mood;
 
-  _BottomFilledCirclePainter({
-    required this.color,
-    required this.progress,
-    required this.backgroundColor,
+  const _MoodChartPoint({
+    required this.label,
+    required this.score,
+    required this.mood,
+  });
+}
+
+class _MoodTrendPainter extends CustomPainter {
+  final List<_MoodChartPoint> points;
+  final Color lineColor;
+  final Color gridColor;
+
+  _MoodTrendPainter({
+    required this.points,
+    required this.lineColor,
+    required this.gridColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double radius = size.width / 2;
-    final double centerX = size.width / 2;
-    final double centerY = size.height / 2;
+    const topPad = 14.0;
+    const bottomPad = 18.0;
+    final chartHeight = size.height - topPad - bottomPad;
 
-    final Paint bgPaint = Paint()..color = backgroundColor;
-    canvas.drawCircle(Offset(centerX, centerY), radius, bgPaint);
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
 
-    final double fillHeight = size.height * progress;
-    final double topY = size.height - fillHeight;
+    for (int i = 0; i < 4; i++) {
+      final y = topPad + (chartHeight / 3) * i;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
 
-    final Paint fillPaint = Paint()..color = color;
+    final validIndices = <int>[];
+    for (int i = 0; i < points.length; i++) {
+      if (points[i].score > 0) validIndices.add(i);
+    }
 
-    final Path circlePath = Path()
-      ..addOval(Rect.fromCircle(center: Offset(centerX, centerY), radius: radius));
+    if (validIndices.isEmpty) return;
 
-    canvas.save();
-    canvas.clipPath(circlePath);
+    Offset positionFor(int index) {
+      final x = points.length == 1
+          ? size.width / 2
+          : (size.width / (points.length - 1)) * index;
+      final score = points[index].score;
+      final normalized = (4 - score) / 3;
+      final y = topPad + (normalized * chartHeight);
+      return Offset(x, y);
+    }
 
-    final Rect fillRect = Rect.fromLTRB(0, topY, size.width, size.height);
-    canvas.drawRect(fillRect, fillPaint);
+    final path = Path();
+    bool first = true;
+    for (final i in validIndices) {
+      final p = positionFor(i);
+      if (first) {
+        path.moveTo(p.dx, p.dy);
+        first = false;
+      } else {
+        path.lineTo(p.dx, p.dy);
+      }
+    }
 
-    canvas.restore();
+    final linePaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(path, linePaint);
+
+    for (final i in validIndices) {
+      final p = positionFor(i);
+      canvas.drawCircle(p, 5.5, Paint()..color = lineColor);
+      canvas.drawCircle(p, 2.5, Paint()..color = Colors.white);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _MoodTrendPainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.gridColor != gridColor;
+  }
 }

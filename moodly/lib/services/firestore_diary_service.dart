@@ -1,137 +1,136 @@
-// lib/services/firestore_diary_service.dart
-
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/diary_model.dart';
 
 class FirestoreDiaryService {
-  static final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FirestoreDiaryService._();
+  static final FirestoreDiaryService instance = FirestoreDiaryService._();
 
-  static final CollectionReference diaryRef = _db.collection("diaries");
+  factory FirestoreDiaryService() => instance;
 
-  /// ================= PUBLIC DIARY =================
-  static Stream<List<DiaryModel>> getPublicDiaries() {
-    return diaryRef
-        .where("isPublic", isEqualTo: true)
-        .orderBy("createdAt", descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return DiaryModel.fromFirestore(
-              doc.id,
-              doc.data() as Map<String, dynamic>,
-            );
-          }).toList();
-        });
-  }
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// ================= PRIVATE DIARY =================
-  Stream<List<DiaryModel>> getPrivateDiaries(String month, int year) {
-    return diaryRef
-        .where("isPublic", isEqualTo: false)
-        .where("month", isEqualTo: month)
-        .where("year", isEqualTo: year)
-        .orderBy("date", descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return DiaryModel.fromFirestore(
-              doc.id,
-              doc.data() as Map<String, dynamic>,
-            );
-          }).toList();
-        });
-  }
+  CollectionReference<Map<String, dynamic>> get _diaryRef =>
+      _db.collection('diaries');
 
-  /// ================= WEEK DIARY =================
-  static Stream<List<DiaryModel>> getWeekDiaries() {
-    final now = DateTime.now();
+  CollectionReference<Map<String, dynamic>> get _publicDiaryRef =>
+      _db.collection('public_diary');
 
-    return diaryRef
-        .where("isPublic", isEqualTo: false)
-        .where("month", isEqualTo: _getMonth(now.month))
-        .where("year", isEqualTo: now.year)
-        .orderBy("date", descending: true)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return DiaryModel.fromFirestore(
-              doc.id,
-              doc.data() as Map<String, dynamic>,
-            );
-          }).toList();
-        });
-  }
+  String? get currentUid => _auth.currentUser?.uid;
 
-  /// ================= TOGGLE LIKE =================
-  static Future<void> toggleDiaryLike({
-    required String diaryId,
-    required String userId,
-  }) async {
-    final doc = diaryRef.doc(diaryId);
-
-    final snapshot = await doc.get();
-
-    final data = snapshot.data() as Map<String, dynamic>;
-
-    List likedBy = data["likedBy"] ?? [];
-
-    if (likedBy.contains(userId)) {
-      await doc.update({
-        "likedBy": FieldValue.arrayRemove([userId]),
-
-        "likes": FieldValue.increment(-1),
-      });
-    } else {
-      await doc.update({
-        "likedBy": FieldValue.arrayUnion([userId]),
-
-        "likes": FieldValue.increment(1),
-      });
-    }
-  }
-
-  /// ================= COMMENT COUNT =================
   static Future<void> updateCommentCount({
     required String diaryId,
     required int total,
   }) async {
-    await diaryRef.doc(diaryId).update({"comments": total});
+    await instance.syncCommentCount(
+      diaryId: diaryId,
+      count: total,
+    );
   }
 
-  /// ================= DELETE DIARY =================
-  static Future<void> deleteDiary({required String diaryId}) async {
-    try {
-      // ================= DELETE COMMENTS =================
-      final commentsSnapshot = await diaryRef
-          .doc(diaryId)
-          .collection("comments")
-          .get();
+  String _normalizeMonth(String month) => month.trim().toUpperCase();
 
-      for (var commentDoc in commentsSnapshot.docs) {
-        // ================= DELETE REPLIES =================
-        final repliesSnapshot = await commentDoc.reference
-            .collection("replies")
-            .get();
+  int _monthNumber(String code) {
+    const map = {
+      'JAN': 1,
+      'FEB': 2,
+      'MAR': 3,
+      'APR': 4,
+      'MEI': 5,
+      'JUN': 6,
+      'JUL': 7,
+      'AGS': 8,
+      'SEP': 9,
+      'OKT': 10,
+      'NOV': 11,
+      'DES': 12,
+    };
+    return map[code.toUpperCase()] ?? 1;
+  }
 
-        for (var replyDoc in repliesSnapshot.docs) {
-          await replyDoc.reference.delete();
-        }
+  DateTime _entryDateTime(DiaryModel diary) {
+    final parts = diary.time.split(':');
+    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
 
-        // ================= DELETE COMMENT =================
-        await commentDoc.reference.delete();
-      }
+    return DateTime(
+      diary.year,
+      _monthNumber(diary.month),
+      diary.date,
+      hour,
+      minute,
+    );
+  }
 
-      // ================= DELETE DIARY =================
-      await diaryRef.doc(diaryId).delete();
-    } catch (e) {
-      throw Exception("Gagal menghapus diary: $e");
+  DateTime _startOfWeek(DateTime date) {
+    return date.subtract(Duration(days: date.weekday % 7));
+  }
+
+  DateTime _endOfWeek(DateTime date) {
+    return _startOfWeek(date).add(
+      const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+    );
+  }
+
+  DocumentReference<Map<String, dynamic>> _privateDoc(String diaryId) {
+    return _diaryRef.doc(diaryId);
+  }
+
+  DocumentReference<Map<String, dynamic>> _publicDoc(String diaryId) {
+    return _publicDiaryRef.doc(diaryId);
+  }
+
+  Future<void> _deletePublicMirrorWithComments(String diaryId) async {
+    final publicDoc = _publicDoc(diaryId);
+    final publicSnap = await publicDoc.get();
+
+    if (!publicSnap.exists) return;
+
+    final commentsSnap = await publicDoc.collection('comments').get();
+    final batch = _db.batch();
+
+    for (final comment in commentsSnap.docs) {
+      batch.delete(comment.reference);
     }
+
+    batch.delete(publicDoc);
+    await batch.commit();
   }
 
-  /// ================= ADD DIARY =================
-  static Future<void> addDiary({
+  Map<String, dynamic> _payloadForFirestore(DiaryModel diary) {
+    return {
+      'id': diary.id,
+      'uid': diary.uid,
+      'title': diary.title,
+      'content': diary.content,
+      'time': diary.time,
+      'date': diary.date,
+      'month': _normalizeMonth(diary.month),
+      'year': diary.year,
+      'isPublic': diary.isPublic,
+      'username': diary.username,
+      'mood': diary.mood,
+      'image_url': diary.imageUrl,
+      'profileImage': diary.profileImage,
+      'images': diary.images,
+      'likes': diary.likes,
+      'comments': diary.comments,
+      'likedBy': diary.likedBy,
+      'createdAt': diary.createdAt,
+      'updatedAt': diary.updatedAt,
+      'created_at': diary.createdAt,
+      'updated_at': diary.updatedAt,
+    };
+  }
+
+  DiaryModel _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    return DiaryModel.fromFirestore(doc.id, doc.data() ?? {});
+  }
+
+  Future<String> createDiary({
     required String title,
     required String content,
     required String time,
@@ -139,57 +138,425 @@ class FirestoreDiaryService {
     required String month,
     required int year,
     required bool isPublic,
-    required List<String> images,
+    required String mood,
+    List<String> images = const [],
+    String imageUrl = '',
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User belum login.');
+    }
 
-    await diaryRef.add({
-      "title": title,
-      "content": content,
+    final privateDoc = _diaryRef.doc();
+    final publicDoc = _publicDiaryRef.doc(privateDoc.id);
+    final now = DateTime.now();
 
-      "images": images,
+    final diary = DiaryModel(
+      id: privateDoc.id,
+      uid: user.uid,
+      title: title.trim(),
+      content: content.trim(),
+      time: time,
+      date: date,
+      month: _normalizeMonth(month),
+      year: year,
+      isPublic: isPublic,
+      username: user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : 'Anonymous',
+      mood: mood.trim().isEmpty ? 'netral' : mood.trim(),
+      imageUrl: imageUrl.isNotEmpty
+          ? imageUrl
+          : (images.isNotEmpty ? images.first : ''),
+      profileImage: user.photoURL ?? '',
+      images: images,
+      createdAt: now,
+      updatedAt: now,
+      likedBy: const [],
+      likes: 0,
+      comments: 0,
+    );
 
-      "time": time,
-      "date": date,
-      "month": month,
-      "year": year,
+    final payload = _payloadForFirestore(diary);
+    final batch = _db.batch();
 
-      "isPublic": isPublic,
+    batch.set(privateDoc, {
+      ...payload,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
 
-      /// ================= USER INFO =================
-      "uid": user?.uid ?? "",
+    if (isPublic) {
+      batch.set(publicDoc, {
+        ...payload,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    }
 
-      "username": user?.displayName ?? "Anonymous",
+    await batch.commit();
+    return privateDoc.id;
+  }
 
-      "profileImage": user?.photoURL ?? "",
+  Future<void> updateDiary({
+    required String diaryId,
+    required String title,
+    required String content,
+    required String time,
+    required int date,
+    required String month,
+    required int year,
+    required bool isPublic,
+    required String mood,
+    required String username,
+    required String profileImage,
+    required String uid,
+    List<String> images = const [],
+    String imageUrl = '',
+    DateTime? createdAt,
+    int likes = 0,
+    int comments = 0,
+    List likedBy = const [],
+  }) async {
+    final normalizedMonth = _normalizeMonth(month);
+    final privateDoc = _privateDoc(diaryId);
+    final publicDoc = _publicDoc(diaryId);
 
-      /// ================= SOCIAL =================
-      "likes": 0,
-      "comments": 0,
-      "likedBy": [],
+    final payload = <String, dynamic>{
+      'id': diaryId,
+      'uid': uid,
+      'title': title.trim(),
+      'content': content.trim(),
+      'time': time,
+      'date': date,
+      'month': normalizedMonth,
+      'year': year,
+      'isPublic': isPublic,
+      'username': username,
+      'mood': mood.trim().isEmpty ? 'netral' : mood.trim(),
+      'image_url': imageUrl.isNotEmpty
+          ? imageUrl
+          : (images.isNotEmpty ? images.first : ''),
+      'profileImage': profileImage,
+      'images': images,
+      'likes': likes,
+      'comments': comments,
+      'likedBy': likedBy,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    };
 
-      /// ================= TIME =================
-      "createdAt": FieldValue.serverTimestamp(),
+    if (createdAt != null) {
+      payload['createdAt'] = Timestamp.fromDate(createdAt);
+      payload['created_at'] = Timestamp.fromDate(createdAt);
+    }
+
+    await privateDoc.set(payload, SetOptions(merge: true));
+
+    if (isPublic) {
+      await publicDoc.set(payload, SetOptions(merge: true));
+    } else {
+      await _deletePublicMirrorWithComments(diaryId);
+    }
+  }
+
+  Future<void> deleteDiary(String diaryId) async {
+    await _deletePublicMirrorWithComments(diaryId);
+    await _privateDoc(diaryId).delete();
+  }
+
+  Future<void> _deletePublicCommentsOnly(String diaryId) async {
+    final publicDoc = _publicDoc(diaryId);
+    final publicSnap = await publicDoc.get();
+    if (!publicSnap.exists) return;
+
+    final commentDocs = await publicDoc.collection('comments').get();
+    final batch = _db.batch();
+
+    for (final comment in commentDocs.docs) {
+      batch.delete(comment.reference);
+    }
+
+    await batch.commit();
+  }
+
+  Future<DiaryModel?> getDiaryById(String diaryId) async {
+    final doc = await _privateDoc(diaryId).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return _fromDoc(doc);
+  }
+
+  Stream<DiaryModel?> watchDiaryById(String diaryId) {
+    return _privateDoc(diaryId).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return _fromDoc(doc);
     });
   }
 
-  /// ================= MONTH FORMAT =================
-  static String _getMonth(int month) {
-    const months = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MEI",
-      "JUN",
-      "JUL",
-      "AGS",
-      "SEP",
-      "OKT",
-      "NOV",
-      "DES",
-    ];
+  Stream<List<DiaryModel>> getUserDiaries() {
+    final uid = currentUid;
+    if (uid == null) return Stream.value([]);
 
-    return months[month - 1];
+    return _diaryRef.where('uid', isEqualTo: uid).snapshots().map((snapshot) {
+      final items = snapshot.docs.map(_fromDoc).toList();
+      items.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return items;
+    });
+  }
+
+  Stream<List<DiaryModel>> getPrivateDiaries(String month, int year) {
+    final uid = currentUid;
+    if (uid == null) return Stream.value([]);
+
+    final normalizedMonth = _normalizeMonth(month);
+
+    return _diaryRef
+        .where('uid', isEqualTo: uid)
+        .where('month', isEqualTo: normalizedMonth)
+        .where('year', isEqualTo: year)
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs.map(_fromDoc).toList();
+      items.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return items;
+    });
+  }
+
+  Stream<List<DiaryModel>> getUserDiariesByYear(int year) {
+    final uid = currentUid;
+    if (uid == null) return Stream.value([]);
+
+    return _diaryRef
+        .where('uid', isEqualTo: uid)
+        .where('year', isEqualTo: year)
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs.map(_fromDoc).toList();
+      items.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return items;
+    });
+  }
+
+  Stream<List<DiaryModel>> getUserDiariesByWeek(DateTime anchor) {
+    final uid = currentUid;
+    if (uid == null) return Stream.value([]);
+
+    final start = _startOfWeek(anchor);
+    final end = _endOfWeek(anchor);
+
+    return _diaryRef.where('uid', isEqualTo: uid).snapshots().map((snapshot) {
+      final items = snapshot.docs.map(_fromDoc).where((diary) {
+        final entry = _entryDateTime(diary);
+        return !entry.isBefore(start) && !entry.isAfter(end);
+      }).toList();
+
+      items.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return items;
+    });
+  }
+
+  Stream<List<DiaryModel>> searchUserDiaries(String query) {
+    final uid = currentUid;
+    final clean = query.trim().toLowerCase();
+    if (uid == null || clean.isEmpty) return Stream.value([]);
+
+    return _diaryRef.where('uid', isEqualTo: uid).snapshots().map((snapshot) {
+      final items = snapshot.docs.map(_fromDoc).where((diary) {
+        final month = diary.month.toLowerCase();
+        final title = diary.title.toLowerCase();
+        final content = diary.content.toLowerCase();
+        final mood = diary.mood.toLowerCase();
+        final dateText = '${diary.date} $month ${diary.year}'.toLowerCase();
+
+        return title.contains(clean) ||
+            content.contains(clean) ||
+            mood.contains(clean) ||
+            dateText.contains(clean);
+      }).toList();
+
+      items.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return items;
+    });
+  }
+
+  Stream<List<DiaryModel>> getPublicDiaries({int limit = 50}) {
+    final sourceStream =
+        _diaryRef.where('isPublic', isEqualTo: true).snapshots();
+
+    final mirrorStream = _publicDiaryRef.snapshots();
+
+    return Stream.multi((controller) {
+      List<DiaryModel> sourceItems = [];
+      List<DiaryModel> mirrorItems = [];
+
+      void emitMerged() {
+        final merged = <String, DiaryModel>{};
+
+        for (final item in sourceItems) {
+          merged[item.id] = item;
+        }
+
+        for (final item in mirrorItems) {
+          merged[item.id] = item;
+        }
+
+        final items = merged.values.toList()
+          ..sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+
+        controller.add(
+          items.length > limit ? items.take(limit).toList() : items,
+        );
+      }
+
+      final sub1 = sourceStream.listen(
+        (snapshot) {
+          sourceItems = snapshot.docs.map(_fromDoc).toList();
+          emitMerged();
+        },
+        onError: controller.addError,
+      );
+
+      final sub2 = mirrorStream.listen(
+        (snapshot) {
+          mirrorItems = snapshot.docs.map(_fromDoc).toList();
+          emitMerged();
+        },
+        onError: controller.addError,
+      );
+
+      controller.onCancel = () async {
+        await sub1.cancel();
+        await sub2.cancel();
+      };
+    });
+  }
+
+  Stream<List<DiaryModel>> searchPublicDiaries(String query) {
+    final clean = query.trim().toLowerCase();
+    if (clean.isEmpty) return Stream.value([]);
+
+    return getPublicDiaries(limit: 999).map((items) {
+      final filtered = items.where((diary) {
+        final title = diary.title.toLowerCase();
+        final content = diary.content.toLowerCase();
+        final username = diary.username.toLowerCase();
+        final mood = diary.mood.toLowerCase();
+        final dateText = '${diary.date} ${diary.month} ${diary.year}'.toLowerCase();
+
+        return title.contains(clean) ||
+            content.contains(clean) ||
+            username.contains(clean) ||
+            mood.contains(clean) ||
+            dateText.contains(clean);
+      }).toList();
+
+      filtered.sort((a, b) => _entryDateTime(b).compareTo(_entryDateTime(a)));
+      return filtered;
+    });
+  }
+
+  Future<void> ensurePublicMirror(DiaryModel diary) async {
+    if (!diary.isPublic) return;
+
+    final publicRef = _publicDoc(diary.id);
+    final publicSnap = await publicRef.get();
+
+    if (publicSnap.exists) return;
+
+    final payload = {
+      'id': diary.id,
+      'uid': diary.uid,
+      'title': diary.title,
+      'content': diary.content,
+      'time': diary.time,
+      'date': diary.date,
+      'month': _normalizeMonth(diary.month),
+      'year': diary.year,
+      'isPublic': true,
+      'username': diary.username,
+      'mood': diary.mood,
+      'image_url': diary.imageUrl,
+      'profileImage': diary.profileImage,
+      'images': diary.images,
+      'likes': diary.likes,
+      'comments': diary.comments,
+      'likedBy': diary.likedBy,
+      'createdAt': Timestamp.fromDate(diary.createdAt),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'created_at': Timestamp.fromDate(diary.createdAt),
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+
+    await publicRef.set(payload, SetOptions(merge: true));
+  }
+
+  Future<void> toggleDiaryLike({
+    required String diaryId,
+    required bool isPublicDiary,
+  }) async {
+    final uid = currentUid;
+    if (uid == null) throw Exception('User belum login.');
+
+    final targetRef = isPublicDiary ? _publicDoc(diaryId) : _privateDoc(diaryId);
+    final targetSnap = await targetRef.get();
+
+    if (!targetSnap.exists || targetSnap.data() == null) {
+      throw Exception('Diary tidak ditemukan.');
+    }
+
+    final data = targetSnap.data()!;
+    final likedBy = List<String>.from(data['likedBy'] ?? []);
+    final alreadyLiked = likedBy.contains(uid);
+
+    final likeUpdate = {
+      'likedBy': alreadyLiked
+          ? FieldValue.arrayRemove([uid])
+          : FieldValue.arrayUnion([uid]),
+      'likes': FieldValue.increment(alreadyLiked ? -1 : 1),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+
+    final batch = _db.batch();
+    batch.set(targetRef, likeUpdate, SetOptions(merge: true));
+
+    final mirrorRef = isPublicDiary ? _privateDoc(diaryId) : _publicDoc(diaryId);
+    final mirrorSnap = await mirrorRef.get();
+    if (mirrorSnap.exists) {
+      batch.set(mirrorRef, likeUpdate, SetOptions(merge: true));
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> syncCommentCount({
+    required String diaryId,
+    required int count,
+  }) async {
+    final privateRef = _privateDoc(diaryId);
+    final publicRef = _publicDoc(diaryId);
+
+    final batch = _db.batch();
+
+    batch.set(privateRef, {
+      'comments': count,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final publicSnap = await publicRef.get();
+    if (publicSnap.exists) {
+      batch.set(publicRef, {
+        'comments': count,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    await batch.commit();
   }
 }

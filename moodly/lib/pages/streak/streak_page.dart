@@ -134,76 +134,82 @@ class StreakPage extends StatelessWidget {
         ),
       ];
 
-  List<_WeeklyReward> get _weeklyRewards => const [
-        _WeeklyReward(dayLabel: 'Hari 1', pointLabel: '+10'),
-        _WeeklyReward(dayLabel: 'Hari 2', pointLabel: '+10'),
-        _WeeklyReward(dayLabel: 'Hari 3', pointLabel: '+10'),
-        _WeeklyReward(dayLabel: 'Hari 4', pointLabel: '+10'),
-        _WeeklyReward(dayLabel: 'Hari 5', pointLabel: '+15'),
-        _WeeklyReward(dayLabel: 'Hari 6', pointLabel: '+20'),
-        _WeeklyReward(dayLabel: 'Hari 7', pointLabel: '+30', isToday: true),
-      ];
-
   List<_MissionSection> _buildSections(StreakState state) {
+    final moodDailyCompleted = state.moodDoneToday ? 1 : 0;
+    final diaryCompleted = state.diaryMissionCompletedCount;
+    final affirmationCompleted = state.affirmationDoneToday ? 1 : 0;
+
     return [
       _MissionSection(
         title: 'Mood',
-        pointsLabel: '+${StreakService.moodPoints}',
-        progressLabel: state.moodDoneToday ? '1/1' : '0/1',
+        pointsLabel:
+            '+${StreakService.moodPoints + StreakService.moodInsightPoints}',
+        progressLabel: '$moodDailyCompleted/1',
         accent: const Color(0xFFF6D2D7),
         accentSoft: const Color(0xFFFFF1F4),
         chipColor: const Color(0xFFF3B6BF),
         iconBg: const Color(0xFFFFFAFB),
         icon: Icons.sentiment_satisfied_alt_rounded,
         subtitle: 'Trigger utama streak harianmu',
-        footerLabel:
-            state.moodDoneToday ? 'Mood hari ini sudah selesai' : 'Isi mood sekarang',
+        footerLabel: state.moodDoneToday
+            ? (state.moodInsightDoneThisMonth
+                ? 'Misi mood selesai • insight bulanan sudah terbuka'
+                : 'Misi mood harian selesai')
+            : 'Misi mood aktif otomatis',
         footerIcon: state.moodDoneToday
             ? Icons.check_circle_rounded
-            : Icons.arrow_forward_rounded,
+            : Icons.timelapse_rounded,
         action: _MissionAction.mood,
+        autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Isi mood hari ini',
+            title: 'Isi mood hari ini (+${StreakService.moodPoints})',
             isDone: state.moodDoneToday,
           ),
-          const _MissionTask(
-            title: 'Lihat insight bulanan (segera hadir)',
-            isDone: false,
+          _MissionTask(
+            title:
+                'Lihat insight bulanan (opsional, +${StreakService.moodInsightPoints})',
+            isDone: state.moodInsightDoneThisMonth,
           ),
         ],
       ),
       _MissionSection(
         title: 'Diary Online',
-        pointsLabel: '+${StreakService.diaryPoints}',
-        progressLabel: state.diaryDoneToday ? '1/1' : '0/1',
+        pointsLabel:
+            '+${StreakService.diaryPoints + StreakService.diaryInteractionPoints}',
+        progressLabel: '$diaryCompleted/2',
         accent: const Color(0xFFE8F3D6),
         accentSoft: const Color(0xFFF8FDEB),
         chipColor: const Color(0xFFA9D78D),
         iconBg: const Color(0xFFFFFEFA),
         icon: Icons.eco_rounded,
         subtitle: 'Luapkan isi hati dengan lebih lega',
-        footerLabel:
-            state.diaryDoneToday ? 'Bonus diary sudah diklaim' : 'Klaim bonus diary',
-        footerIcon: state.diaryDoneToday
+        footerLabel: diaryCompleted == 2
+            ? 'Semua misi diary online selesai'
+            : diaryCompleted == 1
+                ? '1 dari 2 misi diary online selesai'
+                : 'Misi diary online aktif otomatis',
+        footerIcon: diaryCompleted == 2
             ? Icons.check_circle_rounded
-            : Icons.arrow_forward_rounded,
+            : Icons.timelapse_rounded,
         action: _MissionAction.diary,
+        autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Klaim bonus diary hari ini',
+            title: 'Tulis diary (+${StreakService.diaryPoints})',
             isDone: state.diaryDoneToday,
           ),
-          const _MissionTask(
-            title: 'Reaksi / komentar diary lain (segera hadir)',
-            isDone: false,
+          _MissionTask(
+            title:
+                'Berikan reaksi dan komentar pada diary publik seseorang (+${StreakService.diaryInteractionPoints})',
+            isDone: state.publicDiaryInteractionDoneToday,
           ),
         ],
       ),
       _MissionSection(
         title: 'Afirmasi',
         pointsLabel: '+${StreakService.affirmationPoints}',
-        progressLabel: state.affirmationDoneToday ? '1/1' : '0/1',
+        progressLabel: '$affirmationCompleted/1',
         accent: const Color(0xFFD6F0EA),
         accentSoft: const Color(0xFFF0FBF8),
         chipColor: const Color(0xFFA7DDD1),
@@ -211,20 +217,21 @@ class StreakPage extends StatelessWidget {
         icon: Icons.local_florist_rounded,
         subtitle: 'Sempatkan jeda untuk menyapa dirimu',
         footerLabel: state.affirmationDoneToday
-            ? 'Bonus afirmasi sudah diklaim'
-            : 'Klaim bonus afirmasi',
+            ? 'Bonus afirmasi berhasil diklaim'
+            : 'Misi afirmasi aktif otomatis',
         footerIcon: state.affirmationDoneToday
             ? Icons.check_circle_rounded
-            : Icons.arrow_forward_rounded,
+            : Icons.timelapse_rounded,
         action: _MissionAction.affirmation,
+        autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Klaim bonus afirmasi hari ini',
+            title: 'Baca 5 afirmasi hari ini (${state.affirmationReadProgressToday}/5)',
             isDone: state.affirmationDoneToday,
           ),
-          const _MissionTask(
-            title: 'Bagikan 1 afirmasi (segera hadir)',
-            isDone: false,
+          _MissionTask(
+            title: 'Bagikan 1 afirmasi',
+            isDone: state.affirmationSharedToday,
           ),
         ],
       ),
@@ -235,6 +242,7 @@ class StreakPage extends StatelessWidget {
     int count = 0;
     if (state.moodDoneToday) count++;
     if (state.diaryDoneToday) count++;
+    if (state.publicDiaryInteractionDoneToday) count++;
     if (state.affirmationDoneToday) count++;
     if (state.comboDoneToday) count++;
     return count;
@@ -243,10 +251,48 @@ class StreakPage extends StatelessWidget {
   int _earnedTodayPoints(StreakState state) {
     int total = 0;
     if (state.moodDoneToday) total += StreakService.moodPoints;
+    if (state.moodInsightClaimedToday) {
+      total += StreakService.moodInsightPoints;
+    }
     if (state.diaryDoneToday) total += StreakService.diaryPoints;
+    if (state.publicDiaryInteractionClaimedToday) {
+      total += StreakService.diaryInteractionPoints;
+    }
     if (state.affirmationDoneToday) total += StreakService.affirmationPoints;
-    if (state.comboDoneToday) total += StreakService.comboPoints;
+    if (state.comboDoneToday) total += _todayWeeklyBonus(state);
+    if (state.adBonusClaimedToday) total += StreakService.adBonusPoints;
     return total;
+  }
+
+  int _todayWeeklyBonus(StreakState state) {
+    final day = state.moodDoneToday
+        ? StreakService.weeklyDayForStreak(state.currentStreak)
+        : _activeWeeklyRewardDay(state);
+
+    return StreakService.weeklyBonusForDay(day);
+  }
+
+  int _activeWeeklyRewardDay(StreakState state) {
+    if (state.moodDoneToday) {
+      return state.comboDoneToday
+          ? 0
+          : StreakService.weeklyDayForStreak(state.currentStreak);
+    }
+
+    if (state.currentStreak <= 0) return 1;
+
+    final lastDay = StreakService.weeklyDayForStreak(state.currentStreak);
+    return lastDay == 7 ? 1 : lastDay + 1;
+  }
+
+  Set<int> _visibleWeeklyClaimedDays(StreakState state) {
+    if (!state.moodDoneToday &&
+        state.currentStreak > 0 &&
+        StreakService.weeklyDayForStreak(state.currentStreak) == 7) {
+      return <int>{};
+    }
+
+    return state.weeklyRewardClaimedDays.toSet();
   }
 
   bool _comboReady(StreakState state) {
@@ -287,6 +333,23 @@ class StreakPage extends StatelessWidget {
     if (streak < 30) return 'Menjaga Diri dengan Setia';
     if (streak < 120) return 'Tumbuh dengan Tenang';
     return 'Semua badge terbuka';
+  }
+
+  String _badgeUnlockSubtitle(String badgeId) {
+    switch (badgeId) {
+      case 'milestone_3':
+        return 'Tiga hari pertama selalu paling berat. Kamu berhasil lewatin.';
+      case 'milestone_7':
+        return 'Satu minggu hadir untuk diri sendiri. Itu bukan hal kecil.';
+      case 'milestone_14':
+        return 'Dua minggu konsisten. Moodly bangga sama progresmu.';
+      case 'milestone_30':
+        return 'Sebulan penuh kamu tetap kembali. Itu kuat banget.';
+      case 'milestone_120':
+        return 'Empat bulan konsisten. Ini pencapaian besar yang layak dirayakan.';
+      default:
+        return 'Badge baru berhasil terbuka. Rayakan langkah kecilmu hari ini.';
+    }
   }
 
   List<String> _eligibleBadgeIdsFor(int streak) {
@@ -420,6 +483,21 @@ class StreakPage extends StatelessWidget {
     }
   }
 
+  Future<void> _showAdMissionInfo(BuildContext context, StreakState state) async {
+    await showStreakFeedbackPopup(
+      context,
+      title: state.adBonusDoneToday
+          ? 'Bonus iklan sudah diklaim'
+          : 'Misi iklan bonus',
+      message: state.adBonusDoneToday
+          ? 'Hari ini kamu sudah menyelesaikan misi bonus iklan dan mendapatkan +${StreakService.adBonusPoints} poin.'
+          : 'Tonton 2 rewarded ads di fitur afirmasi untuk membuka 5 slide tambahan. Setelah 2 iklan pertama hari ini, bonus +${StreakService.adBonusPoints} poin akan masuk otomatis.',
+      icon: Icons.ondemand_video_rounded,
+      accent: const Color(0xFFE29A3A),
+      buttonLabel: 'Oke',
+    );
+  }
+
   void _showBadgeUnlockedCelebration(BuildContext context, String badgeId) {
     final asset = _badgeUnlockedAssets[badgeId];
     final title = switch (badgeId) {
@@ -430,86 +508,227 @@ class StreakPage extends StatelessWidget {
       'milestone_120' => 'Tumbuh dengan Tenang',
       _ => 'Badge Baru',
     };
+    final subtitle = _badgeUnlockSubtitle(badgeId);
+    final textTheme = Theme.of(context).textTheme;
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Badge Unlock',
-      barrierColor: Colors.black.withOpacity(0.70),
+      barrierColor: Colors.black.withOpacity(0.74),
+      transitionDuration: const Duration(milliseconds: 260),
       pageBuilder: (_, __, ___) {
         return Material(
           color: Colors.transparent,
-          child: Stack(
-            children: [
-              const Positioned(
-                top: 120,
-                left: 40,
-                child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 30),
-              ),
-              const Positioned(
-                top: 190,
-                right: 48,
-                child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26),
-              ),
-              const Positioned(
-                top: 280,
-                left: 56,
-                child: Icon(Icons.star_rounded, color: Colors.white, size: 20),
-              ),
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 26),
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                  decoration: BoxDecoration(
-                    color: _card,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: _softShadow,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Kamu memperoleh milestone badge baru!',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontSize: 24,
-                              color: _textDark,
-                            ),
-                      ),
-                      const SizedBox(height: 14),
-                      if (asset != null)
-                        Image.asset(asset, width: 210, fit: BoxFit.contain),
-                      const SizedBox(height: 12),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontSize: 18,
-                              color: _textDark,
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _green,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('Lihat semua badge'),
+          child: SafeArea(
+            child: Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    bottom: 150,
+                    child: Container(
+                      width: 260,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFFFFF5B8).withOpacity(0.95),
+                            const Color(0xFFFFE79E).withOpacity(0.55),
+                            Colors.transparent,
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  const Positioned(
+                    top: 120,
+                    left: 54,
+                    child: _BadgeSparkle(
+                      icon: Icons.auto_awesome_rounded,
+                      size: 24,
+                      color: Color(0xFFFFE38A),
+                      angle: -0.18,
+                    ),
+                  ),
+                  const Positioned(
+                    top: 170,
+                    right: 58,
+                    child: _BadgeSparkle(
+                      icon: Icons.auto_awesome_rounded,
+                      size: 18,
+                      color: Color(0xFFFFC7D2),
+                      angle: 0.2,
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 255,
+                    left: 66,
+                    child: _BadgeSparkle(
+                      icon: Icons.star_rounded,
+                      size: 16,
+                      color: Color(0xFFFFF2B3),
+                      angle: 0.0,
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 230,
+                    right: 70,
+                    child: _BadgeSparkle(
+                      icon: Icons.star_rounded,
+                      size: 14,
+                      color: Color(0xFFFFDDE4),
+                      angle: -0.1,
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                    decoration: BoxDecoration(
+                      color: _card,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: const Color(0xFFFFE8BE),
+                        width: 1.3,
+                      ),
+                      boxShadow: [
+                        ..._softShadow,
+                        BoxShadow(
+                          color: const Color(0xFFFFE7A6).withOpacity(0.22),
+                          blurRadius: 28,
+                          spreadRadius: 6,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 62,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5EEDC),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Milestone badge baru!',
+                          textAlign: TextAlign.center,
+                          style: textTheme.headlineLarge?.copyWith(
+                            fontSize: 20,
+                            height: 1.28,
+                            color: _textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Kamu berhasil membuka hadiah streak baru',
+                          textAlign: TextAlign.center,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            height: 1.45,
+                            color: _textSoft,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 220,
+                              height: 220,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    const Color(0xFFFFF7C7).withOpacity(0.95),
+                                    const Color(0xFFFFE6A8).withOpacity(0.55),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (asset != null)
+                              Image.asset(
+                                asset,
+                                width: 188,
+                                fit: BoxFit.contain,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontSize: 21,
+                            color: _textDark,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: _textSoft,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(
+                              Icons.workspace_premium_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Lihat semua badge',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.88, end: 1).animate(curved),
+            child: child,
           ),
         );
       },
@@ -1498,14 +1717,16 @@ class StreakPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _buildWeeklyRewardsGrid(context),
+          _buildWeeklyRewardsGrid(context, state),
         ],
       ),
     );
   }
 
-  Widget _buildWeeklyRewardsGrid(BuildContext context) {
+  Widget _buildWeeklyRewardsGrid(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
+    final claimedDays = _visibleWeeklyClaimedDays(state);
+    final activeDay = _activeWeeklyRewardDay(state);
 
     return Container(
       width: double.infinity,
@@ -1540,48 +1761,61 @@ class StreakPage extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: _weeklyRewards
-                .map((item) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: Column(
-                          children: [
-                            Text(
-                              item.dayLabel.replaceAll('Hari ', 'H'),
-                              style: textTheme.bodySmall?.copyWith(
-                                fontSize: 10,
-                                color: _textDark,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              width: item.isToday ? 40 : 36,
-                              height: item.isToday ? 40 : 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: item.isToday ? _pink : _pink.withOpacity(0.72),
-                                boxShadow: _softShadow,
-                                border: item.isToday
-                                    ? Border.all(color: Colors.white, width: 2)
-                                    : null,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  item.pointLabel,
+            children: List.generate(7, (index) {
+              final day = index + 1;
+              final isClaimed = claimedDays.contains(day);
+              final isActive = !isClaimed && activeDay == day;
+              final rewardLabel = '+${StreakService.weeklyBonusForDay(day)}';
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Column(
+                    children: [
+                      Text(
+                        'H$day',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: _textDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: isActive ? 40 : 36,
+                        height: isActive ? 40 : 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isClaimed
+                              ? _green
+                              : (isActive ? _pink : _pink.withOpacity(0.72)),
+                          boxShadow: _softShadow,
+                          border: isActive
+                              ? Border.all(color: Colors.white, width: 2)
+                              : null,
+                        ),
+                        child: Center(
+                          child: isClaimed
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  rewardLabel,
                                   style: textTheme.bodySmall?.copyWith(
                                     fontSize: 10,
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    ))
-                .toList(),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -1679,9 +1913,54 @@ class StreakPage extends StatelessWidget {
     );
   }
 
+  Widget _buildAdBonusBanner(BuildContext context, StreakState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final progress = state.adWatchProgressToday;
+    final done = state.adBonusDoneToday;
+
+    return GestureDetector(
+      onTap: () => _showAdMissionInfo(context, state),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: done ? const Color(0xFFEAF6DA) : const Color(0xFFFFF4E7),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: done ? const Color(0xFF9FD27D) : const Color(0xFFE7B35C),
+            width: 1.1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle_rounded : Icons.ondemand_video_rounded,
+              color: done ? _green : const Color(0xFFE29A3A),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                done
+                    ? 'Misi iklan bonus selesai • +${StreakService.adBonusPoints} poin sudah masuk'
+                    : 'Misi iklan bonus ${progress}/${StreakService.adBonusTargetViews} • tonton 2 iklan di afirmasi untuk bonus +${StreakService.adBonusPoints} poin',
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMissionHeader(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
-    const totalTasks = 4;
+    const totalTasks = 5;
     final completed = _completedTodayCount(state);
     final progress = completed / totalTasks;
     final todayPoints = _earnedTodayPoints(state);
@@ -1789,33 +2068,7 @@ class StreakPage extends StatelessWidget {
           const SizedBox(height: 14),
           _buildComboBanner(context, state),
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF4E7),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE7B35C), width: 1.1),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.ondemand_video_rounded,
-                    color: Color(0xFFE29A3A), size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Misi iklan bonus 2x akan ditambahkan di sini. Reward target: +30 poin.',
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontSize: 12,
-                      height: 1.45,
-                      color: _textDark,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildAdBonusBanner(context, state),
         ],
       ),
     );
@@ -1992,39 +2245,36 @@ class StreakPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () => _handleMissionAction(context, section.action),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.88),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: section.accent.withOpacity(0.95),
-                      width: 1.1,
-                    ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.88),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: section.accent.withOpacity(0.95),
+                    width: 1.1,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        section.footerIcon,
-                        size: 18,
-                        color: _green,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          section.footerLabel,
-                          style: textTheme.bodyMedium?.copyWith(
-                            fontSize: 12,
-                            color: _textDark,
-                            fontWeight: FontWeight.w800,
-                          ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      section.footerIcon,
+                      size: 18,
+                      color: _green,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        section.footerLabel,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          color: _textDark,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2457,6 +2707,7 @@ class _MissionSection {
   final IconData footerIcon;
   final _MissionAction action;
   final List<_MissionTask> tasks;
+  final bool autoTracked;
 
   const _MissionSection({
     required this.title,
@@ -2472,6 +2723,7 @@ class _MissionSection {
     required this.footerIcon,
     required this.action,
     required this.tasks,
+    required this.autoTracked,
   });
 }
 
@@ -2559,6 +2811,40 @@ class _SpotlightStep {
     required this.title,
     required this.desc,
   });
+}
+
+class _BadgeSparkle extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  final Color color;
+  final double angle;
+
+  const _BadgeSparkle({
+    required this.icon,
+    required this.size,
+    required this.color,
+    required this.angle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: angle,
+      child: Container(
+        width: size + 10,
+        height: size + 10,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.06),
+        ),
+        child: Icon(
+          icon,
+          size: size,
+          color: color,
+        ),
+      ),
+    );
+  }
 }
 
 class _SpotlightPainter extends CustomPainter {

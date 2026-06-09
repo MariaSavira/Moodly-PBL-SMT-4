@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/reward_service.dart';
 import '../../widgets/streak/streak_feedback_popup.dart';
+import '../afirmasi/widgets/cute_top_popup.dart';
 
 enum _RewardSectionTab { reguler, premium }
 
@@ -38,6 +39,10 @@ class _RewardPageState extends State<RewardPage> {
       'giftPremium': 'Hadiahkan Premium',
       'understood': 'Mengerti',
       'ok': 'Sip',
+      'redeemPremiumSelfSuccess': 'Premium 1 bulan berhasil diaktifkan untuk akunmu.',
+      'redeemPremiumGiftSuccess': 'Premium 1 bulan berhasil dikirim ke user tujuan.',
+      'redeemPremiumPartial':
+          'Poin sudah diproses, tapi aktivasi premium belum sempurna. Cek ulang data user atau service premium.',
     },
     'en': {
       'header': 'Rewards',
@@ -49,6 +54,10 @@ class _RewardPageState extends State<RewardPage> {
       'giftPremium': 'Gift Premium',
       'understood': 'Understood',
       'ok': 'Got it',
+      'redeemPremiumSelfSuccess': '1 month premium has been activated for your account.',
+      'redeemPremiumGiftSuccess': '1 month premium has been sent to the selected user.',
+      'redeemPremiumPartial':
+      'The points were processed, but premium activation did not finish properly. Please recheck the user data or premium service.',
     },
   };
 
@@ -197,24 +206,18 @@ class _RewardPageState extends State<RewardPage> {
         _currentPoints = (_currentPoints - item.price).clamp(0, 9999999);
       });
 
-      await showStreakFeedbackPopup(
+      showCuteTopPopup(
         context,
-        title: 'Hadiah berhasil ditukar',
+        title: 'Berhasil',
         message: result.message,
-        icon: item.icon,
-        accent: item.iconColor,
-        chipLabel: '-${item.price} poin',
-        secondaryChipLabel: item.title,
-        buttonLabel: 'Sip',
+        type: CutePopupType.success,
       );
     } else {
-      await showStreakFeedbackPopup(
+      showCuteTopPopup(
         context,
-        title: 'Penukaran gagal',
+        title: 'Gagal',
         message: result.message,
-        icon: Icons.info_outline_rounded,
-        accent: const Color(0xFFE58696),
-        buttonLabel: 'Mengerti',
+        type: CutePopupType.error,
       );
     }
   }

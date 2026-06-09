@@ -6,8 +6,12 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'image_preview_page.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 import '../pages.dart';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
+
+const String _prefLanguageKey = 'moodly_settings_language_code';
 
 class ChatAnonimPage extends StatefulWidget {
   final String roomId;
@@ -28,11 +32,13 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
   String chatPartnerName = 'Teman Chat';
   String chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
+  String? chatPartnerUid;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _roomSubscription;
   bool _hasForcedExit = false;
 
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userWarningSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _userWarningSubscription;
   bool _isShowingWarningPopup = false;
 
   Timer? _idleTimer;
@@ -46,6 +52,189 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   String? editingOriginalText;
 
   Timer? _typingTimer;
+  String _languageCode = 'id';
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'chatPartner': 'Teman Chat',
+      'waitingFriend': 'Menunggu Teman',
+      'youConnectedWith': 'Kamu terhubung dengan ',
+      'talkPolitely': 'Berbincang dengan sopan, ',
+      'respectOthers': 'hormati sesama',
+      'startTelling': 'Mulailah Bercerita!',
+      'today': 'Hari ini',
+      'infoConversation': 'Info percakapan',
+      'roomAutoClose':
+          'Room akan tertutup otomatis setelah 5 menit tanpa aktivitas.',
+      'takeABreath': 'Tarik napas dulu...',
+      'speakPolitely': 'Harap berbicara dengan lebih sopan.',
+      'conversationEnded': 'Percakapan berakhir',
+      'roomUnavailable': 'Room chat sudah tidak tersedia lagi.',
+      'friendEndedChat': 'Teman chat telah mengakhiri percakapan.',
+      'autoRoomClosed': 'Room ditutup otomatis',
+      'idleClosed':
+          'Percakapan berakhir karena tidak ada aktivitas selama 5 menit.',
+      'messageUpdated': 'Pesan diperbarui',
+      'messageUpdatedSaved': 'Perubahan pesan sudah disimpan.',
+      'messageDeleted': 'Pesan dihapus',
+      'photo': 'Foto',
+      'photoSeen': 'Foto sudah dilihat',
+      'selectReportReason': 'Pilih alasan laporan',
+      'continue': 'Lanjutkan',
+      'reportQuestion': 'Laporkan pesan ini?',
+      'reportQuestionDesc':
+          'Pesan yang kamu pilih akan dikirim untuk ditinjau. Kamu juga bisa menghentikan percakapan setelahnya.',
+      'cancel': 'Batal',
+      'report': 'Laporkan',
+      'reportSuccessTitle': 'Laporan berhasil dikirim',
+      'reportSuccessDesc':
+          'Jika kamu merasa tidak nyaman, kamu bisa menghentikan percakapan sekarang.',
+      'continueChat': 'Lanjutkan',
+      'stopChat': 'Berhenti Chat',
+      'reportSent': 'Chat berhasil dilaporkan',
+      'reportSentDesc':
+          'Pesan yang kamu pilih sudah dikirim untuk ditinjau.',
+      'selectedForReport': 'pesan dipilih untuk dilaporkan',
+      'updateMessageHint': 'Perbarui pesanmu...',
+      'messageHint': 'Bagaimana kabarmu?',
+      'save': 'Simpan',
+      'send': 'Kirim',
+      'stop': 'Berhenti',
+      'edited': 'diedit',
+      'reply': 'Balas',
+      'reportShort': 'Lapor',
+      'editMessage': 'Mengedit pesan',
+      'selectPhotoMode': 'Pilih Mode Foto',
+      'normal': 'Biasa',
+      'normalDesc': 'Foto bisa dilihat tanpa batas selama room aktif',
+      'once': 'Sekali lihat',
+      'onceDesc': 'Foto hanya bisa dibuka 1 kali',
+      'twice': 'Dua kali lihat',
+      'twiceDesc': 'Foto hanya bisa dibuka 2 kali',
+      'reportTag1': 'Kata-kata kasar',
+      'reportReason1':
+          'Pesan mengandung hinaan, makian, atau bahasa menyerang.',
+      'reportTag2': 'SARA',
+      'reportReason2':
+          'Pesan mengandung unsur suku, agama, ras, atau antargolongan.',
+      'reportTag3': 'Spam',
+      'reportReason3':
+          'Pesan dikirim berulang, mengganggu, atau tidak relevan.',
+      'reportTag4': 'Konten seksual',
+      'reportReason4':
+          'Pesan mengandung ajakan, unsur, atau konteks seksual yang tidak pantas.',
+      'reportTag5': 'Ancaman',
+      'reportReason5':
+          'Pesan mengandung ancaman, intimidasi, atau membuat tidak aman.',
+      'reportTag6': 'Lainnya',
+      'reportReason6':
+          'Konten bermasalah lain yang tidak masuk kategori di atas.',
+    },
+    'en': {
+      'chatPartner': 'Chat Partner',
+      'waitingFriend': 'Waiting for a Friend',
+      'youConnectedWith': 'You are connected with ',
+      'talkPolitely': 'Talk politely, ',
+      'respectOthers': 'respect others',
+      'startTelling': 'Start Sharing!',
+      'today': 'Today',
+      'infoConversation': 'Conversation info',
+      'roomAutoClose':
+          'The room will close automatically after 5 minutes of inactivity.',
+      'takeABreath': 'Take a breath...',
+      'speakPolitely': 'Please speak more politely.',
+      'conversationEnded': 'Conversation ended',
+      'roomUnavailable': 'The chat room is no longer available.',
+      'friendEndedChat': 'Your chat partner ended the conversation.',
+      'autoRoomClosed': 'Room closed automatically',
+      'idleClosed':
+          'The conversation ended because there was no activity for 5 minutes.',
+      'messageUpdated': 'Message updated',
+      'messageUpdatedSaved': 'Your message changes have been saved.',
+      'messageDeleted': 'Message deleted',
+      'photo': 'Photo',
+      'photoSeen': 'Photo already viewed',
+      'selectReportReason': 'Choose a report reason',
+      'continue': 'Continue',
+      'reportQuestion': 'Report this message?',
+      'reportQuestionDesc':
+          'The selected messages will be sent for review. You can also stop the conversation afterwards.',
+      'cancel': 'Cancel',
+      'report': 'Report',
+      'reportSuccessTitle': 'Report submitted',
+      'reportSuccessDesc':
+          'If you feel uncomfortable, you can stop the conversation now.',
+      'continueChat': 'Continue',
+      'stopChat': 'Stop Chat',
+      'reportSent': 'Chat reported',
+      'reportSentDesc':
+          'The selected messages have been sent for review.',
+      'selectedForReport': 'messages selected for report',
+      'updateMessageHint': 'Update your message...',
+      'messageHint': 'How are you feeling?',
+      'save': 'Save',
+      'send': 'Send',
+      'stop': 'Stop',
+      'edited': 'edited',
+      'reply': 'Reply',
+      'reportShort': 'Report',
+      'editMessage': 'Editing message',
+      'selectPhotoMode': 'Choose Photo Mode',
+      'normal': 'Normal',
+      'normalDesc': 'The photo can be viewed freely while the room is active',
+      'once': 'View once',
+      'onceDesc': 'The photo can only be opened 1 time',
+      'twice': 'View twice',
+      'twiceDesc': 'The photo can only be opened 2 times',
+      'reportTag1': 'Harsh language',
+      'reportReason1':
+          'The message contains insults, profanity, or attacking language.',
+      'reportTag2': 'Discrimination',
+      'reportReason2':
+          'The message contains ethnic, religious, racial, or group-based attacks.',
+      'reportTag3': 'Spam',
+      'reportReason3':
+          'The message is repetitive, disruptive, or irrelevant.',
+      'reportTag4': 'Sexual content',
+      'reportReason4':
+          'The message contains inappropriate sexual context, invitation, or content.',
+      'reportTag5': 'Threat',
+      'reportReason5':
+          'The message contains threats, intimidation, or makes others feel unsafe.',
+      'reportTag6': 'Other',
+      'reportReason6':
+          'Other problematic content that does not fit the categories above.',
+    },
+  };
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
+
+  List<Map<String, String>> get _reportOptions => [
+        {
+          'tag': _t('reportTag1'),
+          'reason': _t('reportReason1'),
+        },
+        {
+          'tag': _t('reportTag2'),
+          'reason': _t('reportReason2'),
+        },
+        {
+          'tag': _t('reportTag3'),
+          'reason': _t('reportReason3'),
+        },
+        {
+          'tag': _t('reportTag4'),
+          'reason': _t('reportReason4'),
+        },
+        {
+          'tag': _t('reportTag5'),
+          'reason': _t('reportReason5'),
+        },
+        {
+          'tag': _t('reportTag6'),
+          'reason': _t('reportReason6'),
+        },
+      ];
 
   String _formatMessageTime(Timestamp? timestamp) {
     if (timestamp == null) return '';
@@ -55,6 +244,16 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final minute = dateTime.minute.toString().padLeft(2, '0');
 
     return '$hour.$minute';
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLanguage = prefs.getString(_prefLanguageKey);
+
+    if (!mounted) return;
+    setState(() {
+      _languageCode = savedLanguage == 'en' ? 'en' : 'id';
+    });
   }
 
   void _showTopInfo({
@@ -78,8 +277,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       if (!mounted) return;
 
       _showTopInfo(
-        title: 'Info percakapan',
-        message: 'Room akan tertutup otomatis setelah 5 menit tanpa aktivitas.',
+        title: _t('infoConversation'),
+        message: _t('roomAutoClose'),
         type: CutePopupType.info,
       );
     });
@@ -120,9 +319,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         _isShowingWarningPopup = true;
 
         _showTopInfo(
-          title: 'Tarik napas dulu...',
-          message: data['warningMessage'] ??
-              'Harap berbicara dengan lebih sopan.',
+          title: _t('takeABreath'),
+          message: data['warningMessage'] ?? _t('speakPolitely'),
           type: CutePopupType.warning,
         );
 
@@ -138,39 +336,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   bool isSelectingReport = false;
 
   final Set<String> selectedReportMessageIds = {};
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> selectedReportMessages = [];
 
-  final List<QueryDocumentSnapshot<Map<String, dynamic>>>
-      selectedReportMessages = [];
-  
   String? _selectedReportReason;
   String? _selectedReportTag;
-
-  final List<Map<String, String>> _reportOptions = const [
-    {
-      'tag': 'Kata-kata kasar',
-      'reason': 'Pesan mengandung hinaan, makian, atau bahasa menyerang.',
-    },
-    {
-      'tag': 'SARA',
-      'reason': 'Pesan mengandung unsur suku, agama, ras, atau antargolongan.',
-    },
-    {
-      'tag': 'Spam',
-      'reason': 'Pesan dikirim berulang, mengganggu, atau tidak relevan.',
-    },
-    {
-      'tag': 'Konten seksual',
-      'reason': 'Pesan mengandung ajakan, unsur, atau konteks seksual yang tidak pantas.',
-    },
-    {
-      'tag': 'Ancaman',
-      'reason': 'Pesan mengandung ancaman, intimidasi, atau membuat tidak aman.',
-    },
-    {
-      'tag': 'Lainnya',
-      'reason': 'Konten bermasalah lain yang tidak masuk kategori di atas.',
-    },
-  ];
 
   Widget buildSystemMessage({
     required String prefix,
@@ -194,7 +363,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             text: TextSpan(
               style: const TextStyle(
                 fontSize: 12,
-                height: 1.55, // 🔥 ini bikin rapi kayak "Hari ini"
+                height: 1.55,
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'OpenSans',
@@ -244,7 +413,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
-    Widget _typingBubble() {
+  Widget _typingBubble() {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -275,10 +444,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         color: const Color(0xFFF8BDC0),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: const Text(
-        'Room akan tertutup otomatis setelah 5 menit tanpa aktivitas.',
+      child: Text(
+        _t('roomAutoClose'),
         textAlign: TextAlign.center,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 12,
           height: 1.45,
           color: Colors.white,
@@ -360,8 +529,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     await _chatService.reportMessages(
       messages: selectedReportMessages,
-      reportTag: _selectedReportTag ?? 'Lainnya',
-      reportReason: _selectedReportReason ?? 'Konten bermasalah.',
+      reportTag: _selectedReportTag ?? _t('reportTag6'),
+      reportReason: _selectedReportReason ?? _t('reportReason6'),
     );
 
     if (!mounted) return;
@@ -375,8 +544,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     });
 
     _showTopInfo(
-      title: 'Chat berhasil dilaporkan',
-      message: 'Pesan yang kamu pilih sudah dikirim untuk ditinjau.',
+      title: _t('reportSent'),
+      message: _t('reportSentDesc'),
       type: CutePopupType.warning,
     );
 
@@ -400,16 +569,12 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     if (data['hasWarning'] == true && mounted) {
       _showTopInfo(
-        title: 'Tarik napas dulu...',
-        message: data['warningMessage'] ??
-            'Harap berbicara dengan lebih sopan.',
+        title: _t('takeABreath'),
+        message: data['warningMessage'] ?? _t('speakPolitely'),
         type: CutePopupType.warning,
       );
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'hasWarning': false,
       }, SetOptions(merge: true));
     }
@@ -422,6 +587,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   }
 
   Future<void> initChat() async {
+    await _loadLanguagePreference();
+
     final id = widget.roomId;
 
     if (!mounted) return;
@@ -456,7 +623,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     if (participants is! List || participants.isEmpty) {
       setState(() {
-        chatPartnerName = 'Teman Chat';
+        chatPartnerName = _t('chatPartner');
         chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
       });
       return;
@@ -469,11 +636,13 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     if (otherUid == null) {
       setState(() {
-        chatPartnerName = 'Menunggu Teman';
+        chatPartnerName = _t('waitingFriend');
         chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
       });
       return;
     }
+
+    chatPartnerUid = otherUid.toString();
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -483,7 +652,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final userData = userDoc.data();
 
     setState(() {
-      chatPartnerName = userData?['nickname'] ?? 'Teman Chat';
+      chatPartnerName = userData?['nickname'] ?? _t('chatPartner');
       chatPartnerAvatar =
           userData?['avatarId'] ?? 'assets/profile_pic/PP_default.jpg';
     });
@@ -497,8 +666,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     _roomSubscription = _chatService.roomStream(roomId!).listen((doc) async {
       if (!doc.exists) {
         await _forceCloseChat(
-          title: 'Percakapan berakhir',
-          message: 'Room chat sudah tidak tersedia lagi.',
+          title: _t('conversationEnded'),
+          message: _t('roomUnavailable'),
           type: CutePopupType.warning,
         );
         return;
@@ -510,8 +679,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
       if (participants.length < 2 || status == 'closed') {
         await _forceCloseChat(
-          title: 'Percakapan berakhir',
-          message: 'Teman chat telah mengakhiri percakapan.',
+          title: _t('conversationEnded'),
+          message: _t('friendEndedChat'),
           type: CutePopupType.warning,
         );
       }
@@ -565,8 +734,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       });
 
       _showTopInfo(
-        title: 'Pesan diperbarui',
-        message: 'Perubahan pesan sudah disimpan.',
+        title: _t('messageUpdated'),
+        message: _t('messageUpdatedSaved'),
         type: CutePopupType.success,
       );
 
@@ -633,11 +802,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
-    void _showMyMessageActions(
+  void _showMyMessageActions(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
-    final text = data['text'] ?? '';
     final type = data['type'] ?? 'text';
 
     if (type != 'text') return;
@@ -654,7 +822,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           expand: false,
           builder: (context, scrollController) {
             return Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
@@ -665,7 +833,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                     width: 46,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Color(0xFFE5E5E0),
+                      color: const Color(0xFFE5E5E0),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -676,15 +844,14 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                       padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
                       children: [
                         Text(
-                          'Pilih alasan laporan',
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                fontSize: 22,
-                                color: Colors.black,
-                              ),
+                          _t('selectReportReason'),
+                          style:
+                              Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    fontSize: 22,
+                                    color: Colors.black,
+                                  ),
                         ),
                         const SizedBox(height: 18),
-
-                        // semua option alasan laporan taruh di sini
                       ],
                     ),
                   ),
@@ -735,7 +902,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
-    void _showOtherUserMessageActions(
+  void _showOtherUserMessageActions(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     showModalBottomSheet(
@@ -761,7 +928,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             children: [
               _actionSheetItem(
                 icon: Icons.reply_rounded,
-                label: 'Balas',
+                label: _t('reply'),
                 iconColor: const Color(0xFF6FB65B),
                 onTap: () {
                   Navigator.pop(context);
@@ -770,7 +937,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
               ),
               _actionSheetItem(
                 icon: Icons.warning_rounded,
-                label: 'Lapor',
+                label: _t('reportShort'),
                 iconColor: const Color(0xFFE36A77),
                 onTap: () {
                   Navigator.pop(context);
@@ -806,8 +973,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       if (!roomDoc.exists) {
         _hasClosedByIdle = true;
         await _forceCloseChat(
-          title: 'Percakapan berakhir',
-          message: 'Room chat sudah tidak tersedia lagi.',
+          title: _t('conversationEnded'),
+          message: _t('roomUnavailable'),
           type: CutePopupType.warning,
         );
         return;
@@ -830,8 +997,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         );
 
         await _forceCloseChat(
-          title: 'Room ditutup otomatis',
-          message: 'Percakapan berakhir karena tidak ada aktivitas selama 5 menit.',
+          title: _t('autoRoomClosed'),
+          message: _t('idleClosed'),
           type: CutePopupType.warning,
         );
       }
@@ -852,9 +1019,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Pilih Mode Foto',
-                  style: TextStyle(
+                Text(
+                  _t('selectPhotoMode'),
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                     color: Colors.black,
@@ -862,18 +1029,18 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  title: const Text('Biasa'),
-                  subtitle: const Text('Foto bisa dilihat tanpa batas selama room aktif'),
+                  title: Text(_t('normal')),
+                  subtitle: Text(_t('normalDesc')),
                   onTap: () => Navigator.pop(context, 'normal'),
                 ),
                 ListTile(
-                  title: const Text('Sekali lihat'),
-                  subtitle: const Text('Foto hanya bisa dibuka 1 kali'),
+                  title: Text(_t('once')),
+                  subtitle: Text(_t('onceDesc')),
                   onTap: () => Navigator.pop(context, 'once'),
                 ),
                 ListTile(
-                  title: const Text('Dua kali lihat'),
-                  subtitle: const Text('Foto hanya bisa dibuka 2 kali'),
+                  title: Text(_t('twice')),
+                  subtitle: Text(_t('twiceDesc')),
                   onTap: () => Navigator.pop(context, 'twice'),
                 ),
               ],
@@ -893,9 +1060,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final type = data['type'] ?? 'text';
 
     if (type == 'deleted') {
-      return const Text(
-        'Pesan dihapus',
-        style: TextStyle(
+      return Text(
+        _t('messageDeleted'),
+        style: const TextStyle(
           fontStyle: FontStyle.italic,
           color: Colors.grey,
         ),
@@ -950,7 +1117,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  canOpen ? 'Foto' : 'Foto sudah dilihat',
+                  canOpen ? _t('photo') : _t('photoSeen'),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -1013,7 +1180,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     final imageFile = File(pickedFile.path);
 
-    // 👉 pindah ke halaman preview
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -1067,7 +1233,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
                           children: [
                             Text(
-                              'Pilih alasan laporan',
+                              _t('selectReportReason'),
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineLarge
@@ -1077,7 +1243,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                   ),
                             ),
                             const SizedBox(height: 18),
-
                             ..._reportOptions.map((option) {
                               final isSelected = tempTag == option['tag'];
 
@@ -1091,7 +1256,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 180),
                                   margin: const EdgeInsets.only(bottom: 14),
-                                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                                  padding:
+                                      const EdgeInsets.fromLTRB(14, 14, 14, 14),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? const Color(0xFFFFF1F3)
@@ -1105,7 +1271,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                     ),
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Container(
                                         width: 24,
@@ -1134,7 +1301,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               option['tag'] ?? '',
@@ -1162,9 +1330,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 ),
                               );
                             }),
-
                             const SizedBox(height: 6),
-
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
@@ -1178,15 +1344,17 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor: const Color(0xFF84C76A),
-                                  disabledBackgroundColor: const Color(0xFFCCE0C2),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  disabledBackgroundColor:
+                                      const Color(0xFFCCE0C2),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
-                                child: const Text(
-                                  'Lanjutkan',
-                                  style: TextStyle(
+                                child: Text(
+                                  _t('continue'),
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -1231,19 +1399,19 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Laporkan pesan ini?',
-                style: TextStyle(
+              Text(
+                _t('reportQuestion'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF2B2B2B),
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Pesan yang kamu pilih akan dikirim untuk ditinjau. Kamu juga bisa menghentikan percakapan setelahnya.',
+              Text(
+                _t('reportQuestionDesc'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: Color(0xFF666666),
@@ -1263,9 +1431,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                         ),
                         backgroundColor: const Color(0xFFF4F0F1),
                       ),
-                      child: const Text(
-                        'Batal',
-                        style: TextStyle(
+                      child: Text(
+                        _t('cancel'),
+                        style: const TextStyle(
                           color: Color(0xFF7A6872),
                           fontWeight: FontWeight.w800,
                         ),
@@ -1284,9 +1452,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Laporkan',
-                        style: TextStyle(
+                      child: Text(
+                        _t('report'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1326,19 +1494,19 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Laporan berhasil dikirim',
-                style: TextStyle(
+              Text(
+                _t('reportSuccessTitle'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF2B2B2B),
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Jika kamu merasa tidak nyaman, kamu bisa menghentikan percakapan sekarang.',
+              Text(
+                _t('reportSuccessDesc'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: Color(0xFF666666),
@@ -1358,9 +1526,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                         ),
                         backgroundColor: const Color(0xFFF4F0F1),
                       ),
-                      child: const Text(
-                        'Lanjutkan',
-                        style: TextStyle(
+                      child: Text(
+                        _t('continueChat'),
+                        style: const TextStyle(
                           color: Color(0xFF7A6872),
                           fontWeight: FontWeight.w800,
                         ),
@@ -1382,9 +1550,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Berhenti Chat',
-                        style: TextStyle(
+                      child: Text(
+                        _t('stopChat'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1419,10 +1587,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFFE8EFCF);
-    const pinkSoft = Color(0xFFF4BFC3);
     const pinkBubble = Color(0xFFFFFFFF);
     const greenButton = Color(0xFF84C76A);
-    const greenButtonDark = Color(0xFF5FA84D);
     const inputBg = Color(0xFFF5F5F5);
     const shadowColor = Color(0x22000000);
 
@@ -1455,32 +1621,36 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                       ),
                     ),
                   ),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFA8F0D6),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        chatPartnerAvatar,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.asset(
-                            'assets/profile_pic/PP_default.jpg',
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                          );
-                        },
+                  MoodlyInventoryFrameAvatar(
+                    uid: chatPartnerUid,
+                    size: 42,
+                    innerPadding: 2.5,
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFA8F0D6),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          chatPartnerAvatar,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/profile_pic/PP_default.jpg',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-
             if (isLoading)
               const Expanded(
                 child: Center(
@@ -1506,8 +1676,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                               }
 
                               final docs = snapshot.data?.docs
-                                .where((doc) => doc.data()['createdAt'] != null)
-                                .toList() ?? [];
+                                      .where((doc) =>
+                                          doc.data()['createdAt'] != null)
+                                      .toList() ??
+                                  [];
                               final currentUid =
                                   FirebaseAuth.instance.currentUser?.uid;
 
@@ -1528,38 +1700,35 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 ),
                                 children: [
                                   const SizedBox(height: 10),
-
                                   buildSystemMessage(
-                                    prefix: 'Kamu terhubung dengan ',
+                                    prefix: _t('youConnectedWith'),
                                     highlight: chatPartnerName,
                                     suffix: '!',
                                   ),
                                   buildSystemMessage(
-                                    prefix: 'Berbincang dengan sopan, ',
-                                    highlight: 'hormati sesama',
+                                    prefix: _t('talkPolitely'),
+                                    highlight: _t('respectOthers'),
                                     suffix: '!',
                                   ),
                                   buildSystemMessage(
                                     prefix: '',
-                                    highlight: 'Mulailah Bercerita!',
+                                    highlight: _t('startTelling'),
                                     suffix: '',
                                   ),
-
-                                  buildDateChip('Hari ini'),
-
+                                  buildDateChip(_t('today')),
                                   const SizedBox(height: 10),
-
                                   ...docs.map((doc) {
                                     final data = doc.data();
                                     final text = data['text'] ?? '';
                                     final senderId = data['senderId'];
                                     final isMe = senderId == currentUid;
                                     final isLast = doc == docs.last;
-
-                                    final createdAt = data['createdAt'] as Timestamp?;
+                                    final createdAt =
+                                        data['createdAt'] as Timestamp?;
 
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 14),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 14),
                                       child: Column(
                                         crossAxisAlignment: isMe
                                             ? CrossAxisAlignment.end
@@ -1567,34 +1736,47 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                         children: [
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment:
-                                                isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                            mainAxisAlignment: isMe
+                                                ? MainAxisAlignment.end
+                                                : MainAxisAlignment.start,
                                             children: [
                                               GestureDetector(
                                                 onLongPress: () {
-                                                  final type = data['type'] ?? 'text';
+                                                  final type =
+                                                      data['type'] ?? 'text';
 
                                                   if (isMe && type == 'text') {
                                                     _showMyMessageActions(doc);
                                                   } else if (!isMe) {
-                                                    _showOtherUserMessageActions(doc);
+                                                    _showOtherUserMessageActions(
+                                                        doc);
                                                   }
                                                 },
                                                 onTap: () {
-                                                  if (isSelectingReport && !isMe) {
+                                                  if (isSelectingReport &&
+                                                      !isMe) {
                                                     setState(() {
-                                                      if (selectedReportMessageIds.contains(doc.id)) {
-                                                        selectedReportMessageIds.remove(doc.id);
-                                                        selectedReportMessages.removeWhere((item) => item.id == doc.id);
+                                                      if (selectedReportMessageIds
+                                                          .contains(doc.id)) {
+                                                        selectedReportMessageIds
+                                                            .remove(doc.id);
+                                                        selectedReportMessages
+                                                            .removeWhere(
+                                                                (item) =>
+                                                                    item.id ==
+                                                                    doc.id);
                                                       } else {
-                                                        selectedReportMessageIds.add(doc.id);
-                                                        selectedReportMessages.add(doc);
+                                                        selectedReportMessageIds
+                                                            .add(doc.id);
+                                                        selectedReportMessages
+                                                            .add(doc);
                                                       }
                                                     });
                                                   }
                                                 },
                                                 child: Container(
-                                                  constraints: const BoxConstraints(
+                                                  constraints:
+                                                      const BoxConstraints(
                                                     maxWidth: 265,
                                                   ),
                                                   padding: const EdgeInsets.symmetric(
@@ -1602,24 +1784,41 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                     vertical: 12,
                                                   ),
                                                   decoration: BoxDecoration(
-                                                    color: selectedReportMessageIds.contains(doc.id)
-                                                      ? const Color(0xFFFFD6D6)
-                                                      : editingMessageId == doc.id
-                                                          ? const Color(0xFFFFF1F3)
-                                                          : isMe
-                                                              ? const Color(0xFFE9F6E2)
-                                                              : pinkBubble,
-                                                    border: editingMessageId == doc.id
-                                                      ? Border.all(
-                                                          color: const Color(0xFFF4B7C1),
-                                                          width: 1.4,
-                                                        )
-                                                      : null,
-                                                    borderRadius: BorderRadius.only(
-                                                      topLeft: const Radius.circular(18),
-                                                      topRight: const Radius.circular(18),
-                                                      bottomLeft: Radius.circular(isMe ? 18 : 6),
-                                                      bottomRight: Radius.circular(isMe ? 6 : 18),
+                                                    color:
+                                                        selectedReportMessageIds
+                                                                .contains(doc.id)
+                                                            ? const Color(
+                                                                0xFFFFD6D6)
+                                                            : editingMessageId ==
+                                                                    doc.id
+                                                                ? const Color(
+                                                                    0xFFFFF1F3)
+                                                                : isMe
+                                                                    ? const Color(
+                                                                        0xFFE9F6E2)
+                                                                    : pinkBubble,
+                                                    border: editingMessageId ==
+                                                            doc.id
+                                                        ? Border.all(
+                                                            color: const Color(
+                                                                0xFFF4B7C1),
+                                                            width: 1.4,
+                                                          )
+                                                        : null,
+                                                    borderRadius:
+                                                        BorderRadius.only(
+                                                      topLeft:
+                                                          const Radius.circular(
+                                                              18),
+                                                      topRight:
+                                                          const Radius.circular(
+                                                              18),
+                                                      bottomLeft:
+                                                          Radius.circular(
+                                                              isMe ? 18 : 6),
+                                                      bottomRight:
+                                                          Radius.circular(
+                                                              isMe ? 6 : 18),
                                                     ),
                                                     boxShadow: const [
                                                       BoxShadow(
@@ -1640,40 +1839,46 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             ],
                                           ),
                                           if (data['isEdited'] == true)
-                                          const Padding(
-                                            padding: EdgeInsets.only(top: 4),
-                                            child: Text(
-                                              'diedit',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.black45,
-                                                fontStyle: FontStyle.italic,
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 4),
+                                              child: Text(
+                                                _t('edited'),
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.black45,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
                                               ),
                                             ),
-                                          ),
                                           const SizedBox(height: 4),
                                           if (isLast)
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(_formatMessageTime(createdAt)),
-
-                                              const SizedBox(width: 4),
-
-                                              if (isMe)
-                                                Icon(
-                                                  (data['seenBy'] != null &&
-                                                          (data['seenBy'] as List).length > 1)
-                                                      ? Icons.done_all
-                                                      : Icons.done,
-                                                  size: 14,
-                                                  color: (data['seenBy'] != null &&
-                                                          (data['seenBy'] as List).length > 1)
-                                                      ? Colors.blue
-                                                      : Colors.grey,
-                                                ),
-                                            ],
-                                          ),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(_formatMessageTime(createdAt)),
+                                                const SizedBox(width: 4),
+                                                if (isMe)
+                                                  Icon(
+                                                    (data['seenBy'] != null &&
+                                                            (data['seenBy']
+                                                                        as List)
+                                                                    .length >
+                                                                1)
+                                                        ? Icons.done_all
+                                                        : Icons.done,
+                                                    size: 14,
+                                                    color: (data['seenBy'] !=
+                                                                null &&
+                                                            (data['seenBy']
+                                                                        as List)
+                                                                    .length >
+                                                                1)
+                                                        ? Colors.blue
+                                                        : Colors.grey,
+                                                  ),
+                                              ],
+                                            ),
                                         ],
                                       ),
                                     );
@@ -1681,14 +1886,21 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                   StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                                     stream: _chatService.roomStream(roomId!),
                                     builder: (context, snapshot) {
-                                      final typingUsers = snapshot.data?.data()?['typingUsers'] ?? [];
+                                      final typingUsers =
+                                          snapshot.data?.data()?['typingUsers'] ??
+                                              [];
 
                                       final isOtherTyping = typingUsers is List &&
                                           typingUsers.any(
-                                            (uid) => uid != FirebaseAuth.instance.currentUser?.uid,
+                                            (uid) =>
+                                                uid !=
+                                                FirebaseAuth
+                                                    .instance.currentUser?.uid,
                                           );
 
-                                      if (!isOtherTyping) return const SizedBox();
+                                      if (!isOtherTyping) {
+                                        return const SizedBox();
+                                      }
                                       return _typingBubble();
                                     },
                                   ),
@@ -1699,14 +1911,14 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                         ),
                       ],
                     ),
-
                     if (isSelectingReport)
                       Positioned(
                         left: 20,
                         right: 20,
                         bottom: 78,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF4F6),
                             borderRadius: BorderRadius.circular(18),
@@ -1740,7 +1952,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  '${selectedReportMessages.length} pesan dipilih untuk dilaporkan',
+                                  '${selectedReportMessages.length} ${_t('selectedForReport')}',
                                   style: const TextStyle(
                                     color: Color(0xFF6C5962),
                                     fontWeight: FontWeight.w800,
@@ -1772,7 +1984,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           ),
                         ),
                       ),
-
                     if (replyingMessageId != null)
                       Positioned(
                         left: 20,
@@ -1832,8 +2043,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           ),
                         ),
                       ),
-                    
-                                        if (editingMessageId != null)
+                    if (editingMessageId != null)
                       Positioned(
                         left: 20,
                         right: 20,
@@ -1866,7 +2076,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 child: Text(
                                   _messageController.text.isNotEmpty
                                       ? _messageController.text
-                                      : (editingOriginalText ?? 'Mengedit pesan'),
+                                      : (editingOriginalText ?? _t('editMessage')),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -1887,7 +2097,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                           ),
                         ),
                       ),
-
                     Positioned(
                       left: 0,
                       right: 0,
@@ -1913,10 +2122,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                     ),
                                   ],
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: Text(
-                                    'Berhenti',
-                                    style: TextStyle(
+                                    _t('stop'),
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w900,
@@ -1925,13 +2134,12 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(width: 8),
-
                             Expanded(
                               child: Container(
                                 height: 42,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: inputBg,
                                   borderRadius: BorderRadius.circular(16),
@@ -1979,7 +2187,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             isTyping: true,
                                           );
 
-                                          _typingTimer = Timer(const Duration(seconds: 2), () {
+                                          _typingTimer = Timer(
+                                              const Duration(seconds: 2), () {
                                             if (roomId == null) return;
 
                                             _chatService.updateTypingStatus(
@@ -1990,8 +2199,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                         },
                                         decoration: InputDecoration(
                                           hintText: editingMessageId != null
-                                              ? 'Perbarui pesanmu...'
-                                              : 'Bagaimana kabarmu?',
+                                              ? _t('updateMessageHint')
+                                              : _t('messageHint'),
                                           hintStyle: const TextStyle(
                                             color: Color(0xFF8A8A8A),
                                             fontSize: 12,
@@ -2012,7 +2221,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                     GestureDetector(
                                       onTap: _handleSend,
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 180),
+                                        duration:
+                                            const Duration(milliseconds: 180),
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 10,
                                           vertical: 7,
@@ -2021,7 +2231,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                           color: editingMessageId != null
                                               ? const Color(0xFFF39AAA)
                                               : const Color(0xFF8CCF68),
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -2035,7 +2246,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             ),
                                             const SizedBox(width: 5),
                                             Text(
-                                              editingMessageId != null ? 'Simpan' : 'Kirim',
+                                              editingMessageId != null
+                                                  ? _t('save')
+                                                  : _t('send'),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 11,
@@ -2101,7 +2314,8 @@ class _TypingDotsState extends State<_TypingDots>
           height: 8,
           margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
-            color: const Color(0xFF8A5A8D).withOpacity(opacity.clamp(0.25, 1.0)),
+            color:
+                const Color(0xFF8A5A8D).withOpacity(opacity.clamp(0.25, 1.0)),
             shape: BoxShape.circle,
           ),
         );

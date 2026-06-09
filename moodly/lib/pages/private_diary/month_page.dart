@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../widgets/month_item.dart';
-import '../../services/firestore_diary_service.dart';
+
 import '../../models/diary_model.dart';
-import '../../widgets/shared/moodly_app_bar.dart';
-import '../../core/styles/moodly_colors.dart';
-import 'diary_page.dart';
+import '../../services/firestore_diary_service.dart';
+import '../../widgets/moodly_bottom_navbar.dart';
+import '../pages.dart';
+import '../setting/moodly_settings_support.dart';
 import 'add_diary_page.dart';
+import 'diary_page.dart';
 import 'search_page.dart';
 
 class MonthPage extends StatefulWidget {
@@ -16,129 +17,267 @@ class MonthPage extends StatefulWidget {
 }
 
 class _MonthPageState extends State<MonthPage> {
-  bool isMonthMode = true;
+  static const Color _bg = Color(0xFFF4F8EA);
+  static const Color _card = Colors.white;
+  static const Color _green = Color(0xFF84C96C);
+  static const Color _greenDark = Color(0xFF5F9E4E);
+  static const Color _greenSoft = Color(0xFFDDEFCF);
+  static const Color _greenMint = Color(0xFFEFF7E6);
+  static const Color _pinkSoft = Color(0xFFFFEEF2);
+  static const Color _line = Color(0xFFE4E9D9);
+  static const Color _textDark = Color(0xFF1F1F1F);
+  static const Color _textSoft = Color(0xFF6D7568);
 
-  int selectedIndex = -1;
-  int selectedYear = DateTime.now().year;
-
-  bool showYearFilter = false;
-
-  final months = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MEI",
-    "JUN",
-    "JUL",
-    "AGS",
-    "SEP",
-    "OKT",
-    "NOV",
-    "DES",
+  static const List<String> _monthCodes = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MEI',
+    'JUN',
+    'JUL',
+    'AGS',
+    'SEP',
+    'OKT',
+    'NOV',
+    'DES',
   ];
 
-  List<int> getYears() {
-    final currentYear = DateTime.now().year;
-    const startYear = 2024;
-    return List.generate(currentYear - startYear + 1, (i) => startYear + i);
-  }
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'pageTitle': 'Diary',
+      'heroTitle': 'Ruang ceritamu',
+      'heroDesc': 'Lihat ulang ceritamu per bulan tanpa bikin kepala penuh.',
+      'year': 'Tahun',
+      'entries': 'catatan',
+      'emptyYear': 'Belum ada catatan di tahun ini',
+      'fabTooltip': 'Tulis diary',
+      'month1': 'Januari',
+      'month2': 'Februari',
+      'month3': 'Maret',
+      'month4': 'April',
+      'month5': 'Mei',
+      'month6': 'Juni',
+      'month7': 'Juli',
+      'month8': 'Agustus',
+      'month9': 'September',
+      'month10': 'Oktober',
+      'month11': 'November',
+      'month12': 'Desember',
+    },
+    'en': {
+      'pageTitle': 'Diary',
+      'heroTitle': 'Your story space',
+      'heroDesc': 'Look back at your entries by month without making your head crowded.',
+      'year': 'Year',
+      'entries': 'entries',
+      'emptyYear': 'No entries yet this year',
+      'fabTooltip': 'Write diary',
+      'month1': 'January',
+      'month2': 'February',
+      'month3': 'March',
+      'month4': 'April',
+      'month5': 'May',
+      'month6': 'June',
+      'month7': 'July',
+      'month8': 'August',
+      'month9': 'September',
+      'month10': 'October',
+      'month11': 'November',
+      'month12': 'December',
+    },
+  };
 
-  String getTitle() {
-    if (selectedIndex < 0) return "Diary Privat";
-    return "${months[selectedIndex]} $selectedYear";
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+  int _selectedYear = DateTime.now().year;
+  int _currentNavIndex = 1;
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+  TextTheme get _text => Theme.of(context).textTheme;
+
+  List<BoxShadow> get _softShadow => const [
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, 0.08),
+          blurRadius: 18,
+          offset: Offset(0, 8),
+        ),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: MoodlyColors.bgLight,
-      appBar: moodlyAppBar(context, "Diary Privat"),
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
 
-      floatingActionButton: !isMonthMode
-          ? FloatingActionButton(
-              backgroundColor: MoodlyColors.green,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddDiaryPage()),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
 
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
+  Future<void> _handleNavTap(int index) async {
+    if (index == 1) return;
 
-                /// TOGGLE + SEARCH
-                Row(
-                  children: [
-                    Expanded(child: _toggle()),
-                    const SizedBox(width: 10),
-                    _searchButton(),
-                  ],
-                ),
+    Widget? target;
+    switch (index) {
+      case 0:
+        target = const Homepage();
+        break;
+      case 3:
+        target = const HomeChatAnonim();
+        break;
+      case 4:
+        target = const AfirmasiPage();
+        break;
+    }
 
-                const SizedBox(height: 20),
+    if (target == null || !mounted) return;
 
-                /// TITLE
-                Text(
-                  getTitle(),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => target!),
+    );
+  }
 
-                const SizedBox(height: 20),
+  void _onEmergencyTap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EmergencySupportPage()),
+    );
+  }
 
-                /// CONTENT
-                Expanded(child: isMonthMode ? _monthGrid() : _weekContent()),
-              ],
-            ),
-          ),
+  String _monthNameFromCode(String code) {
+    switch (code.toUpperCase()) {
+      case 'JAN':
+        return _t('month1');
+      case 'FEB':
+        return _t('month2');
+      case 'MAR':
+        return _t('month3');
+      case 'APR':
+        return _t('month4');
+      case 'MEI':
+        return _t('month5');
+      case 'JUN':
+        return _t('month6');
+      case 'JUL':
+        return _t('month7');
+      case 'AGS':
+        return _t('month8');
+      case 'SEP':
+        return _t('month9');
+      case 'OKT':
+        return _t('month10');
+      case 'NOV':
+        return _t('month11');
+      case 'DES':
+        return _t('month12');
+      default:
+        return code;
+    }
+  }
 
-          if (showYearFilter) _yearFilter(),
-        ],
+  void _openMonth(String monthCode) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DiaryPage(
+          month: monthCode,
+          year: _selectedYear,
+        ),
       ),
     );
   }
 
-  // ================= TOGGLE =================
-  Widget _toggle() {
+  Widget _header() {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            _t('pageTitle'),
+            style: _text.headlineLarge?.copyWith(
+              color: _textDark,
+              fontSize: 28,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: _softShadow,
+          ),
+          child: IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchPage()),
+              );
+            },
+            icon: const Icon(
+              Icons.search_rounded,
+              color: _greenDark,
+              size: 28,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heroCard() {
     return Container(
-      height: 40,
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: MoodlyColors.pinkLight,
-        borderRadius: BorderRadius.circular(30),
+        color: _card,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: _softShadow,
       ),
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => isMonthMode = true),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isMonthMode ? MoodlyColors.pinkAccent : null,
-                  borderRadius: BorderRadius.circular(30),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t('heroTitle'),
+                  style: _text.headlineLarge?.copyWith(
+                    color: _textDark,
+                    fontSize: 24,
+                  ),
                 ),
-                child: const Center(child: Text("Bulan")),
-              ),
+                const SizedBox(height: 10),
+                Text(
+                  _t('heroDesc'),
+                  style: _text.bodyMedium?.copyWith(
+                    color: _textSoft,
+                    fontSize: 14,
+                    height: 1.65,
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => isMonthMode = false),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: !isMonthMode ? MoodlyColors.pinkAccent : null,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Center(child: Text("Pekan")),
-              ),
+          const SizedBox(width: 16),
+          Container(
+            width: 94,
+            height: 94,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: _greenMint,
+            ),
+            child: const Icon(
+              Icons.menu_book_rounded,
+              size: 42,
+              color: _greenDark,
             ),
           ),
         ],
@@ -146,117 +285,275 @@ class _MonthPageState extends State<MonthPage> {
     );
   }
 
-  // ================= MONTH GRID =================
-  Widget _monthGrid() {
-    return GridView.builder(
-      itemCount: months.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+  Widget _yearSwitcher() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: _softShadow,
       ),
-      itemBuilder: (_, i) {
-        return MonthItem(
-          label: months[i],
-          isSelected: selectedIndex == i,
-          onTap: () {
-            setState(() => selectedIndex = i);
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DiaryPage(month: months[i], year: selectedYear),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ================= WEEK CONTENT =================
-  Widget _weekContent() {
-    return StreamBuilder<List<DiaryModel>>(
-      stream: FirestoreDiaryService.getWeekDiaries(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final data = snapshot.data ?? [];
-
-        if (data.isEmpty) {
-          return const Center(child: Text("Belum ada diary minggu ini"));
-        }
-
-        return ListView.builder(
-          itemCount: data.length,
-          itemBuilder: (_, i) {
-            final d = data[i];
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          _circleButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () {
+              setState(() {
+                _selectedYear--;
+              });
+            },
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+                color: _green,
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    d.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    _t('year'),
+                    style: _text.bodySmall?.copyWith(
+                      color: Colors.white.withOpacity(0.92),
+                    ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(d.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$_selectedYear',
+                    style: _text.headlineLarge?.copyWith(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
+                  ),
                 ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+          const SizedBox(width: 16),
+          _circleButton(
+            icon: Icons.arrow_forward_ios_rounded,
+            onTap: () {
+              setState(() {
+                _selectedYear++;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  // ================= SEARCH =================
-  Widget _searchButton() {
-    return IconButton(
-      icon: const Icon(Icons.search),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SearchPage()),
-        );
-      },
-    );
-  }
-
-  // ================= YEAR FILTER =================
-  Widget _yearFilter() {
-    final years = getYears();
-
-    return Positioned(
-      top: 120,
-      left: 20,
-      right: 20,
+  Widget _circleButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: MoodlyColors.bgLight,
-          borderRadius: BorderRadius.circular(20),
+        width: 58,
+        height: 58,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: _greenMint,
         ),
-        child: Wrap(
-          spacing: 10,
-          children: years.map((y) {
-            return ChoiceChip(
-              label: Text("$y"),
-              selected: y == selectedYear,
-              onSelected: (_) => setState(() => selectedYear = y),
-            );
-          }).toList(),
+        child: Icon(
+          icon,
+          color: _greenDark,
         ),
       ),
+    );
+  }
+
+  Widget _monthCard({
+    required String monthCode,
+    required int count,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(28),
+      onTap: () => _openMonth(monthCode),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: _softShadow,
+          border: Border.all(
+            color: _greenSoft,
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          children: [
+            const Spacer(),
+            Text(
+              _monthNameFromCode(monthCode),
+              textAlign: TextAlign.center,
+              style: _text.headlineLarge?.copyWith(
+                color: _textDark,
+                fontSize: 22,
+              ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _greenMint,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      '$count ${_t('entries')}',
+                      style: _text.bodySmall?.copyWith(
+                        color: _greenDark,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _greenMint,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: _greenDark,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, int> _countByMonth(List<DiaryModel> diaries) {
+    final map = {
+      for (final code in _monthCodes) code: 0,
+    };
+
+    for (final diary in diaries) {
+      final key = diary.month.trim().toUpperCase();
+      if (map.containsKey(key)) {
+        map[key] = (map[key] ?? 0) + 1;
+      }
+    }
+
+    return map;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<DiaryModel>>(
+      stream: FirestoreDiaryService().getUserDiariesByYear(_selectedYear),
+      builder: (context, snapshot) {
+        final diaries = snapshot.data ?? [];
+        final monthCounts = _countByMonth(diaries);
+
+        return Scaffold(
+          backgroundColor: _bg,
+          body: Stack(
+            children: [
+              Positioned(
+                top: -56,
+                right: -34,
+                child: Container(
+                  width: 190,
+                  height: 190,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _pinkSoft.withOpacity(0.78),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -90,
+                bottom: 120,
+                child: Container(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _greenMint.withOpacity(0.82),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 120),
+                  children: [
+                    _header(),
+                    const SizedBox(height: 18),
+                    _heroCard(),
+                    const SizedBox(height: 18),
+                    _yearSwitcher(),
+                    const SizedBox(height: 18),
+                    GridView.builder(
+                      itemCount: _monthCodes.length,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
+                        childAspectRatio: 0.96,
+                      ),
+                      itemBuilder: (context, index) {
+                        final code = _monthCodes[index];
+                        return _monthCard(
+                          monthCode: code,
+                          count: monthCounts[code] ?? 0,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: _green,
+            foregroundColor: Colors.white,
+            elevation: 8,
+            tooltip: _t('fabTooltip'),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddDiaryPage(
+                    initialDate: DateTime(
+                      DateTime.now().year,
+                      DateTime.now().month,
+                      DateTime.now().day,
+                    ),
+                  ),
+                ),
+              );
+
+              if (!mounted) return;
+              if (result != null) {
+                setState(() {});
+              }
+            },
+            child: const Icon(Icons.add_rounded, size: 32),
+          ),
+          bottomNavigationBar: MoodlyBottomNavbar(
+            currentIndex: _currentNavIndex,
+            onTap: _handleNavTap,
+            onEmergencyTap: _onEmergencyTap,
+          ),
+        );
+      },
     );
   }
 }

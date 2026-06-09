@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/auth_service.dart';
 import '../../main.dart';
 import '../pages.dart';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 
 const String _settingsPlaceholderAsset = 'assets/profile_pic/PP_default.jpg';
 const String _prefLanguageKey = 'moodly_settings_language_code';
@@ -636,39 +637,90 @@ class _SettingsProfileContent extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 68,
-            height: 68,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [palette.avatarStart, palette.avatarEnd],
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: palette.card,
-              ),
-              child: ClipOval(
-                child: photoUrl != null && photoUrl!.isNotEmpty
-                    ? Image.network(
-                        photoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _buildFallbackAvatar(palette),
-                      )
-                    : (avatarAsset != null && avatarAsset!.isNotEmpty
+          Builder(
+            builder: (context) {
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+
+              if (uid == null) {
+                return Container(
+                  width: 68,
+                  height: 68,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [palette.avatarStart, palette.avatarEnd],
+                    ),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: palette.card,
+                    ),
+                    child: ClipOval(
+                      child: _buildFallbackAvatar(palette),
+                    ),
+                  ),
+                );
+              }
+
+              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(uid)
+                    .collection('reward_inventory')
+                    .doc('main')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final inventory = snapshot.data?.data();
+                  final activeFrameId = MoodlyRewardFrameAvatar.normalizeFrameId(
+                    (inventory?['activeFrameId'] as String?)?.trim(),
+                  );
+                  final hasCustomFrame = activeFrameId != null;
+
+                  final avatarWidget = photoUrl != null && photoUrl!.isNotEmpty
+                      ? Image.network(
+                          photoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFallbackAvatar(palette),
+                        )
+                      : (avatarAsset != null && avatarAsset!.isNotEmpty
                           ? Image.asset(
                               avatarAsset!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _buildFallbackAvatar(palette),
+                              errorBuilder: (_, __, ___) => _buildFallbackAvatar(palette),
                             )
-                          : _buildFallbackAvatar(palette)),
-              ),
-            ),
+                          : _buildFallbackAvatar(palette));
+
+                  return MoodlyRewardFrameAvatar(
+                    frameId: activeFrameId,
+                    size: 68,
+                    innerPadding: hasCustomFrame ? 4 : 0,
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      padding: EdgeInsets.all(hasCustomFrame ? 0 : 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: hasCustomFrame
+                            ? null
+                            : LinearGradient(
+                                colors: [palette.avatarStart, palette.avatarEnd],
+                              ),
+                        color: hasCustomFrame ? Colors.transparent : null,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: palette.card,
+                        ),
+                        child: ClipOval(child: avatarWidget),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
           const SizedBox(width: 12),
           Expanded(

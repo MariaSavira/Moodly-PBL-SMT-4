@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/services/otp_service.dart';
 
 import '../../core/styles/app_colors.dart';
 import '../../widgets/moodly_text_field.dart';
@@ -44,6 +44,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   Future<void> _handleResetPassword() async {
     FocusScope.of(context).unfocus();
+    if (_isLoading) return;
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
@@ -60,6 +61,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return;
     }
 
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() {
+        _hasError = true;
+        _message = 'Format email tidak valid';
+      });
+
+      _showPopup(
+        title: 'Email tidak valid',
+        message: 'Masukkan alamat email yang benar dulu ya.',
+        type: CutePopupType.warning,
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -67,7 +82,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await OtpService.instance.sendForgotPasswordResetEmail(
+        email: email,
+      );
 
       if (!mounted) return;
 
@@ -78,21 +95,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       _showPopup(
         title: 'Email terkirim',
-        message: 'Cek inbox atau folder spam kamu ya.',
+        message: 'Cek inbox kamu ya. Kalau belum muncul, baru cek spam.',
         type: CutePopupType.success,
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+
+      final cleanMessage = e.toString().replaceFirst('Exception: ', '');
 
       setState(() {
         _isLoading = false;
         _hasError = true;
-        _message = 'Email tidak ditemukan.';
+        _message = cleanMessage;
       });
 
       _showPopup(
         title: 'Reset gagal',
-        message: 'Email tidak ditemukan atau belum terdaftar.',
+        message: cleanMessage,
         type: CutePopupType.error,
       );
     }

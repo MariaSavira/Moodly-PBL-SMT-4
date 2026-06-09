@@ -1,17 +1,23 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+
+import 'package:moodly/core/services/streak_service.dart';
 import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
 import 'package:moodly/pages/afirmasi/pengaturan_widget_page.dart';
 import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
+import 'package:moodly/pages/homepage.dart';
+import 'package:moodly/pages/setting/moodly_settings_support.dart';
+import 'package:moodly/pages/afirmasi/afirmasi.dart';
 import 'package:moodly/services/afirmasi/afirmasi_service.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
 
 class DetailAfirmasiPage extends StatefulWidget {
   final List<String> selectedCategories;
@@ -33,17 +39,133 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   static const int slidesPerRewardBlock = 5;
   static const int adsNeededPerBlock = 2;
 
-  bool isPremiumUser = false;
-  bool _isLoading = true;
+  static const Color _chipBg = Color(0xE8FFFFFF);
+  static const Color _textDark = Color(0xFF1F1F1F);
+  static const Color _softWhite = Color(0xFFFDFCF8);
+  static const Color _moodlyGreen = Color(0xFF99D28F);
+  static const Color _moodlyGreenDark = Color(0xFF5E9A4D);
+  static const Color _favoritePink = Color(0xFFF6C6D0);
 
-  int _rewardedBlocksUnlocked = 0;
-  int _watchedAdsCount = 0;
-  int _currentIndex = 0;
-
-  RewardedAd? _rewardedAd;
-  bool _isRewardedAdReady = false;
-
-  final String rewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'defaultCategory': 'Afirmasi',
+      'emptyQuote': 'Belum ada afirmasi yang tersedia.',
+      'lockedSlide': 'Slide terkunci',
+      'maxSlidesLocked': 'Tonton 2 iklan untuk membuka 5 slide berikutnya.',
+      'maxSlidesLockedWeb':
+          'Buka aplikasi di Android/iOS untuk menonton 2 iklan dan membuka 5 slide berikutnya.',
+      'progressAds': 'Progress: {current} / {total} iklan',
+      'adReady': 'Iklan siap ditonton',
+      'adLoading': 'Iklan sedang dimuat...',
+      'adNotReady': 'Iklan belum siap',
+      'watchAds': 'Tonton iklan',
+      'androidOnly': 'Hanya di Android/iOS',
+      'getPremium': 'Dapatkan Premium',
+      'premiumSoonTitle': 'Premium',
+      'premiumSoonBody': 'Halaman premium akan ditambahkan.',
+      'webOnlyTitle': 'Tidak tersedia di web',
+      'webOnlyBody': 'Iklan reward hanya bisa diuji di Android atau iOS.',
+      'allOpenTitle': 'Semua terbuka',
+      'allOpenBody': 'Semua slide sudah bisa diakses.',
+      'adLoadingTitle': 'Iklan sedang dimuat',
+      'adLoadingBody': 'Tunggu sebentar ya, iklannya lagi disiapkan.',
+      'adNotReadyTitle': 'Iklan belum siap',
+      'adNotReadyBody': 'Coba lagi sebentar ya.',
+      'adFailedTitle': 'Iklan gagal',
+      'adFailedBody': 'Iklan gagal ditampilkan, coba lagi ya.',
+      'slideOpenedTitle': 'Slide terbuka',
+      'slideOpenedBody':
+          '5 slide berikutnya berhasil dibuka. Jika progress misi iklan streak sudah memenuhi target, bonus poin akan masuk otomatis.',
+      'adProgressTitle': 'Progress iklan',
+      'adProgressBody': '1 dari 2 iklan selesai ditonton.',
+      'favoriteRemovedTitle': 'Favorit dihapus',
+      'favoriteRemovedBody': 'Afirmasi dihapus dari daftar favorit.',
+      'favoriteSavedTitle': 'Favorit disimpan',
+      'favoriteSavedBody': 'Afirmasi berhasil disimpan ke favorit.',
+      'downloadFailTitle': 'Gagal',
+      'downloadFailBody': 'Gagal mengambil gambar afirmasi.',
+      'permissionDeniedTitle': 'Izin ditolak',
+      'permissionDeniedBody': 'Akses galeri dibutuhkan untuk mengunduh afirmasi.',
+      'downloadSuccessTitle': 'Berhasil diunduh',
+      'downloadSuccessBody': 'Afirmasi berhasil disimpan ke galeri.',
+      'downloadErrorTitle': 'Gagal mengunduh',
+      'downloadGenericTitle': 'Terjadi kesalahan',
+      'downloadGenericBody': 'Afirmasi gagal diunduh, coba lagi ya.',
+      'shareFailTitle': 'Gagal share',
+      'shareFailBody': 'Gagal menyiapkan gambar afirmasi.',
+      'shareReadyTitle': 'Siap dibagikan',
+      'shareReadyBody': 'Afirmasi sedang dibuka ke menu share.',
+      'favoriteEmptyTitle': 'Belum ada favorit',
+      'favoriteEmptyBody': 'Simpan afirmasi favoritmu dulu ya.',
+      'settingsResetCategory': 'Atur ulang kategori afirmasi',
+      'settingsWidget': 'Pengaturan widget',
+      'categoryPrefix': 'Kategori',
+      'gratitude': 'Rasa Syukur',
+      'anxiety': 'Meredakan Kecemasan',
+      'motivation': 'Motivasi',
+      'mental': 'Kesehatan Mental',
+      'selfLove': 'Cinta Diri',
+    },
+    'en': {
+      'defaultCategory': 'Affirmation',
+      'emptyQuote': 'No affirmations are available yet.',
+      'lockedSlide': 'Locked slide',
+      'maxSlidesLocked': 'Watch 2 ads to unlock the next 5 slides.',
+      'maxSlidesLockedWeb':
+          'Open the app on Android/iOS to watch 2 ads and unlock the next 5 slides.',
+      'progressAds': 'Progress: {current} / {total} ads',
+      'adReady': 'Ad is ready to watch',
+      'adLoading': 'Ad is loading...',
+      'adNotReady': 'Ad is not ready yet',
+      'watchAds': 'Watch ad',
+      'androidOnly': 'Android/iOS only',
+      'getPremium': 'Get Premium',
+      'premiumSoonTitle': 'Premium',
+      'premiumSoonBody': 'The premium page will be added later.',
+      'webOnlyTitle': 'Not available on web',
+      'webOnlyBody': 'Rewarded ads can only be tested on Android or iOS.',
+      'allOpenTitle': 'Everything is unlocked',
+      'allOpenBody': 'All slides are already accessible.',
+      'adLoadingTitle': 'Ad is loading',
+      'adLoadingBody': 'Please wait a moment, the ad is being prepared.',
+      'adNotReadyTitle': 'Ad is not ready',
+      'adNotReadyBody': 'Please try again in a moment.',
+      'adFailedTitle': 'Ad failed',
+      'adFailedBody': 'The ad failed to show. Please try again.',
+      'slideOpenedTitle': 'Slides unlocked',
+      'slideOpenedBody':
+          'The next 5 slides have been unlocked. If your streak ad mission already meets the target, the bonus points will be added automatically.',
+      'adProgressTitle': 'Ad progress',
+      'adProgressBody': '1 out of 2 ads has been watched.',
+      'favoriteRemovedTitle': 'Removed from favorites',
+      'favoriteRemovedBody': 'The affirmation has been removed from favorites.',
+      'favoriteSavedTitle': 'Saved to favorites',
+      'favoriteSavedBody': 'The affirmation has been saved to favorites.',
+      'downloadFailTitle': 'Failed',
+      'downloadFailBody': 'Failed to capture the affirmation image.',
+      'permissionDeniedTitle': 'Permission denied',
+      'permissionDeniedBody': 'Gallery access is required to download affirmations.',
+      'downloadSuccessTitle': 'Downloaded',
+      'downloadSuccessBody': 'The affirmation has been saved to your gallery.',
+      'downloadErrorTitle': 'Download failed',
+      'downloadGenericTitle': 'Something went wrong',
+      'downloadGenericBody': 'The affirmation could not be downloaded. Please try again.',
+      'shareFailTitle': 'Share failed',
+      'shareFailBody': 'Failed to prepare the affirmation image.',
+      'shareReadyTitle': 'Ready to share',
+      'shareReadyBody': 'The affirmation is being opened in the share menu.',
+      'favoriteEmptyTitle': 'No favorites yet',
+      'favoriteEmptyBody': 'Save your favorite affirmations first.',
+      'settingsResetCategory': 'Reset affirmation categories',
+      'settingsWidget': 'Widget settings',
+      'categoryPrefix': 'Category',
+      'gratitude': 'Gratitude',
+      'anxiety': 'Ease Anxiety',
+      'motivation': 'Motivation',
+      'mental': 'Mental Health',
+      'selfLove': 'Self Love',
+    },
+  };
 
   final List<String> _backgroundImages = [
     'assets/icon/images/bg_afirmasi_1.jpg',
@@ -53,25 +175,113 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     'assets/icon/images/bg_afirmasi_5.jpg',
   ];
 
+  bool isPremiumUser = false;
+  bool _isLoading = true;
+  bool _isRewardedAdReady = false;
+  bool _isAdLoading = false;
+
+  int _rewardedBlocksUnlocked = 0;
+  int _watchedAdsCount = 0;
+  int _currentIndex = 0;
+
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+  String? _lastRewardedAdError;
+
+  RewardedAd? _rewardedAd;
   List<Map<String, String>> _afirmasiList = [];
+
+  final String rewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
+  bool get _canUseMobileAds => !kIsWeb;
 
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _initializePage();
-    _loadRewardedAd();
-  }
-
-  Future<void> _initializePage() async {
-    await AfirmasiService.loadFavoritesFromLocal();
-    await _loadAfirmasi();
   }
 
   @override
   void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     _pageController.dispose();
     _rewardedAd?.dispose();
     super.dispose();
+  }
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  String _template(String key, Map<String, String> vars) {
+    var text = _t(key);
+    vars.forEach((k, v) {
+      text = text.replaceAll('{$k}', v);
+    });
+    return text;
+  }
+
+  String _localizedCategoryLabel(String raw) {
+    switch (AfirmasiService.canonicalCategoryKey(raw)) {
+      case 'Rasa Syukur':
+        return _t('gratitude');
+      case 'Meredakan Kecemasan':
+        return _t('anxiety');
+      case 'Motivasi':
+        return _t('motivation');
+      case 'Kesehatan Mental':
+        return _t('mental');
+      case 'Cinta Diri':
+        return _t('selfLove');
+      default:
+        return _languageCode == 'en'
+            ? AfirmasiService.localizedCategoryLabel(raw, languageCode: 'en')
+            : AfirmasiService.localizedCategoryLabel(raw, languageCode: 'id');
+    }
+  }
+
+  Future<void> _initializePage() async {
+    if (_canUseMobileAds) {
+      try {
+        await MobileAds.instance.initialize();
+        debugPrint('MobileAds initialized');
+      } catch (e) {
+        debugPrint('MobileAds initialize error: $e');
+      }
+    }
+
+    await _loadPremiumStatus();
+    await AfirmasiService.loadFavoritesFromLocal();
+    await _loadAfirmasi();
+
+    if (_canUseMobileAds) {
+      _loadRewardedAd(force: true);
+    }
+  }
+
+  void _onLanguageChanged() {
+    final nextLanguage = MoodlySettingsPrefs.currentLanguageCode;
+    if (nextLanguage == _languageCode) return;
+
+    _languageCode = nextLanguage;
+
+    if (!mounted) return;
+    setState(() {});
+    _loadAfirmasi();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      isPremiumUser = prefs.getBool('isPremium') ?? false;
+    });
+  }
+
+  void _goBackToHomepage() {
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const Homepage()),
+      (route) => false,
+    );
   }
 
   Future<void> _loadAfirmasi() async {
@@ -81,11 +291,14 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
 
     final data = await AfirmasiService.getAfirmasiByCategories(
       widget.selectedCategories,
+      languageCode: _languageCode,
     );
 
     data.shuffle(Random());
 
     if (!mounted) return;
+
+    final previousIndex = _currentIndex;
 
     setState(() {
       _afirmasiList = data.isNotEmpty
@@ -93,61 +306,130 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
           : [
               {
                 'id': '',
-                'kategori': 'Afirmasi',
-                'teks': 'Belum ada afirmasi yang tersedia.',
+                'kategori_key': 'Afirmasi',
+                'kategori': _t('defaultCategory'),
+                'teks': _t('emptyQuote'),
+                'teks_id': _copy['id']!['emptyQuote']!,
+                'teks_en': _copy['en']!['emptyQuote']!,
               }
             ];
-      _currentIndex = 0;
+      _currentIndex = previousIndex.clamp(0, _pageViewItemCount == 0 ? 0 : _pageViewItemCount - 1);
       _isLoading = false;
     });
 
     await _sendCurrentAfirmasiToWidget();
+    await _registerCurrentAfirmasiRead();
   }
-String _getWallpaperForIndex(int index) {
-  if (_backgroundImages.isEmpty) {
-    return 'assets/icon/images/bg_afirmasi_1.jpg';
+
+  Future<void> _sendCurrentAfirmasiToWidget() async {
+    if (_isLockPage(_currentIndex)) return;
+
+    final currentItem = _currentItem;
+    final currentWallpaper = _backgroundForIndex(_currentIndex);
+
+    await HomeWidget.saveWidgetData<String>(
+      'previewCategory',
+      currentItem['kategori'] ?? _t('defaultCategory'),
+    );
+
+    await HomeWidget.saveWidgetData<String>(
+      'previewQuote',
+      currentItem['teks'] ?? _t('emptyQuote'),
+    );
+
+    await HomeWidget.saveWidgetData<String>(
+      'selectedWallpaper',
+      currentWallpaper,
+    );
+
+    await HomeWidget.saveWidgetData<String>('languageCode', _languageCode);
+
+    await HomeWidget.updateWidget(
+      androidName: 'MoodlyWidgetProvider',
+    );
   }
-  return _backgroundImages[index % _backgroundImages.length];
-}
-Future<void> _sendCurrentAfirmasiToWidget() async {
-  if (_isLockPage(_currentIndex)) return;
 
-  final currentItem = _currentItem;
-  final currentWallpaper = _backgroundForIndex(_currentIndex);
+  Future<void> _registerCurrentAfirmasiRead() async {
+    if (_afirmasiList.isEmpty) return;
+    if (_isLockPage(_currentIndex)) return;
 
-  await HomeWidget.saveWidgetData<String>(
-    'previewCategory',
-    currentItem['kategori'] ?? 'Afirmasi',
-  );
+    final affirmationId = (_currentItem['id'] ?? '').trim();
+    if (affirmationId.isEmpty) return;
 
-  await HomeWidget.saveWidgetData<String>(
-    'previewQuote',
-    currentItem['teks'] ?? '',
-  );
+    await StreakService.instance.registerAffirmationRead(
+      affirmationId: affirmationId,
+    );
+  }
 
-  await HomeWidget.saveWidgetData<String>(
-    'selectedWallpaper',
-    currentWallpaper,
-  );
+  Future<void> _registerCurrentAfirmasiShare() async {
+    await StreakService.instance.registerAffirmationShare();
+  }
 
-  await HomeWidget.updateWidget(
-    androidName: 'MoodlyWidgetProvider',
-  );
-}
+  void _loadRewardedAd({bool force = false}) {
+    if (!_canUseMobileAds) {
+      _rewardedAd?.dispose();
+      _rewardedAd = null;
+      if (mounted) {
+        setState(() {
+          _isRewardedAdReady = false;
+          _isAdLoading = false;
+          _lastRewardedAdError = _t('webOnlyBody');
+        });
+      }
+      return;
+    }
 
+    if (_isAdLoading) return;
+    if (!force && _rewardedAd != null) return;
 
-  void _loadRewardedAd() {
+    if (mounted) {
+      setState(() {
+        _isAdLoading = true;
+        _lastRewardedAdError = null;
+      });
+    }
+
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
-          _rewardedAd = ad;
-          _isRewardedAdReady = true;
+          debugPrint('RewardedAd loaded successfully');
+          _rewardedAd?.dispose();
+
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+
+          setState(() {
+            _rewardedAd = ad;
+            _isRewardedAdReady = true;
+            _isAdLoading = false;
+            _lastRewardedAdError = null;
+          });
         },
         onAdFailedToLoad: (error) {
+          debugPrint(
+            'RewardedAd failed to load: ${error.code} | ${error.message}',
+          );
+
+          _rewardedAd?.dispose();
           _rewardedAd = null;
-          _isRewardedAdReady = false;
+
+          if (!mounted) return;
+
+          setState(() {
+            _isRewardedAdReady = false;
+            _isAdLoading = false;
+            _lastRewardedAdError = '[${error.code}] ${error.message}';
+          });
+
+          Future.delayed(const Duration(seconds: 8), () {
+            if (mounted && _rewardedAd == null && !_isAdLoading) {
+              _loadRewardedAd();
+            }
+          });
         },
       ),
     );
@@ -157,8 +439,11 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
     if (_afirmasiList.isEmpty) {
       return {
         'id': '',
-        'kategori': 'Afirmasi',
-        'teks': 'Belum ada afirmasi yang tersedia.',
+        'kategori_key': 'Afirmasi',
+        'kategori': _t('defaultCategory'),
+        'teks': _t('emptyQuote'),
+        'teks_id': _copy['id']!['emptyQuote']!,
+        'teks_en': _copy['en']!['emptyQuote']!,
       };
     }
 
@@ -171,9 +456,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
 
   String _backgroundForIndex(int index) {
     if (_backgroundImages.isEmpty) {
-      return 'assets/icon/images/bg_afirmasi.jpg';
+      return 'assets/icon/images/bg_afirmasi_1.jpg';
     }
-
     return _backgroundImages[index % _backgroundImages.length];
   }
 
@@ -228,8 +512,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   void _showLockedFeaturePopup() {
     showCuteTopPopup(
       context,
-      title: 'Slide terkunci',
-      message: 'Tonton 2 iklan untuk membuka 5 slide berikutnya',
+      title: _t('lockedSlide'),
+      message: _t('maxSlidesLocked'),
       type: CutePopupType.warning,
     );
   }
@@ -237,114 +521,162 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   Widget _buildLockButton({
     required String title,
     required VoidCallback onTap,
+    required bool primary,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return SizedBox(
-      width: 180,
-      height: 40,
+      width: 210,
+      height: 44,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFEDEDED),
-          foregroundColor: Colors.black87,
           elevation: 0,
+          backgroundColor: primary ? _moodlyGreen : _softWhite,
+          foregroundColor: primary ? Colors.white : _textDark,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: Text(
           title,
-          style: GoogleFonts.openSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+          style: (primary ? textTheme.labelLarge : textTheme.bodySmall)
+              ?.copyWith(
+            color: primary ? Colors.white : _textDark,
           ),
         ),
       ),
     );
   }
 
-  void _watchRewardedAd() {
+  Future<void> _watchRewardedAd() async {
+    if (!_canUseMobileAds) {
+      showCuteTopPopup(
+        context,
+        title: _t('webOnlyTitle'),
+        message: _t('webOnlyBody'),
+        type: CutePopupType.info,
+      );
+      return;
+    }
+
     if (_remainingLockedSlides <= 0) {
       showCuteTopPopup(
         context,
-        title: 'Semua terbuka',
-        message: 'Semua slide sudah bisa diakses',
+        title: _t('allOpenTitle'),
+        message: _t('allOpenBody'),
         type: CutePopupType.success,
       );
       return;
     }
 
-    if (!_isRewardedAdReady || _rewardedAd == null) {
+    if (_isAdLoading) {
       showCuteTopPopup(
         context,
-        title: 'Iklan belum siap',
-        message: 'Coba lagi sebentar ya',
+        title: _t('adLoadingTitle'),
+        message: _t('adLoadingBody'),
         type: CutePopupType.info,
       );
-
-      _loadRewardedAd();
       return;
     }
 
-    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+    final ad = _rewardedAd;
+
+    if (!_isRewardedAdReady || ad == null) {
+      _loadRewardedAd(force: true);
+
+      showCuteTopPopup(
+        context,
+        title: _t('adNotReadyTitle'),
+        message: _lastRewardedAdError == null
+            ? _t('adNotReadyBody')
+            : '${_t('adNotReadyBody')} ${_lastRewardedAdError!}',
+        type: CutePopupType.info,
+      );
+      return;
+    }
+
+    ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
-        _rewardedAd = null;
-        _isRewardedAdReady = false;
-        _loadRewardedAd();
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        ad.dispose();
-        _rewardedAd = null;
-        _isRewardedAdReady = false;
-        _loadRewardedAd();
 
         if (!mounted) return;
+
+        setState(() {
+          _rewardedAd = null;
+          _isRewardedAdReady = false;
+        });
+
+        _loadRewardedAd(force: true);
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        debugPrint(
+          'RewardedAd failed to show: ${error.code} | ${error.message}',
+        );
+
+        ad.dispose();
+
+        if (!mounted) return;
+
+        setState(() {
+          _rewardedAd = null;
+          _isRewardedAdReady = false;
+          _lastRewardedAdError = '[show:${error.code}] ${error.message}';
+        });
+
+        _loadRewardedAd(force: true);
+
         showCuteTopPopup(
           context,
-          title: 'Iklan gagal',
-          message: 'Iklan gagal ditampilkan, coba lagi ya',
+          title: _t('adFailedTitle'),
+          message: _t('adFailedBody'),
           type: CutePopupType.error,
         );
       },
     );
 
-    _rewardedAd!.show(
-      onUserEarnedReward: (ad, reward) {
+    setState(() {
+      _rewardedAd = null;
+      _isRewardedAdReady = false;
+    });
+
+    ad.show(
+      onUserEarnedReward: (ad, reward) async {
         if (!mounted) return;
 
         setState(() {
           _watchedAdsCount += 1;
-
           if (_watchedAdsCount >= adsNeededPerBlock) {
             _watchedAdsCount = 0;
             _rewardedBlocksUnlocked += 1;
           }
         });
 
+        await StreakService.instance.registerRewardedAdWatch();
+
+        if (!mounted) return;
+
         if (_watchedAdsCount == 0) {
           showCuteTopPopup(
             context,
-            title: 'Slide terbuka',
-            message: '5 slide berikutnya berhasil dibuka',
+            title: _t('slideOpenedTitle'),
+            message: _t('slideOpenedBody'),
             type: CutePopupType.success,
           );
 
           if (!_isLockPage(_currentIndex)) {
-            _sendCurrentAfirmasiToWidget();
+            await _sendCurrentAfirmasiToWidget();
           }
         } else {
           showCuteTopPopup(
             context,
-            title: 'Progress iklan',
-            message: '1 dari 2 iklan selesai ditonton',
+            title: _t('adProgressTitle'),
+            message: _t('adProgressBody'),
             type: CutePopupType.info,
           );
         }
       },
     );
-
-    _rewardedAd = null;
-    _isRewardedAdReady = false;
   }
 
   Future<void> _toggleFavorite() async {
@@ -366,10 +698,11 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
 
     showCuteTopPopup(
       context,
-      title: wasFavorite ? 'Favorit dihapus' : 'Favorit disimpan',
-      message: wasFavorite
-          ? 'Afirmasi dihapus dari daftar favorit'
-          : 'Afirmasi berhasil disimpan ke favorit',
+      title: wasFavorite
+          ? _t('favoriteRemovedTitle')
+          : _t('favoriteSavedTitle'),
+      message:
+          wasFavorite ? _t('favoriteRemovedBody') : _t('favoriteSavedBody'),
       type: wasFavorite ? CutePopupType.info : CutePopupType.success,
     );
   }
@@ -388,8 +721,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
       if (!mounted) return;
       showCuteTopPopup(
         context,
-        title: 'Gagal',
-        message: 'Gagal mengambil gambar afirmasi',
+        title: _t('downloadFailTitle'),
+        message: _t('downloadFailBody'),
         type: CutePopupType.error,
       );
       return;
@@ -406,8 +739,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
         if (!mounted) return;
         showCuteTopPopup(
           context,
-          title: 'Izin ditolak',
-          message: 'Akses galeri dibutuhkan untuk mengunduh afirmasi',
+          title: _t('permissionDeniedTitle'),
+          message: _t('permissionDeniedBody'),
           type: CutePopupType.warning,
         );
         return;
@@ -421,15 +754,15 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
       if (!mounted) return;
       showCuteTopPopup(
         context,
-        title: 'Berhasil diunduh',
-        message: 'Afirmasi berhasil disimpan ke galeri',
+        title: _t('downloadSuccessTitle'),
+        message: _t('downloadSuccessBody'),
         type: CutePopupType.success,
       );
     } on GalException catch (e) {
       if (!mounted) return;
       showCuteTopPopup(
         context,
-        title: 'Gagal mengunduh',
+        title: _t('downloadErrorTitle'),
         message: e.type.message,
         type: CutePopupType.error,
       );
@@ -437,8 +770,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
       if (!mounted) return;
       showCuteTopPopup(
         context,
-        title: 'Terjadi kesalahan',
-        message: 'Afirmasi gagal diunduh, coba lagi ya',
+        title: _t('downloadGenericTitle'),
+        message: _t('downloadGenericBody'),
         type: CutePopupType.error,
       );
     }
@@ -458,8 +791,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
       if (!mounted) return;
       showCuteTopPopup(
         context,
-        title: 'Gagal share',
-        message: 'Gagal menyiapkan gambar afirmasi',
+        title: _t('shareFailTitle'),
+        message: _t('shareFailBody'),
         type: CutePopupType.error,
       );
       return;
@@ -467,12 +800,12 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
 
     final currentItem = _currentItem;
     final shareText =
-        '${currentItem['teks'] ?? ''}\n\nKategori: ${currentItem['kategori'] ?? '-'}';
+        '${currentItem['teks'] ?? ''}\n\n${_t('categoryPrefix')}: ${currentItem['kategori'] ?? '-'}';
 
     showCuteTopPopup(
       context,
-      title: 'Siap dibagikan',
-      message: 'Afirmasi sedang dibuka ke menu share',
+      title: _t('shareReadyTitle'),
+      message: _t('shareReadyBody'),
       type: CutePopupType.info,
     );
 
@@ -486,16 +819,20 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
       ],
       text: shareText,
     );
+
+    await _registerCurrentAfirmasiShare();
   }
 
   Future<void> _showFavoriteList() async {
-    final favoritItems = AfirmasiService.getFavoritItems();
+    final favoritItems = AfirmasiService.getFavoritItems(
+      languageCode: _languageCode,
+    );
 
     if (favoritItems.isEmpty) {
       showCuteTopPopup(
         context,
-        title: 'Belum ada favorit',
-        message: 'Simpan afirmasi favoritmu dulu ya',
+        title: _t('favoriteEmptyTitle'),
+        message: _t('favoriteEmptyBody'),
         type: CutePopupType.info,
       );
       return;
@@ -513,6 +850,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   }
 
   void _showSettingsMenu() {
+    final pageContext = context;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -524,12 +863,12 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
           child: Stack(
             children: [
               Positioned(
-                top: 70,
+                top: 72,
                 right: 20,
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
-                    width: 250,
+                    width: 260,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F6F7),
@@ -547,16 +886,26 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                       children: [
                         _popupItem(
                           icon: Icons.refresh_rounded,
-                          title: 'Atur ulang kategori afirmasi',
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.pop(context);
+                          title: _t('settingsResetCategory'),
+                          onTap: () async {
+                            Navigator.of(pageContext).pop();
+
+                            await AfirmasiPage.clearSavedCategories();
+
+                            if (!mounted) return;
+
+                            Navigator.pushReplacement(
+                              pageContext,
+                              MaterialPageRoute(
+                                builder: (_) => const AfirmasiPage(forcePicker: true),
+                              ),
+                            );
                           },
                         ),
                         const SizedBox(height: 8),
                         _popupItem(
                           icon: Icons.widgets_outlined,
-                          title: 'Pengaturan widget',
+                          title: _t('settingsWidget'),
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -601,20 +950,22 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
     required String title,
     required VoidCallback onTap,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.8),
+          color: Colors.white.withOpacity(0.82),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: const Color(0xFFEFE8F1),
                 borderRadius: BorderRadius.circular(12),
@@ -629,10 +980,9 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF3B343F),
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 13.5,
+                  color: const Color(0xFF3B343F),
                 ),
               ),
             ),
@@ -643,66 +993,98 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   }
 
   Widget _buildLockedOverlay() {
+    final textTheme = Theme.of(context).textTheme;
+    final adReadyText = _isRewardedAdReady
+        ? _t('adReady')
+        : (_isAdLoading ? _t('adLoading') : _t('adNotReady'));
+
     return Container(
-      color: Colors.black.withOpacity(0.45),
+      color: Colors.black.withOpacity(0.42),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6B84E).withOpacity(0.95),
-                  shape: BoxShape.circle,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withOpacity(0.18)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE6B84E).withOpacity(0.95),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 26,
+                const SizedBox(height: 16),
+                Text(
+                  _canUseMobileAds
+                      ? _t('maxSlidesLocked')
+                      : _t('maxSlidesLockedWeb'),
+                  textAlign: TextAlign.center,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontSize: 18,
+                    height: 1.35,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tonton 2 iklan untuk membuka 5 slide berikutnya.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1.35,
+                const SizedBox(height: 10),
+                Text(
+                  _template(
+                    'progressAds',
+                    {
+                      'current': '$_watchedAdsCount',
+                      'total': '$adsNeededPerBlock',
+                    },
+                  ),
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withOpacity(0.92),
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Progress: $_watchedAdsCount / $adsNeededPerBlock iklan',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.openSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.9),
+                const SizedBox(height: 6),
+                Text(
+                  adReadyText,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withOpacity(0.92),
+                    fontSize: 11,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 22),
-              _buildLockButton(
-                title: 'tonton iklan',
-                onTap: _watchRewardedAd,
-              ),
-              const SizedBox(height: 12),
-              _buildLockButton(
-                title: 'Dapatkan Premium',
-                onTap: () {
-                  showCuteTopPopup(
-                    context,
-                    title: 'Premium',
-                    message: 'Halaman premium akan ditambahkan',
-                    type: CutePopupType.warning,
-                  );
-                },
-              ),
-            ],
+                const SizedBox(height: 20),
+                _buildLockButton(
+                  title: _canUseMobileAds ? _t('watchAds') : _t('androidOnly'),
+                  onTap: _watchRewardedAd,
+                  primary: true,
+                ),
+                const SizedBox(height: 10),
+                _buildLockButton(
+                  title: _t('getPremium'),
+                  onTap: () {
+                    showCuteTopPopup(
+                      context,
+                      title: _t('premiumSoonTitle'),
+                      message: _t('premiumSoonBody'),
+                      type: CutePopupType.warning,
+                    );
+                  },
+                  primary: false,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -710,9 +1092,8 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   }
 
   Widget _buildDots() {
-    final totalVisible = _pageViewItemCount > freeSlideLimit
-        ? freeSlideLimit
-        : _pageViewItemCount;
+    final totalVisible =
+        _pageViewItemCount > freeSlideLimit ? freeSlideLimit : _pageViewItemCount;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -724,13 +1105,16 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
 
           final bool isActive = index == activeIndex;
 
-          return Container(
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             margin: const EdgeInsets.symmetric(horizontal: 4),
-            width: 12,
-            height: 12,
+            width: isActive ? 18 : 8,
+            height: 8,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isActive ? const Color(0xFFA6D68A) : Colors.white70,
+              borderRadius: BorderRadius.circular(999),
+              color: isActive
+                  ? const Color(0xFFA6D68A)
+                  : Colors.white.withOpacity(0.72),
             ),
           );
         },
@@ -745,10 +1129,202 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Icon(
-        icon,
-        size: 38,
-        color: active ? const Color(0xFFFFC0CB) : Colors.white,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(active ? 0.94 : 0.88),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: 24,
+          color: active ? _favoritePink : const Color(0xFF3F4340),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar(String currentCategory) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Row(
+        children: [
+          _circleTopButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: _goBackToHomepage,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                decoration: BoxDecoration(
+                  color: _chipBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  currentCategory,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: _textDark,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _circleTopButton(
+            icon: Icons.settings_outlined,
+            onTap: _showSettingsMenu,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _circleTopButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: _chipBg,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: _textDark,
+          size: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuotePage(Map<String, String> item, String backgroundPath) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            backgroundPath,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(color: const Color(0xFF8C6A8E));
+            },
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.10),
+                  Colors.black.withOpacity(0.16),
+                  Colors.black.withOpacity(0.22),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 110, 28, 145),
+          child: Column(
+            children: [
+              const Spacer(),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.18),
+                    width: 1.2,
+                  ),
+                ),
+                child: Text(
+                  item['teks'] ?? '',
+                  textAlign: TextAlign.center,
+                  style: textTheme.headlineLarge?.copyWith(
+                    color: Colors.white,
+                    fontSize: 28,
+                    height: 1.38,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionDock() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.18),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildBottomButton(
+            icon: _isCurrentFavorite
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            onTap: _toggleFavorite,
+            active: _isCurrentFavorite,
+          ),
+          _buildBottomButton(
+            icon: Icons.system_update_alt_rounded,
+            onTap: _downloadAfirmasi,
+          ),
+          _buildBottomButton(
+            icon: Icons.ios_share_outlined,
+            onTap: _shareAfirmasi,
+          ),
+          _buildBottomButton(
+            icon: Icons.bookmark_border_rounded,
+            onTap: _showFavoriteList,
+          ),
+        ],
       ),
     );
   }
@@ -757,55 +1333,55 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
   Widget build(BuildContext context) {
     final currentItem = _currentItem;
     final isCurrentLockPage = _isLockPage(_currentIndex);
-    final currentCategory =
-        isCurrentLockPage ? 'Slide terkunci' : currentItem['kategori'] ?? 'Afirmasi';
+    final currentCategory = isCurrentLockPage
+        ? _t('lockedSlide')
+        : currentItem['kategori'] ?? _t('defaultCategory');
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Screenshot(
-              controller: _screenshotController,
-              child: Container(
-                color: Colors.black,
-                child: Stack(
-  fit: StackFit.expand,
-  children: [
-    // ✅ BACKGROUND GLOBAL
-    Image.asset(
-      _backgroundForIndex(_currentIndex),
-      fit: BoxFit.cover,
-      gaplessPlayback: true,
-    ),
+    return WillPopScope(
+      onWillPop: () async {
+        _goBackToHomepage();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Screenshot(
+                controller: _screenshotController,
+                child: Container(
+                  color: Colors.black,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        _backgroundForIndex(_currentIndex),
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                      ),
+                      Container(
+                        color: Colors.black.withOpacity(0.10),
+                      ),
+                      if (_isLoading)
+                        const SizedBox.shrink()
+                      else
+                        PageView.builder(
+                          controller: _pageController,
+                          itemCount: _pageViewItemCount,
+                          onPageChanged: (index) async {
+                            setState(() {
+                              _currentIndex = index;
+                            });
 
-    // ✅ overlay tipis
-    Container(
-      color: Colors.black.withOpacity(0.10),
-    ),
+                            await _sendCurrentAfirmasiToWidget();
+                            await _registerCurrentAfirmasiRead();
+                          },
+                          itemBuilder: (context, index) {
+                            final isLockPage = _isLockPage(index);
+                            final backgroundPath = _backgroundForIndex(index);
 
-    // ✅ konten utama
-    if (_isLoading)
-      const SizedBox.shrink()
-    else
-      PageView.builder(
-        controller: _pageController,
-        itemCount: _pageViewItemCount,
-        onPageChanged: (index) async {
-  setState(() {
-    _currentIndex = index;
-  });
-
-  await _sendCurrentAfirmasiToWidget();
-},
-                        itemBuilder: (context, index) {
-                          final isLockPage = _isLockPage(index);
-                          final backgroundPath = _backgroundForIndex(index);
-
-                          if (isLockPage) {
-                            return Container(
-                              color: Colors.black,
-                              child: Stack(
+                            if (isLockPage) {
+                              return Stack(
                                 fit: StackFit.expand,
                                 children: [
                                   Positioned.fill(
@@ -813,8 +1389,7 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                                       backgroundPath,
                                       fit: BoxFit.cover,
                                       gaplessPlayback: true,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
+                                      errorBuilder: (context, error, stackTrace) {
                                         return Container(
                                           color: const Color(0xFF8C6A8E),
                                         );
@@ -825,162 +1400,34 @@ Future<void> _sendCurrentAfirmasiToWidget() async {
                                     child: _buildLockedOverlay(),
                                   ),
                                 ],
-                              ),
-                            );
-                          }
+                              );
+                            }
 
-                          final item = _afirmasiList[index];
-
-                          return Container(
-                            color: Colors.black,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Positioned.fill(
-                                  child: Image.asset(
-                                    backgroundPath,
-                                    fit: BoxFit.cover,
-                                    gaplessPlayback: true,
-                                    errorBuilder:
-                                        (context, error, stackTrace) {
-                                      return Container(
-                                        color: const Color(0xFF8C6A8E),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black.withOpacity(0.10),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      item['teks'] ?? '',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.fredoka(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 28,
-                                        height: 1.35,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+                            final item = _afirmasiList[index];
+                            return _buildQuotePage(item, backgroundPath);
+                          },
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 34,
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: IntrinsicWidth(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              constraints: const BoxConstraints(
-                                minHeight: 32,
-                              ),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0x80FFFFFF),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                currentCategory,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      color: Colors.black87,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _showSettingsMenu,
-                        icon: const Icon(
-                          Icons.settings_outlined,
-                          color: Colors.white,
-                          size: 38,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (!_isLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 28),
-                    child: _buildDots(),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 28),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildBottomButton(
-                        icon: _isCurrentFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        onTap: _toggleFavorite,
-                        active: _isCurrentFavorite,
-                      ),
-                      _buildBottomButton(
-                        icon: Icons.system_update_alt_rounded,
-                        onTap: _downloadAfirmasi,
-                      ),
-                      _buildBottomButton(
-                        icon: Icons.ios_share_outlined,
-                        onTap: _shareAfirmasi,
-                      ),
-                      _buildBottomButton(
-                        icon: Icons.bookmark_border,
-                        onTap: _showFavoriteList,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildTopBar(currentCategory),
+                  const Spacer(),
+                  if (!_isLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: _buildDots(),
+                    ),
+                  _buildActionDock(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

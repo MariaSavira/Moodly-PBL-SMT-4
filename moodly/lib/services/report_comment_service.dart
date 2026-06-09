@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportCommentService {
+  ReportCommentService._();
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static final CollectionReference reportRef = _db.collection("reports");
+  static CollectionReference<Map<String, dynamic>> get _reportRef =>
+      _db.collection("reports");
 
   /// ================= REPORT COMMENT / REPLY =================
   static Future<void> createReport({
@@ -32,7 +34,7 @@ class ReportCommentService {
     /// OPTIONAL
     String? replyId,
   }) async {
-    await reportRef.add({
+    final payload = <String, dynamic>{
       /// TYPE
       "type": type,
 
@@ -56,11 +58,23 @@ class ReportCommentService {
       "diary_id": diaryId,
       "comment_id": commentId,
       "reply_id": replyId,
+      "target_type": replyId == null ? "comment" : "reply",
 
       /// SYSTEM
       "status": "pending",
-
       "created_at": FieldValue.serverTimestamp(),
-    });
+    };
+
+    await _reportRef.add(payload);
+  }
+
+  /// ================= WATCH MY REPORTS (OPTIONAL) =================
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getReportsByReporter(
+    String reporterUid,
+  ) {
+    return _reportRef
+        .where("reported_by_uid", isEqualTo: reporterUid)
+        .orderBy("created_at", descending: true)
+        .snapshots();
   }
 }

@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/chat_service.dart';
+
+const String _prefLanguageKey = 'moodly_settings_language_code';
 
 class ImagePreviewPage extends StatefulWidget {
   final File imageFile;
@@ -19,6 +22,42 @@ class ImagePreviewPage extends StatefulWidget {
 class _ImagePreviewPageState extends State<ImagePreviewPage> {
   String viewMode = 'normal';
   final ChatService _chatService = ChatService();
+  String _languageCode = 'id';
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'title': 'Pratinjau Foto',
+      'normal': 'Biasa',
+      'once': 'Sekali lihat',
+      'twice': 'Dua kali lihat',
+      'send': 'Kirim',
+    },
+    'en': {
+      'title': 'Photo Preview',
+      'normal': 'Normal',
+      'once': 'View once',
+      'twice': 'View twice',
+      'send': 'Send',
+    },
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguagePreference();
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLanguage = prefs.getString(_prefLanguageKey);
+
+    if (!mounted) return;
+    setState(() {
+      _languageCode = savedLanguage == 'en' ? 'en' : 'id';
+    });
+  }
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
 
   void _toggleMode() {
     setState(() {
@@ -39,9 +78,9 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
   }
 
   String _getLabel() {
-    if (viewMode == 'once') return 'Sekali lihat';
-    if (viewMode == 'twice') return 'Dua kali lihat';
-    return 'Biasa';
+    if (viewMode == 'once') return _t('once');
+    if (viewMode == 'twice') return _t('twice');
+    return _t('normal');
   }
 
   Future<void> _sendImage() async {
@@ -61,7 +100,6 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
     const bgColor = Color(0xFFF3FADC);
     const pinkSoft = Color(0xFFFFE6EA);
     const greenMain = Color(0xFF84C76A);
-    const greenDark = Color(0xFF5FA84D);
     const textDark = Color(0xFF2B2B2B);
 
     return Scaffold(
@@ -76,9 +114,9 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
             color: textDark,
           ),
         ),
-        title: const Text(
-          'Pratinjau Foto',
-          style: TextStyle(
+        title: Text(
+          _t('title'),
+          style: const TextStyle(
             color: textDark,
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -246,9 +284,9 @@ class _ImagePreviewPageState extends State<ImagePreviewPage> {
                             color: Colors.white,
                             size: 18,
                           ),
-                          label: const Text(
-                            'Kirim',
-                            style: TextStyle(
+                          label: Text(
+                            _t('send'),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
                             ),

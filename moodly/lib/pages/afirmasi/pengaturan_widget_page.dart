@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:moodly/pages/afirmasi/cara_memasang_widget_page.dart';
+import 'package:moodly/pages/setting/moodly_settings_support.dart';
 import 'package:moodly/services/afirmasi/widget_settings_service.dart';
 
 class PengaturanWidgetPage extends StatefulWidget {
@@ -12,17 +12,17 @@ class PengaturanWidgetPage extends StatefulWidget {
 }
 
 class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
-
   bool tampilkanKategori = true;
   bool tampilkanQuote = true;
   bool gunakanBackground = true;
 
   Color warnaTeks = Colors.white;
 
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
   String previewCategory = 'Afirmasi';
   String previewQuote = '';
 
-  final List<String> daftarWallpaper = [
+  final List<String> daftarWallpaper = const [
     'assets/icon/images/bg_afirmasi_1.jpg',
     'assets/icon/images/bg_afirmasi_2.jpg',
     'assets/icon/images/bg_afirmasi_3.jpg',
@@ -32,10 +32,121 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
 
   String wallpaperTerpilih = 'assets/icon/images/bg_afirmasi_1.jpg';
 
+  static const Color _bg = Color(0xFFF3F7E8);
+  static const Color _card = Colors.white;
+  static const Color _green = Color(0xFF96D47E);
+  static const Color _greenDark = Color(0xFF5E9E4F);
+  static const Color _greenSoft = Color(0xFFE4F4D7);
+  static const Color _pinkSoft = Color(0xFFFFEEF2);
+  static const Color _textDark = Color(0xFF1F1F1F);
+  static const Color _textSoft = Color(0xFF6F7866);
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Pengaturan Widget',
+      'widgetSection': 'Widget',
+      'showCategoryTitle': 'Tampilkan kategori',
+      'showCategoryBody': 'Menampilkan label kategori di widget afirmasi',
+      'showQuoteTitle': 'Tampilkan isi afirmasi',
+      'showQuoteBody': 'Menampilkan kutipan afirmasi di widget',
+      'useBackgroundTitle': 'Gunakan background gambar',
+      'useBackgroundBody': 'Memakai latar belakang afirmasi pada widget',
+      'wallpaperSection': 'Wallpaper',
+      'wallpaperLabel': 'Wallpaper widget',
+      'textColorLabel': 'Warna teks',
+      'previewSection': 'Preview',
+      'previewDefaultCategory': 'Afirmasi',
+      'previewDefaultQuote': 'Belum ada afirmasi',
+      'helpTitle': 'Cara pasang widget',
+      'helpBody': 'Lihat langkah cepat untuk memasang widget Moodly.',
+      'catGratitude': 'Rasa Syukur',
+      'catAnxiety': 'Meredakan Kecemasan',
+      'catMotivation': 'Motivasi',
+      'catMental': 'Kesehatan Mental',
+      'catSelfLove': 'Cinta Diri',
+    },
+    'en': {
+      'header': 'Widget Settings',
+      'widgetSection': 'Widget',
+      'showCategoryTitle': 'Show category',
+      'showCategoryBody': 'Shows the category label on the affirmation widget',
+      'showQuoteTitle': 'Show affirmation text',
+      'showQuoteBody': 'Shows the affirmation quote on the widget',
+      'useBackgroundTitle': 'Use image background',
+      'useBackgroundBody': 'Uses the affirmation background image on the widget',
+      'wallpaperSection': 'Wallpaper',
+      'wallpaperLabel': 'Widget wallpaper',
+      'textColorLabel': 'Text color',
+      'previewSection': 'Preview',
+      'previewDefaultCategory': 'Affirmation',
+      'previewDefaultQuote': 'No affirmation yet',
+      'helpTitle': 'How to install widget',
+      'helpBody': 'See the quick steps to install the Moodly widget.',
+      'catGratitude': 'Gratitude',
+      'catAnxiety': 'Ease Anxiety',
+      'catMotivation': 'Motivation',
+      'catMental': 'Mental Health',
+      'catSelfLove': 'Self Love',
+    },
+  };
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  List<BoxShadow> get _softShadow => const [
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, 0.08),
+          offset: Offset(0, 10),
+          blurRadius: 24,
+        ),
+      ];
+
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _loadWidgetSettings();
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+      previewCategory = _localizedCategoryLabel(previewCategory);
+    });
+
+    _updateHomeWidget();
+  }
+
+  String _localizedCategoryLabel(String raw) {
+    final cleaned = raw.trim();
+
+    if (_languageCode == 'en') {
+      switch (cleaned) {
+        case 'Rasa Syukur':
+          return _t('catGratitude');
+        case 'Meredakan Kecemasan':
+          return _t('catAnxiety');
+        case 'Motivasi':
+          return _t('catMotivation');
+        case 'Kesehatan Mental':
+          return _t('catMental');
+        case 'Cinta Diri':
+          return _t('catSelfLove');
+        case 'Afirmasi':
+          return _t('previewDefaultCategory');
+        default:
+          return cleaned;
+      }
+    }
+
+    return cleaned.isEmpty ? _t('previewDefaultCategory') : cleaned;
   }
 
   Future<void> _loadWidgetSettings() async {
@@ -57,7 +168,7 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
 
     final category = await HomeWidget.getWidgetData<String>(
       'previewCategory',
-      defaultValue: 'Afirmasi',
+      defaultValue: _t('previewDefaultCategory'),
     );
 
     final quote = await HomeWidget.getWidgetData<String>(
@@ -68,14 +179,18 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     if (!mounted) return;
 
     setState(() {
+      _languageCode = MoodlySettingsPrefs.currentLanguageCode;
       tampilkanKategori = savedShowCategory ?? tampilkanKategori;
       tampilkanQuote = savedShowQuote ?? tampilkanQuote;
       gunakanBackground = savedUseBackground ?? gunakanBackground;
       warnaTeks = savedTextColor != null ? Color(savedTextColor) : warnaTeks;
       wallpaperTerpilih = savedWallpaper ?? wallpaperTerpilih;
-
-      previewCategory = category ?? 'Afirmasi';
-      previewQuote = quote ?? '';
+      previewCategory = _localizedCategoryLabel(
+        category ?? _t('previewDefaultCategory'),
+      );
+      previewQuote = (quote != null && quote.trim().isNotEmpty)
+          ? quote
+          : _t('previewDefaultQuote');
     });
 
     await _updateHomeWidget();
@@ -85,21 +200,17 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     await HomeWidget.saveWidgetData<bool>('showCategory', tampilkanKategori);
     await HomeWidget.saveWidgetData<bool>('showQuote', tampilkanQuote);
     await HomeWidget.saveWidgetData<bool>('useBackground', gunakanBackground);
-
     await HomeWidget.saveWidgetData<int>('textColor', warnaTeks.value);
-
     await HomeWidget.saveWidgetData<String>(
       'selectedWallpaper',
       wallpaperTerpilih,
     );
+    await HomeWidget.saveWidgetData<String>('languageCode', _languageCode);
 
     await HomeWidget.updateWidget(
       androidName: 'MoodlyWidgetProvider',
     );
   }
-
- 
-
 
   void _showCaraPasangWidget() {
     Navigator.push(
@@ -110,55 +221,58 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, top: 6),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: GoogleFonts.fredoka(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
+          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 20,
+                color: _textDark,
+              ),
         ),
       ),
     );
   }
 
   Widget _settingTile({
+    required BuildContext context,
     required String title,
     String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
+        color: _card.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: _softShadow,
       ),
       child: ListTile(
         onTap: onTap,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(22),
         ),
         title: Text(
           title,
-          style: GoogleFonts.openSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
+          style: textTheme.titleMedium?.copyWith(
+            color: _textDark,
+            fontSize: 16,
           ),
         ),
         subtitle: subtitle == null
             ? null
             : Text(
                 subtitle,
-                style: GoogleFonts.openSans(
-                  fontSize: 12,
-                  color: Colors.black54,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  color: _textSoft,
                 ),
               ),
         trailing: trailing,
@@ -169,67 +283,86 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
   Widget _colorDot(Color color, bool selected, Future<void> Function() onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 34,
-        height: 34,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: selected ? Colors.black87 : Colors.transparent,
-            width: 2,
+            color: selected ? const Color(0xFF232323) : Colors.transparent,
+            width: 2.2,
           ),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.12),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
       ),
     );
   }
 
   Widget _wallpaperItem(String path) {
- final bool isSelected = wallpaperTerpilih == path;
+    final bool isSelected = wallpaperTerpilih == path;
 
-  return GestureDetector(
-    onTap: () async {
-      setState(() {
-        wallpaperTerpilih = path;
-      });
+    return GestureDetector(
+      onTap: () async {
+        setState(() {
+          wallpaperTerpilih = path;
+        });
 
-      await WidgetSettingsService.saveString(
-        WidgetSettingsService.selectedWallpaperKey,
-        path,
-      );
-
-      await _updateHomeWidget();
-    },
-    child: Container(
-      width: 58,
-      height: 82,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF6E9550) : Colors.transparent,
-          width: 3,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.asset(
+        await WidgetSettingsService.saveString(
+          WidgetSettingsService.selectedWallpaperKey,
           path,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            color: const Color(0xFFE8E3EA),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.image_outlined,
-              color: Colors.grey,
-              size: 20,
+        );
+
+        await _updateHomeWidget();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 54,
+        height: 76,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6E9550) : Colors.transparent,
+            width: 3,
+          ),
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Color.fromRGBO(110, 149, 80, 0.26),
+                    blurRadius: 12,
+                    offset: Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Image.asset(
+            path,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: const Color(0xFFE8E3EA),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.image_outlined,
+                color: Colors.grey,
+                size: 20,
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Future<void> _saveTextColor(Color color) async {
     setState(() {
@@ -246,13 +379,15 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
 
   @override
   Widget build(BuildContext context) {
-    final shownPreviewQuote =
-        previewQuote.trim().isNotEmpty ? previewQuote : 'Belum ada afirmasi';
+    final textTheme = Theme.of(context).textTheme;
+    final shownPreviewQuote = previewQuote.trim().isNotEmpty
+        ? previewQuote
+        : _t('previewDefaultQuote');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F4DE),
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF1F4DE),
+        backgroundColor: _bg,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -263,11 +398,10 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
           ),
         ),
         title: Text(
-          'Pengaturan Widget',
-          style: GoogleFonts.fredoka(
+          _t('header'),
+          style: textTheme.headlineLarge?.copyWith(
             fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
+            color: _textDark,
           ),
         ),
         actions: [
@@ -284,13 +418,63 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
           children: [
-            _sectionTitle('Widget'),
+            Container(
+              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: _card.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: _softShadow,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: const BoxDecoration(
+                      color: _pinkSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.widgets_rounded,
+                      color: Color(0xFFC97C86),
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _t('helpTitle'),
+                          style: textTheme.titleMedium?.copyWith(
+                            color: _textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _t('helpBody'),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: _textSoft,
+                            fontSize: 12.5,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _sectionTitle(context, _t('widgetSection')),
             _settingTile(
-              title: 'Tampilkan kategori',
-              subtitle: 'Menampilkan label kategori di widget afirmasi',
+              context: context,
+              title: _t('showCategoryTitle'),
+              subtitle: _t('showCategoryBody'),
               trailing: Switch(
                 value: tampilkanKategori,
-                activeColor: const Color(0xFF99D28F),
+                activeColor: _green,
                 onChanged: (value) async {
                   setState(() {
                     tampilkanKategori = value;
@@ -306,11 +490,12 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               ),
             ),
             _settingTile(
-              title: 'Tampilkan isi afirmasi',
-              subtitle: 'Menampilkan kutipan afirmasi di widget',
+              context: context,
+              title: _t('showQuoteTitle'),
+              subtitle: _t('showQuoteBody'),
               trailing: Switch(
                 value: tampilkanQuote,
-                activeColor: const Color(0xFF99D28F),
+                activeColor: _green,
                 onChanged: (value) async {
                   setState(() {
                     tampilkanQuote = value;
@@ -326,11 +511,12 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               ),
             ),
             _settingTile(
-              title: 'Gunakan background gambar',
-              subtitle: 'Memakai latar belakang afirmasi pada widget',
+              context: context,
+              title: _t('useBackgroundTitle'),
+              subtitle: _t('useBackgroundBody'),
               trailing: Switch(
                 value: gunakanBackground,
-                activeColor: const Color(0xFF99D28F),
+                activeColor: _green,
                 onChanged: (value) async {
                   setState(() {
                     gunakanBackground = value;
@@ -346,41 +532,35 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               ),
             ),
             const SizedBox(height: 8),
-            _sectionTitle('Wallpaper'),
+            _sectionTitle(context, _t('wallpaperSection')),
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
+                color: _card.withOpacity(0.94),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: _softShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Wallpaper widget',
-                    style: GoogleFonts.openSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                    _t('wallpaperLabel'),
+                    style: textTheme.titleMedium?.copyWith(
+                      color: _textDark,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: [
-                        _wallpaperItem(daftarWallpaper[0]),
-                        const SizedBox(width: 10),
-                        _wallpaperItem(daftarWallpaper[1]),
-                        const SizedBox(width: 10),
-                        _wallpaperItem(daftarWallpaper[2]),
-                        const SizedBox(width: 10),
-                        _wallpaperItem(daftarWallpaper[3]),
-                        const SizedBox(width: 10),
-                        _wallpaperItem(daftarWallpaper[4]),
-                        const SizedBox(width: 10),
-                      ],
+                      children: daftarWallpaper.map((path) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: _wallpaperItem(path),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ],
@@ -390,18 +570,18 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
+                color: _card.withOpacity(0.94),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: _softShadow,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Warna teks',
-                    style: GoogleFonts.openSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                    _t('textColorLabel'),
+                    style: textTheme.titleMedium?.copyWith(
+                      color: _textDark,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -440,55 +620,57 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
               ),
             ),
             const SizedBox(height: 8),
-            _sectionTitle('Preview'),
+            _sectionTitle(context, _t('previewSection')),
             Container(
-              height: 180,
+              height: 156,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 image: gunakanBackground
-    ? DecorationImage(
-        image: AssetImage(wallpaperTerpilih),
-        fit: BoxFit.cover,
-      )
-    : null,
+                    ? DecorationImage(
+                        image: AssetImage(wallpaperTerpilih),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
                 color: gunakanBackground ? null : const Color(0xFF8C6A8E),
+                boxShadow: _softShadow,
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0x33000000),
-                  borderRadius: BorderRadius.circular(20),
+                  color: const Color(0x44000000),
+                  borderRadius: BorderRadius.circular(22),
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (tampilkanKategori)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 14,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0x80FFFFFF),
+                          color: const Color(0xCCFFFFFF),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          previewCategory,
-                          style: GoogleFonts.openSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                          previewCategory.trim().isEmpty
+                              ? _t('previewDefaultCategory')
+                              : previewCategory,
+                          style: textTheme.bodySmall?.copyWith(
                             color: Colors.black87,
+                            fontSize: 11.5,
                           ),
                         ),
                       ),
-                    if (tampilkanKategori) const SizedBox(height: 16),
+                    if (tampilkanKategori) const SizedBox(height: 12),
                     if (tampilkanQuote)
                       Text(
                         shownPreviewQuote,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.fredoka(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                        style: textTheme.headlineLarge?.copyWith(
+                          fontSize: 16,
+                          height: 1.42,
                           color: warnaTeks,
                         ),
                       ),

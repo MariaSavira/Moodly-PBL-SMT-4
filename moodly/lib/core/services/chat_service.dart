@@ -373,68 +373,123 @@ class ChatService {
     if (user == null) return null;
 
     final waitingRef = _firestore.collection('waiting_users');
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final selfWaitingRef = waitingRef.doc(user.uid);
 
-    final snapshot = await waitingRef
-        .orderBy('createdAt')
-        .limit(10)
-        .get();
+    try {
+      // selalu set status matching dulu
+      await userRef.set(
+        {
+          'status': 'matching',
+          'currentRoomId': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
-    QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
+      // selalu masuk queue dulu
+      await selfWaitingRef.set(
+        {
+          'uid': user.uid,
+          'status': 'matching',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
 
-    for (final doc in snapshot.docs) {
-      if (doc.id != user.uid) {
-        otherUserDoc = doc;
-        break;
+      // baru cari partner
+      final snapshot = await waitingRef.orderBy('createdAt').limit(10).get();
+
+      QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
+
+      for (final doc in snapshot.docs) {
+        if (doc.id != user.uid) {
+          otherUserDoc = doc;
+          break;
+        }
       }
-    }
 
-    if (otherUserDoc != null) {
+      // belum ada partner, tetap tunggu di queue
+      if (otherUserDoc == null) {
+        return null;
+      }
+
       final otherUid = otherUserDoc.id;
+      final otherWaitingRef = waitingRef.doc(otherUid);
+      final otherUserRef = _firestore.collection('users').doc(otherUid);
       final roomRef = _firestore.collection('chat_rooms').doc();
 
-      final batch = _firestore.batch();
+      String? resolvedRoomId;
 
-      batch.delete(waitingRef.doc(otherUid));
-      batch.delete(waitingRef.doc(user.uid));
+      await _firestore.runTransaction((tx) async {
+        final selfWaitSnap = await tx.get(selfWaitingRef);
+        final otherWaitSnap = await tx.get(otherWaitingRef);
+        final selfUserSnap = await tx.get(userRef);
+        final otherUserSnap = await tx.get(otherUserRef);
 
-      batch.set(roomRef, {
-        'roomId': roomRef.id,
-        'participants': [user.uid, otherUid],
-        'status': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastActivityAt': FieldValue.serverTimestamp(),
+        final selfCurrentRoom =
+            (selfUserSnap.data()?['currentRoomId'] ?? '').toString().trim();
+        final otherCurrentRoom =
+            (otherUserSnap.data()?['currentRoomId'] ?? '').toString().trim();
+
+        // kalau user ini ternyata sudah punya room, pakai room itu
+        if (selfCurrentRoom.isNotEmpty) {
+          resolvedRoomId = selfCurrentRoom;
+          tx.delete(selfWaitingRef);
+          return;
+        }
+
+        // kalau partner sudah lebih dulu matched sama orang lain, biarkan user ini tetap nunggu
+        if (otherCurrentRoom.isNotEmpty) {
+          return;
+        }
+
+        // kalau salah satu waiting doc sudah hilang, batalkan match
+        if (!selfWaitSnap.exists || !otherWaitSnap.exists) {
+          return;
+        }
+
+        resolvedRoomId = roomRef.id;
+
+        tx.set(roomRef, {
+          'roomId': roomRef.id,
+          'participants': [user.uid, otherUid],
+          'status': 'active',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastActivityAt': FieldValue.serverTimestamp(),
+        });
+
+        tx.set(
+          userRef,
+          {
+            'currentRoomId': roomRef.id,
+            'status': 'chatting',
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        tx.set(
+          otherUserRef,
+          {
+            'currentRoomId': roomRef.id,
+            'status': 'chatting',
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        tx.delete(selfWaitingRef);
+        tx.delete(otherWaitingRef);
       });
 
-      batch.set(
-        _firestore.collection('users').doc(user.uid),
-        {
-          'currentRoomId': roomRef.id,
-          'status': 'chatting',
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      batch.set(
-        _firestore.collection('users').doc(otherUid),
-        {
-          'currentRoomId': roomRef.id,
-          'status': 'chatting',
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      await batch.commit();
-      return roomRef.id;
+      return resolvedRoomId;
+    } catch (e, st) {
+      print('ERROR findMatch: $e');
+      print(st);
+      rethrow;
     }
-
-    await waitingRef.doc(user.uid).set({
-      'uid': user.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    return null;
   }
 
   Future<void> closeRoomIfIdle({

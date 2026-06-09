@@ -20,15 +20,19 @@ class MoodlyWidgetProvider : AppWidgetProvider() {
             val showQuote = widgetData.getBoolean("showQuote", true)
             val useBackground = widgetData.getBoolean("useBackground", true)
 
-            val category = widgetData.getString(
+            val languageCode = widgetData.getString("languageCode", "id") ?: "id"
+
+            val rawCategory = widgetData.getString(
                 "previewCategory",
-                "Kesehatan Mental"
-            ) ?: "Kesehatan Mental"
+                defaultCategory(languageCode)
+            ) ?: defaultCategory(languageCode)
+
+            val category = localizedCategory(rawCategory, languageCode)
 
             val quote = widgetData.getString(
                 "previewQuote",
-                "Aku boleh beristirahat tanpa merasa bersalah."
-            ) ?: "Aku boleh beristirahat tanpa merasa bersalah."
+                defaultQuote(languageCode)
+            ) ?: defaultQuote(languageCode)
 
             val textColor = getIntValue(
                 widgetData,
@@ -56,9 +60,15 @@ class MoodlyWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_category, category)
             views.setTextViewText(R.id.widget_quote, quote)
             views.setTextColor(R.id.widget_quote, textColor)
+            views.setTextColor(R.id.widget_category, android.graphics.Color.parseColor("#202020"))
 
             views.setViewVisibility(
                 R.id.widget_background,
+                if (useBackground) View.VISIBLE else View.GONE
+            )
+
+            views.setViewVisibility(
+                R.id.widget_scrim,
                 if (useBackground) View.VISIBLE else View.GONE
             )
 
@@ -90,5 +100,31 @@ private fun getIntValue(
         is Double -> value.toInt()
         is String -> value.toIntOrNull() ?: defaultValue
         else -> defaultValue
+    }
+}
+
+private fun defaultCategory(languageCode: String): String {
+    return if (languageCode == "en") "Mental Health" else "Kesehatan Mental"
+}
+
+private fun defaultQuote(languageCode: String): String {
+    return if (languageCode == "en") {
+        "I am allowed to rest without feeling guilty."
+    } else {
+        "Aku boleh beristirahat tanpa merasa bersalah."
+    }
+}
+
+private fun localizedCategory(category: String, languageCode: String): String {
+    if (languageCode != "en") return category
+
+    return when (category.trim()) {
+        "Rasa Syukur" -> "Gratitude"
+        "Meredakan Kecemasan" -> "Ease Anxiety"
+        "Motivasi" -> "Motivation"
+        "Kesehatan Mental" -> "Mental Health"
+        "Cinta Diri" -> "Self Love"
+        "Afirmasi" -> "Affirmation"
+        else -> category
     }
 }

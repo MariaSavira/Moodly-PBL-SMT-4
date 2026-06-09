@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 import '../../core/services/streak_service.dart';
 import '../pages.dart';
+import '../afirmasi/widgets/cute_top_popup.dart';
 import 'moodly_settings_support.dart';
 
 const String _profilePlaceholderAsset = 'assets/profile_pic/PP_default.jpg';
@@ -30,8 +32,10 @@ class _ProfilePageState extends State<ProfilePage> {
       'provider': 'Metode login',
       'joined': 'Bergabung sejak',
       'role': 'Peran',
-      'phone': 'Nomor telepon',
-      'notAdded': 'Belum ditambahkan',
+      'phone': 'User ID',
+      'notAdded': '-',
+      'copySuccessTitle': 'Berhasil',
+      'copySuccessBody': 'User ID berhasil disalin',
       'yes': 'Ya',
       'no': 'Tidak',
       'badge': 'Badge Milestone',
@@ -42,6 +46,14 @@ class _ProfilePageState extends State<ProfilePage> {
       'facebook': 'Facebook',
       'anonymous': 'Anonim',
       'firebase': 'Firebase',
+      'frame': 'Bingkai avatar',
+      'changeFrame': 'Ganti Bingkai',
+      'originalFrame': 'Original',
+      'bloomFrame': 'Bingkai Bloom',
+      'meadowFrame': 'Bingkai Meadow',
+      'framePickerTitle': 'Pilih bingkai avatar',
+      'framePickerDesc': 'Gunakan bingkai yang sudah kamu miliki dari halaman hadiah.',
+      'noRedeemedFrame': 'Kamu belum punya bingkai tambahan.',
     },
     'en': {
       'header': 'Profile',
@@ -53,8 +65,10 @@ class _ProfilePageState extends State<ProfilePage> {
       'provider': 'Sign-in method',
       'joined': 'Joined since',
       'role': 'Role',
-      'phone': 'Phone number',
-      'notAdded': 'Not added yet',
+      'phone': 'User ID',
+      'notAdded': '-',
+      'copySuccessTitle': 'Success',
+      'copySuccessBody': 'User ID copied successfully',
       'yes': 'Yes',
       'no': 'No',
       'badge': 'Milestone Badge',
@@ -65,6 +79,14 @@ class _ProfilePageState extends State<ProfilePage> {
       'facebook': 'Facebook',
       'anonymous': 'Anonymous',
       'firebase': 'Firebase',
+      'frame': 'Avatar frame',
+      'changeFrame': 'Change Frame',
+      'originalFrame': 'Original',
+      'bloomFrame': 'Bloom Frame',
+      'meadowFrame': 'Meadow Frame',
+      'framePickerTitle': 'Choose avatar frame',
+      'framePickerDesc': 'Use a frame you have already redeemed from the rewards page.',
+      'noRedeemedFrame': 'You do not have any extra frames yet.',
     },
   };
 
@@ -144,26 +166,28 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String? _resolveActiveFrameId(Map<String, dynamic>? inventory) {
-    final active = (inventory?['activeFrameId'] as String?)?.trim();
-    if (active != null && active.isNotEmpty) return active;
-    final owned = List<String>.from(inventory?['ownedFrameIds'] ?? []);
-    if (owned.isNotEmpty) return owned.first;
-    return null;
+    return MoodlyRewardFrameAvatar.normalizeFrameId(
+      (inventory?['activeFrameId'] as String?)?.trim(),
+    );
   }
 
-  String _resolvePhone(Map<String, dynamic>? data, User? user) {
-    final rawPhone = data?['phoneNumber'];
-    if (rawPhone != null) {
-      final phone = rawPhone.toString().trim();
-      if (phone.isNotEmpty && phone.toLowerCase() != 'null') {
-        return phone;
-      }
-    }
+  String _resolveUserId(User? user) {
+    return user?.uid ?? _t('notAdded');
+  }
 
-    final authPhone = user?.phoneNumber?.trim();
-    if (authPhone != null && authPhone.isNotEmpty) return authPhone;
+  Future<void> _copyUserId(String userId) async {
+    if (userId.trim().isEmpty || userId == _t('notAdded')) return;
 
-    return _t('notAdded');
+    await Clipboard.setData(ClipboardData(text: userId));
+
+    if (!mounted) return;
+
+    showCuteTopPopup(
+      context,
+      title: _t('copySuccessTitle'),
+      message: _t('copySuccessBody'),
+      type: CutePopupType.success,
+    );
   }
 
   String _providerLabel(User? user) {
@@ -192,6 +216,184 @@ class _ProfilePageState extends State<ProfilePage> {
     const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     final months = _languageCode == 'en' ? monthsEn : monthsId;
     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _frameLabel(String? frameId) {
+    switch (MoodlyRewardFrameAvatar.normalizeFrameId(frameId)) {
+      case 'frame_bloom':
+        return _t('bloomFrame');
+      case 'frame_meadow':
+        return _t('meadowFrame');
+      default:
+        return _t('originalFrame');
+    }
+  }
+
+  Future<void> _saveActiveFrame(String uid, String? frameId) async {
+    final ref = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('reward_inventory')
+        .doc('main');
+
+    if (frameId == null) {
+      await ref.set({
+        'activeFrameId': FieldValue.delete(),
+      }, SetOptions(merge: true));
+      return;
+    }
+
+    await ref.set({
+      'activeFrameId': frameId,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _showFramePicker({
+    required String uid,
+    required Map<String, dynamic>? inventory,
+  }) async {
+    final ownedFrameIds = List<String>.from(inventory?['ownedFrameIds'] ?? const []);
+    final activeFrameId = _resolveActiveFrameId(inventory);
+
+    final hasBloom = ownedFrameIds.contains('frame_bloom');
+    final hasMeadow = ownedFrameIds.contains('frame_meadow');
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final palette = MoodlySettingsPalette.of();
+
+        Widget optionTile({
+          required String title,
+          required bool selected,
+          required VoidCallback onTap,
+        }) {
+          return InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: selected ? palette.greenDark : palette.cardBorder,
+                  width: selected ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: palette.textDark,
+                          ),
+                    ),
+                  ),
+                  if (selected)
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: palette.greenDark,
+                    ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: palette.card,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: palette.shadow,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: palette.cardBorder,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _t('framePickerTitle'),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        color: palette.textDark,
+                        fontSize: 24,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _t('framePickerDesc'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: palette.textSoft,
+                        height: 1.45,
+                      ),
+                ),
+                const SizedBox(height: 16),
+
+                optionTile(
+                  title: _t('originalFrame'),
+                  selected: activeFrameId == null,
+                  onTap: () async {
+                    await _saveActiveFrame(uid, null);
+                    if (mounted) Navigator.pop(sheetContext);
+                  },
+                ),
+
+                if (hasBloom) ...[
+                  const SizedBox(height: 10),
+                  optionTile(
+                    title: _t('bloomFrame'),
+                    selected: activeFrameId == 'frame_bloom',
+                    onTap: () async {
+                      await _saveActiveFrame(uid, 'frame_bloom');
+                      if (mounted) Navigator.pop(sheetContext);
+                    },
+                  ),
+                ],
+
+                if (hasMeadow) ...[
+                  const SizedBox(height: 10),
+                  optionTile(
+                    title: _t('meadowFrame'),
+                    selected: activeFrameId == 'frame_meadow',
+                    onTap: () async {
+                      await _saveActiveFrame(uid, 'frame_meadow');
+                      if (mounted) Navigator.pop(sheetContext);
+                    },
+                  ),
+                ],
+
+                if (!hasBloom && !hasMeadow) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _t('noRedeemedFrame'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: palette.textSoft,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -245,7 +447,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           final email = _resolveEmail(data, user);
                           final photoUrl = _resolvePhotoUrl(data, user);
                           final avatarAsset = _resolveAvatarAsset(data);
-                          final phone = _resolvePhone(data, user);
+                          final userId = _resolveUserId(user);
                           final isVerified = (data?['isEmailVerified'] as bool?) ?? (user?.emailVerified ?? false);
                           final role = ((data?['role'] as String?) ?? 'user').trim();
                           final createdAt = _resolveCreatedAt(data, user);
@@ -281,6 +483,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                       photoUrl: photoUrl,
                                       avatarAsset: avatarAsset,
                                       activeFrameId: activeFrameId,
+                                      currentFrameLabel: _frameLabel(activeFrameId),
+                                      changeFrameLabel: _t('changeFrame'),
+                                      frameLabel: _t('frame'),
                                       isVerified: isVerified,
                                       provider: provider,
                                       verifiedLabel: isVerified ? _t('verifiedYes') : _t('verifiedNo'),
@@ -296,6 +501,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                           setState(() {});
                                         }
                                       },
+                                      onChangeFrame: () => _showFramePicker(
+                                        uid: uid,
+                                        inventory: inventory,
+                                      ),
                                     );
                                   },
                                 ),
@@ -345,7 +554,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   phoneLabel: _t('phone'),
                                   joinedDate: _formatDate(createdAt),
                                   role: role,
-                                  phone: phone,
+                                  userId: userId,
+                                  onCopyUserId: () => _copyUserId(userId),
                                 ),
                               ],
                             ),
@@ -441,6 +651,10 @@ class _ProfileHeroCard extends StatelessWidget {
   final String editLabel;
   final VoidCallback onEdit;
   final String? activeFrameId;
+  final String currentFrameLabel;
+  final String changeFrameLabel;
+  final String frameLabel;
+  final VoidCallback onChangeFrame;
 
   const _ProfileHeroCard({
     required this.palette,
@@ -454,6 +668,10 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.editLabel,
     required this.onEdit,
     required this.activeFrameId,
+    required this.currentFrameLabel,
+    required this.changeFrameLabel,
+    required this.frameLabel,
+    required this.onChangeFrame,
   });
 
   @override
@@ -514,6 +732,55 @@ class _ProfileHeroCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onChangeFrame,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: palette.mintSoft,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          frameLabel,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: palette.textSoft,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          currentFrameLabel,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: palette.textDark,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    changeFrameLabel,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: palette.greenDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: palette.greenDark,
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -557,53 +824,23 @@ class _ProfileAvatar extends StatelessWidget {
     required this.activeFrameId,
   });
 
-  List<Color> _frameGradient() {
-    switch (activeFrameId) {
-      case 'frame_bloom':
-        return [const Color(0xFFF8C9D4), palette.pinkSoft];
-      case 'frame_meadow':
-        return [const Color(0xFF9DD47E), palette.mintSoft];
-      default:
-        return [palette.green, palette.greenSoft];
-    }
-  }
-
-  Widget? _frameBadge() {
-    switch (activeFrameId) {
-      case 'frame_bloom':
-        return const _FrameBadge(
-          bg: Color(0xFFFFEEF2),
-          fg: Color(0xFFE58696),
-          icon: Icons.auto_awesome_rounded,
-        );
-      case 'frame_meadow':
-        return const _FrameBadge(
-          bg: Color(0xFFEAF6DA),
-          fg: Color(0xFF74B55F),
-          icon: Icons.filter_vintage_rounded,
-        );
-      default:
-        return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    Widget child;
+    Widget imageChild;
     if (photoUrl != null && photoUrl!.isNotEmpty) {
-      child = Image.network(
+      imageChild = Image.network(
         photoUrl!,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _fallbackAvatar(),
       );
     } else if (avatarAsset != null && avatarAsset!.isNotEmpty) {
-      child = Image.asset(
+      imageChild = Image.asset(
         avatarAsset!,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _fallbackAvatar(),
       );
     } else {
-      child = _fallbackAvatar();
+      imageChild = _fallbackAvatar();
     }
 
     return SizedBox(
@@ -612,51 +849,34 @@ class _ProfileAvatar extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            width: 132,
-            height: 132,
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: _frameGradient(),
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+          MoodlyRewardFrameAvatar(
+            frameId: activeFrameId,
+            size: 132,
+            innerPadding: activeFrameId == null ? 0 : 6,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: palette.card,
               ),
-              child: ClipOval(child: child),
+              child: ClipOval(child: imageChild),
             ),
           ),
           Positioned(
             right: 4,
             bottom: 4,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_frameBadge() != null) ...[
-                  _frameBadge()!,
-                  const SizedBox(height: 6),
-                ],
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: palette.pinkSoft,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: palette.shadow,
-                  ),
-                  child: Icon(
-                    Icons.edit_rounded,
-                    color: palette.greenDark,
-                    size: 24,
-                  ),
-                ),
-              ],
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: palette.pinkSoft,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: palette.shadow,
+              ),
+              child: Icon(
+                Icons.edit_rounded,
+                color: palette.greenDark,
+                size: 24,
+              ),
             ),
           ),
         ],
@@ -857,7 +1077,8 @@ class _AccountSummaryCard extends StatelessWidget {
   final String phoneLabel;
   final String joinedDate;
   final String role;
-  final String phone;
+  final String userId;
+  final VoidCallback onCopyUserId;
 
   const _AccountSummaryCard({
     required this.palette,
@@ -866,7 +1087,8 @@ class _AccountSummaryCard extends StatelessWidget {
     required this.phoneLabel,
     required this.joinedDate,
     required this.role,
-    required this.phone,
+    required this.userId,
+    required this.onCopyUserId,
   });
 
   @override
@@ -886,7 +1108,12 @@ class _AccountSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           _SummaryRow(label: roleLabel, value: role, palette: palette),
           const SizedBox(height: 12),
-          _SummaryRow(label: phoneLabel, value: phone, palette: palette),
+          _CopyableSummaryRow(
+            label: phoneLabel,
+            value: userId,
+            palette: palette,
+            onCopy: onCopyUserId,
+          ),
         ],
       ),
     );
@@ -917,6 +1144,58 @@ class _SummaryRow extends StatelessWidget {
             value,
             textAlign: TextAlign.right,
             style: _titleMedium(context, palette),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CopyableSummaryRow extends StatelessWidget {
+  final MoodlySettingsPalette palette;
+  final String label;
+  final String value;
+  final VoidCallback onCopy;
+
+  const _CopyableSummaryRow({
+    required this.palette,
+    required this.label,
+    required this.value,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: _body(context, palette)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: _titleMedium(context, palette),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: onCopy,
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: palette.pinkSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.copy_rounded,
+              size: 18,
+              color: palette.preferenceIcon,
+            ),
           ),
         ),
       ],

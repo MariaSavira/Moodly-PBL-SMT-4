@@ -1,8 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../afirmasi/widgets/cute_top_popup.dart';
+import '../pages.dart';
+import '../setting/moodly_settings_support.dart';
+import 'mood_analysis.dart';
 import 'mood_input.dart';
+import 'mood_year_calendar.dart';
 
 class MoodCalendar extends StatefulWidget {
   final int initialYear;
@@ -22,14 +28,217 @@ class _MoodCalendarState extends State<MoodCalendar> {
   late DateTime _focusedDate;
   bool _isLoading = true;
   Map<String, String> _moodDatabase = {};
+  Map<String, String> _noteDatabase = {};
 
-  static const String _documentId = 'BeZzql14Y8xGyoLUDb0L';
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'title': 'Kalender Mood',
+      'subtitle': 'Pilih tanggal dan lihat pola mood dengan lebih rapi.',
+      'month1': 'Januari',
+      'month2': 'Februari',
+      'month3': 'Maret',
+      'month4': 'April',
+      'month5': 'Mei',
+      'month6': 'Juni',
+      'month7': 'Juli',
+      'month8': 'Agustus',
+      'month9': 'September',
+      'month10': 'Oktober',
+      'month11': 'November',
+      'month12': 'Desember',
+      'dayMon': 'Sen',
+      'dayTue': 'Sel',
+      'dayWed': 'Rab',
+      'dayThu': 'Kam',
+      'dayFri': 'Jum',
+      'daySat': 'Sab',
+      'daySun': 'Min',
+      'recorded': '{count} catatan',
+      'analysis': 'Lihat Analisis Mood',
+      'analysisDesc': 'Buka ringkasan bulan ini dengan tampilan yang lebih jelas.',
+      'legendEmpty': 'Belum diisi',
+      'legendToday': 'Hari ini',
+      'legendDone': 'Sudah diisi',
+      'moodOnDate': 'Mood pada {date}: {mood}',
+      'emptyOnDate': 'Belum ada mood pada {date}',
+      'moodSenang': 'Senang',
+      'moodNetral': 'Netral',
+      'moodSedih': 'Sedih',
+      'moodMarah': 'Marah',
+      'refresh': 'Muat ulang',
+      'futureLockedTitle': 'Tanggal belum terbuka',
+      'futureLockedDesc':
+          'Tanggal di masa depan belum bisa diisi. Mesin waktunya masih belum disetujui.',
+      'previewTitle': 'Preview hari ini',
+      'previewMood': 'Mood',
+      'previewStory': 'Cerita singkat',
+      'previewNoStory':
+          'Hari ini baru ada mood saja. Kalau mau, lanjut tulis diary biar ceritanya tidak cuma numpang lewat.',
+      'editMood': 'Edit mood',
+      'writeDiary': 'Tulis diary',
+      'back': 'Kembali',
+      'addMood': 'Tambah mood',
+      'noDataTitle': 'Belum ada catatan',
+      'noDataDesc': 'Tanggal ini belum punya mood maupun cerita.',
+    },
+    'en': {
+      'title': 'Mood Calendar',
+      'subtitle': 'Pick a date and read your mood pattern more neatly.',
+      'month1': 'January',
+      'month2': 'February',
+      'month3': 'March',
+      'month4': 'April',
+      'month5': 'May',
+      'month6': 'June',
+      'month7': 'July',
+      'month8': 'August',
+      'month9': 'September',
+      'month10': 'October',
+      'month11': 'November',
+      'month12': 'December',
+      'dayMon': 'Mon',
+      'dayTue': 'Tue',
+      'dayWed': 'Wed',
+      'dayThu': 'Thu',
+      'dayFri': 'Fri',
+      'daySat': 'Sat',
+      'daySun': 'Sun',
+      'recorded': '{count} entries',
+      'analysis': 'Open Mood Analysis',
+      'analysisDesc': 'Open this month’s summary with a clearer layout.',
+      'legendEmpty': 'Not filled',
+      'legendToday': 'Today',
+      'legendDone': 'Recorded',
+      'moodOnDate': 'Mood on {date}: {mood}',
+      'emptyOnDate': 'No mood recorded on {date}',
+      'moodSenang': 'Happy',
+      'moodNetral': 'Neutral',
+      'moodSedih': 'Sad',
+      'moodMarah': 'Angry',
+      'refresh': 'Refresh',
+      'futureLockedTitle': 'Date not available yet',
+      'futureLockedDesc':
+          'Future dates cannot be filled yet. Time travel is still not approved.',
+      'previewTitle': 'Day preview',
+      'previewMood': 'Mood',
+      'previewStory': 'Short story',
+      'previewNoStory':
+          'This day only has a mood saved. Continue to the diary if you want the full story there.',
+      'editMood': 'Edit mood',
+      'writeDiary': 'Write diary',
+      'back': 'Back',
+      'addMood': 'Add mood',
+      'noDataTitle': 'No record yet',
+      'noDataDesc': 'This date has no mood or story yet.',
+    },
+  };
 
   @override
   void initState() {
     super.initState();
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
+    _hydrateLanguage();
     _focusedDate = DateTime(widget.initialYear, widget.initialMonth, 1);
     _loadMoods();
+  }
+
+  Future<void> _hydrateLanguage() async {
+    final language = await MoodlySettingsPrefs.loadLanguageCode();
+    if (!mounted) return;
+    setState(() {
+      _languageCode = language == 'en' ? 'en' : 'id';
+    });
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
+  @override
+  void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  String _replace(String template, Map<String, String> values) {
+    var result = template;
+    values.forEach((key, value) {
+      result = result.replaceAll('{$key}', value);
+    });
+    return result;
+  }
+
+  ThemeData get _theme => Theme.of(context);
+
+  TextStyle? get _headline => _theme.textTheme.headlineLarge?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        fontSize: 22,
+      );
+
+  TextStyle? get _title => _theme.textTheme.titleMedium?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        fontSize: 17,
+      );
+
+  TextStyle? get _body => _theme.textTheme.bodyMedium?.copyWith(
+        color: const Color(0xFF6E746B),
+        height: 1.45,
+      );
+
+  TextStyle? get _bodyDark => _theme.textTheme.bodyMedium?.copyWith(
+        color: const Color(0xFF1F1F1F),
+        height: 1.35,
+      );
+
+  TextStyle? get _bodyAlt => _theme.textTheme.bodySmall?.copyWith(
+        color: const Color(0xFF1F1F1F),
+      );
+
+  List<String> get _monthNames => [
+        _t('month1'),
+        _t('month2'),
+        _t('month3'),
+        _t('month4'),
+        _t('month5'),
+        _t('month6'),
+        _t('month7'),
+        _t('month8'),
+        _t('month9'),
+        _t('month10'),
+        _t('month11'),
+        _t('month12'),
+      ];
+
+  List<String> get _weekDays => [
+        _t('dayMon'),
+        _t('dayTue'),
+        _t('dayWed'),
+        _t('dayThu'),
+        _t('dayFri'),
+        _t('daySat'),
+        _t('daySun'),
+      ];
+
+  String _displayMood(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return _t('moodSenang');
+      case 'Netral':
+        return _t('moodNetral');
+      case 'Sedih':
+        return _t('moodSedih');
+      case 'Marah':
+        return _t('moodMarah');
+      default:
+        return '';
+    }
   }
 
   String _getEmojiImagePath(String? mood) {
@@ -48,55 +257,157 @@ class _MoodCalendarState extends State<MoodCalendar> {
     }
   }
 
+  String _getDynamicEmojiPath(String? mood) {
+    if (mood == null) return '';
+    switch (mood) {
+      case 'Senang':
+        // TODO(MOODLY-ASSET-DYNAMIC): ganti ke asset emoji bergerak untuk mood senang
+        return 'assets/emoji_dynamic/emoji_senang.gif';
+      case 'Netral':
+        // TODO(MOODLY-ASSET-DYNAMIC): ganti ke asset emoji bergerak untuk mood netral
+        return 'assets/emoji_dynamic/emoji_netral.gif';
+      case 'Sedih':
+        // TODO(MOODLY-ASSET-DYNAMIC): ganti ke asset emoji bergerak untuk mood sedih
+        return 'assets/emoji_dynamic/emoji_sedih.gif';
+      case 'Marah':
+        // TODO(MOODLY-ASSET-DYNAMIC): ganti ke asset emoji bergerak untuk mood marah
+        return 'assets/emoji_dynamic/emoji_marah.gif';
+      default:
+        return '';
+    }
+  }
+
+  Color _moodAccent(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFF75B85E);
+      case 'Netral':
+        return const Color(0xFFC6A74E);
+      case 'Sedih':
+        return const Color(0xFF86AE9E);
+      case 'Marah':
+        return const Color(0xFFD98087);
+      default:
+        return const Color(0xFF98A095);
+    }
+  }
+
+  Color _moodTint(String? mood) {
+    switch (mood) {
+      case 'Senang':
+        return const Color(0xFFE9F7E8);
+      case 'Netral':
+        return const Color(0xFFFFF7DE);
+      case 'Sedih':
+        return const Color(0xFFEAF5F2);
+      case 'Marah':
+        return const Color(0xFFFFF0F3);
+      default:
+        return Colors.white;
+    }
+  }
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  String _moodPrefix(String uid) => 'mood_${uid}_';
+  String _notePrefix(String uid) => 'note_${uid}_';
+
+  DocumentReference<Map<String, dynamic>> _moodDoc(String uid) {
+    return FirebaseFirestore.instance.collection('moods').doc(uid);
+  }
+
   Future<void> _loadMoods() async {
-    Map<String, String> moods = {};
+    final moods = <String, String>{};
+    final notes = <String, String>{};
 
     try {
+      final uid = _uid;
+      if (uid == null) {
+        if (!mounted) return;
+        setState(() {
+          _moodDatabase = {};
+          _noteDatabase = {};
+          _isLoading = false;
+        });
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys().where((k) => k.startsWith('mood_'));
-      for (var key in keys) {
-        final dateKey = key.replaceFirst('mood_', '');
+      final moodPrefix = _moodPrefix(uid);
+      final notePrefix = _notePrefix(uid);
+
+      final moodKeys = prefs.getKeys().where((k) => k.startsWith(moodPrefix));
+      for (final key in moodKeys) {
+        final dateKey = key.replaceFirst(moodPrefix, '');
         final mood = prefs.getString(key);
-        if (mood != null) {
-          moods[dateKey] = mood;
+        if (mood != null && mood.trim().isNotEmpty) {
+          moods[dateKey] = mood.trim();
         }
       }
 
-      final doc = await FirebaseFirestore.instance
-          .collection('moods')
-          .doc(_documentId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
-        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
-
-        entries.forEach((key, value) {
-          moods[key] = value.toString();
-        });
-
-        print("✅ Loaded ${entries.length} entries from Firestore");
-      } else {
-        print("⚠️ Document '$_documentId' not found in Firestore");
+      final noteKeys = prefs.getKeys().where((k) => k.startsWith(notePrefix));
+      for (final key in noteKeys) {
+        final dateKey = key.replaceFirst(notePrefix, '');
+        final note = prefs.getString(key);
+        if (note != null && note.trim().isNotEmpty) {
+          notes[dateKey] = note.trim();
+        }
       }
 
-      setState(() {
-        _moodDatabase = moods;
-        _isLoading = false;
-      });
+      final doc = await _moodDoc(uid).get();
 
-      print("✅ Total moods loaded: ${moods.length}");
-    } catch (e) {
-      print("❌ Error loading moods: $e");
-      setState(() {
-        _moodDatabase = moods;
-        _isLoading = false;
-      });
+      if (doc.exists) {
+        final data = doc.data();
+        final entries = data?['entries'] as Map<String, dynamic>? ?? {};
+        final noteMap = data?['notes'] as Map<String, dynamic>? ?? {};
+
+        entries.forEach((key, value) {
+          final mood = value.toString().trim();
+          if (mood.isNotEmpty) {
+            moods[key] = mood;
+          }
+        });
+
+        noteMap.forEach((key, value) {
+          final text = value.toString().trim();
+          if (text.isNotEmpty) {
+            notes[key] = text;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        showCuteTopPopup(
+          context,
+          title: _t('refresh'),
+          message: _t('noDataDesc'),
+          type: CutePopupType.info,
+        );
+      }
     }
+
+    if (!mounted) return;
+    setState(() {
+      _moodDatabase = moods;
+      _noteDatabase = notes;
+      _isLoading = false;
+    });
   }
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  int _countEntriesInFocusedMonth() {
+    var total = 0;
+    for (final key in _moodDatabase.keys) {
+      if (key.startsWith(
+        '${_focusedDate.year}-${_focusedDate.month.toString().padLeft(2, '0')}',
+      )) {
+        total++;
+      }
+    }
+    return total;
   }
 
   void _changeMonth(int offset) {
@@ -105,264 +416,727 @@ class _MoodCalendarState extends State<MoodCalendar> {
     });
   }
 
-  void _handleDateTap(DateTime date) {
-    final today = DateTime.now();
-    final isTodayOrFuture = date.isAfter(today.subtract(const Duration(days: 1))) ||
-        (date.year == today.year && date.month == today.month && date.day == today.day);
+  Future<void> _openYearCalendar() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MoodYearCalendar()),
+    );
 
-    if (isTodayOrFuture) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MoodInput(selectedDate: date),
-        ),
-      ).then((_) {
-        _loadMoods();
+    if (!mounted) return;
+    if (result is DateTime) {
+      setState(() {
+        _focusedDate = DateTime(result.year, result.month, 1);
       });
-    } else {
-      final dateKey = _getDateKey(date);
-      final mood = _moodDatabase[dateKey];
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            mood != null
-                ? 'Mood pada ${date.day}/${date.month}/${date.year}: $mood'
-                : 'Belum ada catatan mood pada ${date.day}/${date.month}/${date.year}',
-          ),
-          duration: const Duration(seconds: 2),
-          backgroundColor: Colors.black54,
-        ),
-      );
     }
+    await _loadMoods();
+  }
+
+  Future<void> _openAnalysis() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MoodAnalysis()),
+    );
+    if (mounted) {
+      await _loadMoods();
+    }
+  }
+
+  Future<void> _openMoodInputForDate(DateTime date) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MoodInput(
+          selectedDate: date,
+          initialMood: _moodDatabase[_getDateKey(date)],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadMoods();
+  }
+
+  Future<void> _openDiaryForDate(DateTime date, {String? mood}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final dateKey = _getDateKey(date);
+    await prefs.setString('draft_diary_date', dateKey);
+    if (mood != null && mood.trim().isNotEmpty) {
+      await prefs.setString('draft_diary_mood', mood);
+    }
+
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddDiaryPage()),
+    );
+    if (mounted) {
+      await _loadMoods();
+    }
+  }
+
+  Future<void> _handleDateTap(DateTime date) async {
+    final todayOnly = DateTime.now();
+    final today = DateTime(todayOnly.year, todayOnly.month, todayOnly.day);
+    final target = DateTime(date.year, date.month, date.day);
+    final isFuture = target.isAfter(today);
+
+    final dateKey = _getDateKey(date);
+    final mood = _moodDatabase[dateKey];
+
+    if (isFuture) {
+      showCuteTopPopup(
+        context,
+        title: _t('futureLockedTitle'),
+        message: _t('futureLockedDesc'),
+        type: CutePopupType.info,
+      );
+      return;
+    }
+
+    if (mood != null && mood.trim().isNotEmpty) {
+      _showDayPreview(date);
+      return;
+    }
+
+    await _openMoodInputForDate(date);
+  }
+
+  void _showDayPreview(DateTime date) {
+    final dateKey = _getDateKey(date);
+    final mood = _moodDatabase[dateKey];
+    final note = _noteDatabase[dateKey]?.trim() ?? '';
+    final dateText = '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 10),
+                    blurRadius: 22,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(dateText, style: _body?.copyWith(fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Text(_t('previewTitle'), style: _headline),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _moodTint(mood),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _moodAccent(mood).withOpacity(0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 74,
+                          height: 74,
+                          child: Image.asset(
+                            _getDynamicEmojiPath(mood),
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) {
+                              return Image.asset(
+                                _getEmojiImagePath(mood),
+                                fit: BoxFit.contain,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_t('previewMood'), style: _body),
+                              const SizedBox(height: 4),
+                              Text(
+                                _displayMood(mood),
+                                style: _headline?.copyWith(fontSize: 24),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(_t('previewStory'), style: _title),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FAF1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      note.isNotEmpty ? note : _t('previewNoStory'),
+                      style: _bodyDark,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _openMoodInputForDate(date);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF75B85E),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      child: Text(_t('editMood')),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _openDiaryForDate(date, mood: mood);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1F1F1F),
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(
+                          color: Color(0xFF8DBB69),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      child: Text(_t('writeDiary')),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        _t('back'),
+                        style: _bodyDark?.copyWith(
+                          color: const Color(0xFF6E746B),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _legendPill({
+    required Color color,
+    required String label,
+    Color textColor = const Color(0xFF1F1F1F),
+    Border? border,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+        border: border,
+      ),
+      child: Text(
+        label,
+        style: _bodyAlt?.copyWith(color: textColor),
+      ),
+    );
+  }
+
+  Widget _navCircle({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: const Color(0xFF84C96C),
+        shape: BoxShape.circle,
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.08),
+            offset: Offset(0, 6),
+            blurRadius: 14,
+          ),
+        ],
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, color: Colors.white, size: 18),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _buildCalendarGrid() {
+    final daysInMonth = DateTime(_focusedDate.year, _focusedDate.month + 1, 0).day;
+    final firstDayOffset =
+        DateTime(_focusedDate.year, _focusedDate.month, 1).weekday - 1;
+
+    final totalSlots = (((firstDayOffset + daysInMonth) / 7).ceil()) * 7;
+    final rowCount = (totalSlots / 7).ceil();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 8.0;
+        final cellWidth = (constraints.maxWidth - (6 * spacing)) / 7;
+        const cellHeight = 78.0;
+
+        return SizedBox(
+          height: rowCount * cellHeight + ((rowCount - 1) * spacing),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: totalSlots,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              childAspectRatio: cellWidth / cellHeight,
+            ),
+            itemBuilder: (context, index) {
+              if (index < firstDayOffset || index >= firstDayOffset + daysInMonth) {
+                return const SizedBox.shrink();
+              }
+
+              final day = index - firstDayOffset + 1;
+              final date = DateTime(_focusedDate.year, _focusedDate.month, day);
+              final dateKey = _getDateKey(date);
+              final mood = _moodDatabase[dateKey];
+
+              final now = DateTime.now();
+              final today =
+                  DateTime(now.year, now.month, now.day);
+              final thisDate = DateTime(date.year, date.month, date.day);
+
+              final isToday = thisDate == today;
+              final isFuture = thisDate.isAfter(today);
+
+              return GestureDetector(
+                onTap: () => _handleDateTap(date),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+                  decoration: BoxDecoration(
+                    color: isToday
+                        ? const Color(0xFFFFEEF2)
+                        : mood != null
+                            ? _moodTint(mood)
+                            : Colors.white.withOpacity(isFuture ? 0.55 : 0.92),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isToday
+                          ? const Color(0xFFE08C9B)
+                          : mood != null
+                              ? _moodAccent(mood).withOpacity(0.35)
+                              : const Color(0xFFEAEDE3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$day',
+                        style: _bodyAlt?.copyWith(
+                          fontSize: 12,
+                          color: isToday
+                              ? const Color(0xFFC65F59)
+                              : const Color(0xFF6E746B),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (mood != null)
+                        SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: Image.asset(
+                            _getEmojiImagePath(mood),
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      else if (!isFuture)
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF84C96C),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.lock_outline_rounded,
+                          color: Color(0xFF98A095),
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final monthLabel = '${_monthNames[_focusedDate.month - 1]} ${_focusedDate.year}';
+    final totalEntries = _countEntriesInFocusedMonth();
+
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF9FBE7),
+        backgroundColor: const Color(0xFFF4F8EA),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
             onPressed: () => Navigator.pop(context),
           ),
-          title: Text(
-            'Mood Calendar',
-            style: GoogleFonts.fredoka(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
-          ),
+          title: Text(_t('title'), style: _headline),
         ),
         body: const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-          ),
-        ),
-      );
-    }
-
-    const List<String> monthNames = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-
-    const List<String> weekDays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-
-    final int daysInMonth = DateTime(_focusedDate.year, _focusedDate.month + 1, 0).day;
-    final int firstDayOfWeek = DateTime(_focusedDate.year, _focusedDate.month, 1).weekday;
-
-    List<Widget> calendarWidgets = [];
-
-    for (int i = 1; i < firstDayOfWeek; i++) {
-      calendarWidgets.add(const SizedBox.shrink());
-    }
-
-    for (int day = 1; day <= daysInMonth; day++) {
-      final currentDate = DateTime(_focusedDate.year, _focusedDate.month, day);
-      final dateKey = _getDateKey(currentDate);
-      final mood = _moodDatabase[dateKey];
-
-      final bool isToday = (currentDate.year == DateTime.now().year &&
-          currentDate.month == DateTime.now().month &&
-          currentDate.day == DateTime.now().day);
-
-      final bool isFuture = currentDate.isAfter(DateTime.now());
-
-      calendarWidgets.add(
-        GestureDetector(
-          onTap: () => _handleDateTap(currentDate),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 24,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (isToday)
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.pink.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    Text(
-                      '$day',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isToday ? Colors.pink.shade800 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 2),
-
-              mood != null
-                  ? SizedBox(
-                width: 28,
-                height: 28,
-                child: Image.asset(
-                  _getEmojiImagePath(mood),
-                  fit: BoxFit.contain,
-                ),
-              )
-                  : !isFuture
-                  ? Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.lightGreen,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              )
-                  : const SizedBox.shrink(),
-            ],
+            valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBE7),
+      backgroundColor: const Color(0xFFF4F8EA),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Mood Calendar',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
+        title: Text(_t('title'), style: _headline),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black87),
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF1F1F1F)),
+            tooltip: _t('refresh'),
             onPressed: _loadMoods,
-            tooltip: 'Refresh data',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Column(
-            children: [
-              const SizedBox(height: 25),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 5),
-                decoration: BoxDecoration(
-                  color: Colors.lightGreen.shade300,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.black87),
-                      onPressed: () => _changeMonth(-1),
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    Text(
-                      '${monthNames[_focusedDate.month - 1]} ${_focusedDate.year}',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right, color: Colors.black87),
-                      onPressed: () => _changeMonth(1),
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
+      body: Stack(
+        children: [
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFEEF2).withOpacity(0.72),
               ),
-              const SizedBox(height: 30),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+            ),
+          ),
+          Positioned(
+            top: 240,
+            left: -60,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFE9F7E8).withOpacity(0.82),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 26),
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: weekDays.map((day) => SizedBox(
-                        width: 32,
-                        child: Text(
-                          day,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.fredoka(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_t('title'), style: _headline),
+                        const SizedBox(height: 6),
+                        Text(_t('subtitle'), style: _body),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _navCircle(
+                              icon: Icons.chevron_left_rounded,
+                              onTap: () => _changeMonth(-1),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _openYearCalendar,
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF84C96C),
+                                    borderRadius: BorderRadius.circular(999),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color.fromRGBO(0, 0, 0, 0.08),
+                                        offset: Offset(0, 6),
+                                        blurRadius: 14,
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    monthLabel,
+                                    style: _theme.textTheme.titleMedium?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _navCircle(
+                              icon: Icons.chevron_right_rounded,
+                              onTap: () => _changeMonth(1),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF7FAF1),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.favorite_border_rounded,
+                                      color: Color(0xFF75B85E),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _replace(_t('recorded'), {'count': '$totalEntries'}),
+                                        style: _bodyDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: _openAnalysis,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF6F8),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.insights_rounded,
+                                      color: Color(0xFFC65F59),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(_t('analysis'), style: _bodyDark),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _legendPill(
+                              color: const Color(0xFFEAF6DE),
+                              label: _t('legendEmpty'),
+                            ),
+                            _legendPill(
+                              color: const Color(0xFFFFEEF2),
+                              label: _t('legendToday'),
+                            ),
+                            _legendPill(
+                              color: Colors.white,
+                              label: _t('legendDone'),
+                              border: Border.all(color: const Color(0xFFE8EBE0)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        GestureDetector(
+                          onTap: _openAnalysis,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF6F8),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    Icons.auto_graph_rounded,
+                                    color: Color(0xFFC65F59),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(_t('analysis'), style: _title),
+                                      const SizedBox(height: 4),
+                                      Text(_t('analysisDesc'), style: _body),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 14,
+                                  color: Color(0xFF75B85E),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      )).toList(),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 2,
-                      crossAxisSpacing: 2,
-                      childAspectRatio: 0.80,
-                      children: calendarWidgets,
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7FAF1),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Row(
+                            children: _weekDays
+                                .map(
+                                  (day) => Expanded(
+                                    child: Text(
+                                      day,
+                                      textAlign: TextAlign.center,
+                                      style: _bodyAlt?.copyWith(
+                                        color: const Color(0xFF6E746B),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCalendarGrid(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

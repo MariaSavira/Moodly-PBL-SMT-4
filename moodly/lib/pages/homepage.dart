@@ -5,12 +5,16 @@ import 'setting/moodly_settings_support.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/styles/app_text.dart';
 import '../core/services/moodly_notification_service.dart';
+import '../core/services/premium_service.dart';
 import '../widgets/shared/moodly_user_avatar.dart';
+import '../widgets/shared/moodly_reward_frame_avatar.dart';
 import '../core/services/streak_service.dart';
 import '../core/services/user_appeal_service.dart';
 import '../widgets/moodly_bottom_navbar.dart';
 import '../services/afirmasi/afirmasi_service.dart';
 import 'afirmasi/widgets/cute_top_popup.dart';
+import 'premium/premium_page.dart';
+import 'premium/premium_catalog.dart';
 import 'pages.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -55,7 +59,8 @@ class _HomepageState extends State<Homepage> {
       'moodAnalysisDesc': 'Buka ringkasan mingguan dan bulanan mood-mu.',
       'todayDiary': 'Diary Hari Ini',
       'todayDiaryDesc': 'Buka diary untuk menulis catatanmu hari ini.',
-      'selectedDiaryDesc': 'Buka diary untuk melihat atau menulis catatan di tanggal ini.',
+      'selectedDiaryDesc':
+          'Buka diary untuk melihat atau menulis catatan di tanggal ini.',
       'defaultTip': 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.',
       'tipHappy': 'Senang itu valid. Nikmati tanpa merasa bersalah.',
       'tipNeutral': 'Hari yang biasa tetap layak dihargai.',
@@ -73,6 +78,46 @@ class _HomepageState extends State<Homepage> {
       'oct': 'Okt',
       'nov': 'Nov',
       'dec': 'Des',
+      'moodlyUser': 'Pengguna Moodly',
+      'streakLabel': 'Streak',
+      'pointLabel': '{points} poin',
+      'premiumCta': 'Jelajahi paket premium',
+      'affirmationFallback':
+          'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.',
+      'dayMin': 'Min',
+      'daySen': 'Sen',
+      'daySel': 'Sel',
+      'dayRab': 'Rab',
+      'dayKam': 'Kam',
+      'dayJum': 'Jum',
+      'daySab': 'Sab',
+      'monthFull1': 'Januari',
+      'monthFull2': 'Februari',
+      'monthFull3': 'Maret',
+      'monthFull4': 'April',
+      'monthFull5': 'Mei',
+      'monthFull6': 'Juni',
+      'monthFull7': 'Juli',
+      'monthFull8': 'Agustus',
+      'monthFull9': 'September',
+      'monthFull10': 'Oktober',
+      'monthFull11': 'November',
+      'monthFull12': 'Desember',
+      'howToday': 'Bagaimana harimu berjalan?',
+      'howOnDate': 'Bagaimana harimu di {date}?',
+      'tellSlowly': 'Ceritakan pada kami, pelan-pelan saja.',
+      'editMoodDate': 'Edit mood {date}',
+      'fillMoodDate': 'Isi mood {date}',
+      'premiumLockedTitle': 'Belum tersedia',
+      'premiumLockedDesc':
+          'Analisa mood untuk akun reguler dibuka setiap tanggal 1. Premium bisa akses kapan saja.',
+      'diaryOnDate': 'Diary {date}',
+      'reportedPopupTitle': 'Kamu telah dilaporkan',
+      'categoryGratitude': 'Rasa Syukur',
+      'categoryAnxiety': 'Meredakan Kecemasan',
+      'categoryMotivation': 'Motivasi',
+      'categoryMentalHealth': 'Kesehatan Mental',
+      'categorySelfLove': 'Cinta Diri',
     },
     'en': {
       'reportedTitle': 'You have been reported',
@@ -93,7 +138,8 @@ class _HomepageState extends State<Homepage> {
       'moodAnalysisDesc': 'Open your weekly and monthly mood summary.',
       'todayDiary': 'Today\'s Diary',
       'todayDiaryDesc': 'Open the diary to write your note for today.',
-      'selectedDiaryDesc': 'Open the diary to view or write notes for this date.',
+      'selectedDiaryDesc':
+          'Open the diary to view or write notes for this date.',
       'defaultTip': 'Take it slowly. Everything can be talked through later.',
       'tipHappy': 'Joy is valid. Enjoy it without guilt.',
       'tipNeutral': 'An ordinary day is still worth appreciating.',
@@ -111,10 +157,58 @@ class _HomepageState extends State<Homepage> {
       'oct': 'Oct',
       'nov': 'Nov',
       'dec': 'Dec',
+      'moodlyUser': 'Moodly User',
+      'streakLabel': 'Streak',
+      'pointLabel': '{points} points',
+      'premiumCta': 'Explore premium plans',
+      'affirmationFallback':
+          'You do not have to rush. Take a breath, then write what you need to let out.',
+      'dayMin': 'Sun',
+      'daySen': 'Mon',
+      'daySel': 'Tue',
+      'dayRab': 'Wed',
+      'dayKam': 'Thu',
+      'dayJum': 'Fri',
+      'daySab': 'Sat',
+      'monthFull1': 'January',
+      'monthFull2': 'February',
+      'monthFull3': 'March',
+      'monthFull4': 'April',
+      'monthFull5': 'May',
+      'monthFull6': 'June',
+      'monthFull7': 'July',
+      'monthFull8': 'August',
+      'monthFull9': 'September',
+      'monthFull10': 'October',
+      'monthFull11': 'November',
+      'monthFull12': 'December',
+      'howToday': 'How is your day going?',
+      'howOnDate': 'How is your day on {date}?',
+      'tellSlowly': 'Tell us gently, one step at a time.',
+      'editMoodDate': 'Edit mood {date}',
+      'fillMoodDate': 'Fill mood {date}',
+      'premiumLockedTitle': 'Not available yet',
+      'premiumLockedDesc':
+          'Mood analysis for regular accounts opens every 1st day of the month. Premium can access it anytime.',
+      'diaryOnDate': 'Diary {date}',
+      'reportedPopupTitle': 'You have been reported',
+      'categoryGratitude': 'Gratitude',
+      'categoryAnxiety': 'Ease Anxiety',
+      'categoryMotivation': 'Motivation',
+      'categoryMentalHealth': 'Mental Health',
+      'categorySelfLove': 'Self Love',
     },
   };
 
   String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  String _replace(String template, Map<String, String> values) {
+    var result = template;
+    values.forEach((key, value) {
+      result = result.replaceAll('{$key}', value);
+    });
+    return result;
+  }
 
   void _onLanguageChanged() {
     if (!mounted) return;
@@ -126,17 +220,14 @@ class _HomepageState extends State<Homepage> {
   bool _isPremiumUser = false;
 
   String? moodHariIni;
-  String tipMood = 'Pelan-pelan ya, semuanya bisa dibicarakan nanti.';
-  String _affirmationPreview =
-      'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
-  String _affirmationCategory = 'Untuk hari ini';
+  String tipMood = '';
+  String _affirmationPreview = '';
+  String _affirmationCategory = '';
 
   DateTime selectedDate = DateTime.now();
 
   bool _hasUnreadNotifications = false;
   bool _actionPopupChecked = false;
-
-  static const String _moodDocumentId = 'BeZzql14Y8xGyoLUDb0L';
 
   static const List<String> _homepageAfirmasiCategories = [
     'Rasa Syukur',
@@ -175,20 +266,20 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    try {
+      await PremiumService.instance.refreshPremiumStatus();
+      final access = await PremiumService.instance.getAccess();
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    final data = doc.data() ?? {};
-    if (!mounted) return;
-
-    setState(() {
-      _isPremiumUser = (data['isPremium'] ?? false) == true;
-    });
+      if (!mounted) return;
+      setState(() {
+        _isPremiumUser = access.hasPremiumAccess;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isPremiumUser = false;
+      });
+    }
   }
 
   Future<void> _checkModerationActionPopup() async {
@@ -243,7 +334,7 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Kamu telah dilaporkan',
+                    _t('reportedPopupTitle'),
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           fontSize: 22,
                           color: _textDark,
@@ -323,7 +414,7 @@ class _HomepageState extends State<Homepage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: Text(
-                            'Nanti',
+                            _t('later'),
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
@@ -356,7 +447,7 @@ class _HomepageState extends State<Homepage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: Text(
-                            'Lihat Detail',
+                            _t('viewDetail'),
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
@@ -384,6 +475,15 @@ class _HomepageState extends State<Homepage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  String _moodPrefKey(String uid, String dateKey) => 'mood_${uid}_$dateKey';
+  String _notePrefKey(String uid, String dateKey) => 'note_${uid}_$dateKey';
+
+  DocumentReference<Map<String, dynamic>> _moodDoc(String uid) {
+    return FirebaseFirestore.instance.collection('moods').doc(uid);
+  }
+
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
@@ -404,6 +504,23 @@ class _HomepageState extends State<Homepage> {
       _t('dec'),
     ];
     return '${selectedDate.day} ${months[selectedDate.month - 1]}';
+  }
+
+  String _localizedAffirmationCategory(String raw) {
+    switch (raw.trim()) {
+      case 'Rasa Syukur':
+        return _t('categoryGratitude');
+      case 'Meredakan Kecemasan':
+        return _t('categoryAnxiety');
+      case 'Motivasi':
+        return _t('categoryMotivation');
+      case 'Kesehatan Mental':
+        return _t('categoryMentalHealth');
+      case 'Cinta Diri':
+        return _t('categorySelfLove');
+      default:
+        return raw.trim().isEmpty ? _t('todayAffirmation') : raw.trim();
+    }
   }
 
   String _defaultTipForMood(String? mood) {
@@ -502,6 +619,16 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> _syncHomepageState() async {
+    final language = await MoodlySettingsPrefs.loadLanguageCode();
+
+    if (!mounted) return;
+
+    setState(() {
+      _languageCode = language == 'en' ? 'en' : 'id';
+      _affirmationPreview = _t('affirmationFallback');
+      _affirmationCategory = _t('todayAffirmation');
+    });
+
     await _loadSelectedDateMood();
     await _loadHomepageAffirmationPreview();
   }
@@ -513,19 +640,26 @@ class _HomepageState extends State<Homepage> {
     String? note;
 
     try {
+      final uid = _uid;
+      if (uid == null) {
+        if (!mounted) return;
+        setState(() {
+          moodHariIni = null;
+          tipMood = _defaultTipForMood(null);
+        });
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
 
-      mood = prefs.getString('mood_$key');
-      note = prefs.getString('note_$key');
+      mood = prefs.getString(_moodPrefKey(uid, key));
+      note = prefs.getString(_notePrefKey(uid, key));
 
-      if (mood == null || mood.trim().isEmpty || note == null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('moods')
-            .doc(_moodDocumentId)
-            .get();
+      if ((mood == null || mood.trim().isEmpty) || note == null) {
+        final doc = await _moodDoc(uid).get();
 
         if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
+          final data = doc.data();
           final entries = data?['entries'] as Map<String, dynamic>? ?? {};
           final notes = data?['notes'] as Map<String, dynamic>? ?? {};
 
@@ -540,7 +674,8 @@ class _HomepageState extends State<Homepage> {
     if (!mounted) return;
 
     setState(() {
-      moodHariIni = (mood != null && mood.trim().isNotEmpty) ? mood.trim() : null;
+      moodHariIni =
+          (mood != null && mood.trim().isNotEmpty) ? mood.trim() : null;
       tipMood = _defaultTipForMood(moodHariIni);
     });
   }
@@ -560,7 +695,9 @@ class _HomepageState extends State<Homepage> {
         if (!mounted) return;
         setState(() {
           _affirmationPreview = cachedText;
-          _affirmationCategory = cachedCategory ?? 'Untuk hari ini';
+          _affirmationCategory = _localizedAffirmationCategory(
+            cachedCategory ?? _t('todayAffirmation'),
+          );
         });
         return;
       }
@@ -572,9 +709,8 @@ class _HomepageState extends State<Homepage> {
       if (items.isEmpty) {
         if (!mounted) return;
         setState(() {
-          _affirmationPreview =
-              'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
-          _affirmationCategory = 'Untuk hari ini';
+          _affirmationPreview = _t('affirmationFallback');
+          _affirmationCategory = _t('todayAffirmation');
         });
         return;
       }
@@ -583,7 +719,7 @@ class _HomepageState extends State<Homepage> {
       final picked = items.first;
 
       final text = (picked['teks'] ?? '').trim();
-      final category = (picked['kategori'] ?? 'Untuk hari ini').trim();
+      final category = (picked['kategori'] ?? _t('todayAffirmation')).trim();
 
       await prefs.setString('homepage_afirmasi_date', todayKey);
       await prefs.setString('homepage_afirmasi_text', text);
@@ -591,19 +727,15 @@ class _HomepageState extends State<Homepage> {
 
       if (!mounted) return;
       setState(() {
-        _affirmationPreview = text.isNotEmpty
-            ? text
-            : 'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
-        _affirmationCategory = category.isNotEmpty
-            ? category
-            : 'Untuk hari ini';
+        _affirmationPreview =
+            text.isNotEmpty ? text : _t('affirmationFallback');
+        _affirmationCategory = _localizedAffirmationCategory(category);
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _affirmationPreview =
-            'Kamu tidak harus buru-buru. Tarik napas, lalu tulis yang ingin kamu keluarkan.';
-        _affirmationCategory = 'Untuk hari ini';
+        _affirmationPreview = _t('affirmationFallback');
+        _affirmationCategory = _t('todayAffirmation');
       });
     }
   }
@@ -636,10 +768,31 @@ class _HomepageState extends State<Homepage> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
+  Future<void> _openAfirmasiFlow() async {
+    final targetPage = await AfirmasiPage.resolveEntryPage();
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => targetPage),
+    );
+
+    if (!mounted) return;
+
+    setState(() => _currentNavIndex = 0);
+    await _loadHomepageAffirmationPreview();
+  }
+
   Future<void> _openMoodInput() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => MoodInput(selectedDate: selectedDate)),
+      MaterialPageRoute(
+        builder: (_) => MoodInput(
+          selectedDate: selectedDate,
+          initialMood: moodHariIni,
+        ),
+      ),
     );
 
     if (!mounted) return;
@@ -651,7 +804,12 @@ class _HomepageState extends State<Homepage> {
   Future<void> _openMoodCalendar() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const MoodYearCalendar()),
+      MaterialPageRoute(
+        builder: (_) => MoodCalendar(
+          initialYear: selectedDate.year,
+          initialMonth: selectedDate.month,
+        ),
+      ),
     );
 
     if (!mounted) return;
@@ -659,23 +817,13 @@ class _HomepageState extends State<Homepage> {
     if (result is DateTime) {
       setState(() => selectedDate = result);
     }
+
+    await _loadSelectedDateMood();
+    await MoodlyNotificationService.instance.syncForCurrentUser();
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2020, 1, 1),
-      lastDate: DateTime(2030, 12, 31),
-    );
-
-    if (picked == null) return;
-
-    setState(() {
-      selectedDate = picked;
-    });
-
-    await _loadSelectedDateMood();
+    await _openMoodCalendar();
   }
 
   Future<void> _onNavbarTap(int index) async {
@@ -696,8 +844,8 @@ class _HomepageState extends State<Homepage> {
         targetPage = const HomeChatAnonim();
         break;
       case 4:
-        targetPage = const AfirmasiPage();
-        break;
+        await _openAfirmasiFlow();
+        return;
     }
 
     if (targetPage == null) return;
@@ -716,26 +864,34 @@ class _HomepageState extends State<Homepage> {
   }
 
   String _monthLabel(DateTime date) {
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+    final months = [
+      _t('monthFull1'),
+      _t('monthFull2'),
+      _t('monthFull3'),
+      _t('monthFull4'),
+      _t('monthFull5'),
+      _t('monthFull6'),
+      _t('monthFull7'),
+      _t('monthFull8'),
+      _t('monthFull9'),
+      _t('monthFull10'),
+      _t('monthFull11'),
+      _t('monthFull12'),
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
 
   String _weekdayLabel(DateTime date) {
-    const labels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-    return labels[date.weekday % 7];
+    const labels = [
+      'dayMin',
+      'daySen',
+      'daySel',
+      'dayRab',
+      'dayKam',
+      'dayJum',
+      'daySab',
+    ];
+    return _t(labels[date.weekday % 7]);
   }
 
   List<DateTime> _weekDates(DateTime anchor) {
@@ -794,16 +950,13 @@ class _HomepageState extends State<Homepage> {
           Positioned(
             right: 0,
             top: 0,
-            child: Container(
-              width: 80,
-              height: 80,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: _profileGradientForMood(moodHariIni),
-                boxShadow: _softShadow,
-              ),
+            child: MoodlyInventoryFrameAvatar(
+              uid: FirebaseAuth.instance.currentUser?.uid,
+              size: 80,
+              innerPadding: 4,
               child: Container(
+                width: 80,
+                height: 80,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
@@ -811,7 +964,7 @@ class _HomepageState extends State<Homepage> {
                 child: ClipOval(
                   child: MoodlyUserAvatar(
                     uid: FirebaseAuth.instance.currentUser?.uid,
-                    radius: 35,
+                    radius: 36,
                     backgroundColor: Colors.transparent,
                     borderWidth: 0,
                     borderColor: Colors.transparent,
@@ -858,7 +1011,7 @@ class _HomepageState extends State<Homepage> {
     );
 
     if (uid == null) {
-      return Text('Pengguna Moodly', style: textStyle);
+      return Text(_t('moodlyUser'), style: textStyle);
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -880,7 +1033,7 @@ class _HomepageState extends State<Homepage> {
                         ? displayName
                         : (email != null && email.isNotEmpty)
                             ? email.split('@').first
-                            : 'Pengguna Moodly';
+                            : _t('moodlyUser');
 
         return Text(
           resolvedName,
@@ -1067,7 +1220,7 @@ class _HomepageState extends State<Homepage> {
                               boxShadow: _softShadow,
                             ),
                             child: Text(
-                              'Streak',
+                              _t('streakLabel'),
                               style: AppText.bodyAlt(context).copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -1120,7 +1273,7 @@ class _HomepageState extends State<Homepage> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        '$points poin',
+                                        _replace(_t('pointLabel'), {'points': '$points'}),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: AppText.bodyAlt(context)
@@ -1160,7 +1313,7 @@ class _HomepageState extends State<Homepage> {
                                       const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
-                                          'Gunakan poin',
+                                          _t('points'),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: AppText.bodyAlt(context)
@@ -1181,46 +1334,17 @@ class _HomepageState extends State<Homepage> {
                       ),
                       const SizedBox(height: 10),
                       GestureDetector(
-                        onTap: () => _goToPage(RewardPage(totalPoints: points)),
+                        onTap: () async {
+                          await openMoodlyPremiumPage(
+                            context,
+                            source: PremiumEntrySource.home,
+                          );
+
+                          if (!mounted) return;
+                          await _loadPremiumStatus();
+                        },
                         child: Container(
                           height: 44,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [_premiumA, _premiumB],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: _softShadow,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.workspace_premium_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Jelajahi paket premium',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppText.bodyAlt(context).copyWith(
-                                    fontSize: 12,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 13,
-                                color: Colors.white,
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ],
@@ -1303,7 +1427,7 @@ class _HomepageState extends State<Homepage> {
                   child: Row(
                     children: [
                       Text(
-                        'Pilih Tanggal',
+                        _t('pickDate'),
                         style: AppText.bodyAlt(context).copyWith(
                           fontSize: 13,
                           color: const Color(0xFF65516A),
@@ -1423,7 +1547,7 @@ class _HomepageState extends State<Homepage> {
     return Column(
       children: [
         GestureDetector(
-          onTap: () => _goToPage(const AfirmasiPage()),
+          onTap: _openAfirmasiFlow,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1454,7 +1578,7 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         _affirmationCategory.isNotEmpty
                             ? _affirmationCategory
-                            : 'Untuk hari ini',
+                            : _t('todayAffirmation'),
                         style: AppText.bodyAlt(context).copyWith(
                           fontSize: 13,
                           color: _textDark,
@@ -1464,9 +1588,11 @@ class _HomepageState extends State<Homepage> {
                       const SizedBox(height: 4),
                       Text(
                         _affirmationPreview,
-                        style: AppText.body(
-                          context,
-                        ).copyWith(fontSize: 12, color: _textSoft, height: 1.4),
+                        style: AppText.body(context).copyWith(
+                          fontSize: 12,
+                          color: _textSoft,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -1486,7 +1612,7 @@ class _HomepageState extends State<Homepage> {
           children: [
             Expanded(
               child: _bridgeButton(
-                label: 'Lihat diarymu',
+                label: _t('myDiary'),
                 icon: Icons.lock_outline_rounded,
                 bg: _peach,
                 onTap: () => _goToPage(const MonthPage()),
@@ -1495,7 +1621,7 @@ class _HomepageState extends State<Homepage> {
             const SizedBox(width: 10),
             Expanded(
               child: _bridgeButton(
-                label: 'Kunjungi diary publik',
+                label: _t('publicDiary'),
                 icon: Icons.public_rounded,
                 bg: _greenMint,
                 onTap: () => _goToPage(const PublicDiaryPage()),
@@ -1596,8 +1722,8 @@ class _HomepageState extends State<Homepage> {
                 children: [
                   Text(
                     isToday
-                        ? 'Bagaimana harimu berjalan?'
-                        : 'Bagaimana harimu di ${_selectedDateLabel()}?',
+                        ? _t('howToday')
+                        : _replace(_t('howOnDate'), {'date': _selectedDateLabel()}),
                     style: AppText.subtitle(context).copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -1606,9 +1732,7 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _hasSelectedMood
-                        ? tipMood
-                        : 'Ceritakan pada kami, pelan-pelan saja.',
+                    _hasSelectedMood ? tipMood : _t('tellSlowly'),
                     style: AppText.body(context).copyWith(
                       fontSize: 13,
                       color: const Color(0xFF6A6A6A),
@@ -1655,8 +1779,8 @@ class _HomepageState extends State<Homepage> {
                 ),
                 child: Text(
                   _hasSelectedMood
-                      ? 'Edit mood ${_selectedDateLabel()}'
-                      : 'Isi mood ${_selectedDateLabel()}',
+                      ? _replace(_t('editMoodDate'), {'date': _selectedDateLabel()})
+                      : _replace(_t('fillMoodDate'), {'date': _selectedDateLabel()}),
                   style: AppText.bodyAlt(context).copyWith(
                     fontSize: 11,
                     color: _textDark,
@@ -1716,10 +1840,23 @@ class _HomepageState extends State<Homepage> {
         if (!_canOpenMoodAnalysis) {
           showCuteTopPopup(
             context,
-            title: 'Belum tersedia',
-            message: 'Analisa mood untuk akun reguler dibuka setiap tanggal 1. Premium bisa akses kapan saja.',
+            title: _t('premiumLockedTitle'),
+            message: _t('premiumLockedDesc'),
             type: CutePopupType.info,
           );
+
+          Future.delayed(const Duration(milliseconds: 350), () async {
+            if (!mounted) return;
+
+            await openMoodlyPremiumPage(
+              context,
+              source: PremiumEntrySource.moodAnalysisLocked,
+            );
+
+            if (!mounted) return;
+            await _loadPremiumStatus();
+          });
+
           return;
         }
 
@@ -1745,7 +1882,7 @@ class _HomepageState extends State<Homepage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Lihat Analisa Mood Anda',
+                      _t('moodAnalysis'),
                       style: AppText.bodyAlt(context).copyWith(
                         fontSize: 12.5,
                         color: _textDark,
@@ -1770,7 +1907,7 @@ class _HomepageState extends State<Homepage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Buka ringkasan mingguan dan bulanan mood-mu.',
+                      _t('moodAnalysisDesc'),
                       style: AppText.body(context).copyWith(
                         fontSize: 12,
                         color: const Color(0xFF6A6A6A),
@@ -1819,14 +1956,14 @@ class _HomepageState extends State<Homepage> {
 
   String _diaryCardTitle() {
     return _isSameDay(selectedDate, DateTime.now())
-        ? 'Diary Hari Ini'
-        : 'Diary ${_selectedDateLabel()}';
+        ? _t('todayDiary')
+        : _replace(_t('diaryOnDate'), {'date': _selectedDateLabel()});
   }
 
   String _diaryCardText() {
     return _isSameDay(selectedDate, DateTime.now())
-        ? 'Buka diary untuk menulis catatanmu hari ini.'
-        : 'Buka diary untuk melihat atau menulis catatan di tanggal ini.';
+        ? _t('todayDiaryDesc')
+        : _t('selectedDiaryDesc');
   }
 
   Widget _diaryReminderCard() {
@@ -1969,7 +2106,7 @@ class _HomepageState extends State<Homepage> {
                             const SizedBox(height: 18),
                             _diaryBridgeSection(),
                             const SizedBox(height: 18),
-                            _sectionHeader('Ruang Harian'),
+                            _sectionHeader(_t('dailyRoom')),
                             const SizedBox(height: 12),
                             _moodCluster(),
                           ],
