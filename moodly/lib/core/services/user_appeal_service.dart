@@ -35,7 +35,29 @@ class UserAppealService {
     if (raw is Timestamp) return raw.toDate();
     if (raw is DateTime) return raw;
     if (raw is String) return DateTime.tryParse(raw) ?? DateTime(2000);
+    if (raw is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(raw);
+      } catch (_) {
+        return DateTime(2000);
+      }
+    }
     return DateTime(2000);
+  }
+
+  DateTime? _toNullableDateTime(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    if (raw is String) return DateTime.tryParse(raw);
+    if (raw is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   String _firstNonEmpty(List<String?> values, {String fallback = ''}) {
@@ -149,10 +171,18 @@ class UserAppealService {
       'reportedUserInfo': _normalizeReportedUserInfo(data),
       'reporterInfo': _normalizeReporterInfo(data),
       'sourceType': _pickString(data, ['sourceType', 'type']),
-      'targetType': _pickString(data, ['targetType']),
+      'targetType': _pickString(data, ['targetType', 'target_type']),
       'contentType': _pickString(data, ['contentType', 'type']),
       'reportedUid': _pickString(data, ['reportedUid', 'reported_uid']),
       'reporterUid': _pickString(data, ['reporterUid', 'reported_by_uid']),
+      'banUntil': _pick(data, [
+        'banUntil',
+        'ban_until',
+        'bannedUntil',
+        'banned_until',
+        'suspendUntil',
+        'suspend_until',
+      ]),
       'raw': data,
     };
   }
@@ -221,10 +251,127 @@ class UserAppealService {
     return appeals;
   }
 
+  String _normalizeActionToken(String raw) {
+    final value = raw.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+
+    switch (value) {
+      case 'bansementara':
+      case 'tempsuspend':
+      case 'temporaryban':
+      case 'temporarysuspend':
+      case 'suspenduser':
+        return 'temporary_ban';
+
+      case 'banpermanen':
+      case 'permanentban':
+      case 'permban':
+      case 'permanentbanned':
+        return 'permanent_ban';
+
+      case 'batasiuser':
+      case 'restrictuser':
+      case 'restrictedaccount':
+      case 'warning':
+      case 'warnuser':
+        return 'restricted_account';
+
+      case 'cabuttindakan':
+      case 'revokeaction':
+      case 'revoke':
+      case 'clearaction':
+        return 'revoked';
+
+      default:
+        return value;
+    }
+  }
+
+  String _extractActionRaw(Map<String, dynamic> item) {
+    final rawMap = _asMap(item['raw']);
+
+    return _firstNonEmpty(
+      [
+        item['tindakanDipilih']?.toString(),
+        item['tindakanSaatIni']?.toString(),
+        rawMap['actionType']?.toString(),
+        rawMap['tindakanDipilih']?.toString(),
+        rawMap['tindakanSaatIni']?.toString(),
+      ],
+      fallback: '',
+    );
+  }
+
+  String getActionToken(Map<String, dynamic> item) {
+    return _normalizeActionToken(_extractActionRaw(item));
+  }
+
+  DateTime? getBanUntil(Map<String, dynamic> item) {
+    final rawMap = _asMap(item['raw']);
+
+    return _toNullableDateTime(
+      item['banUntil'] ??
+          rawMap['banUntil'] ??
+          rawMap['ban_until'] ??
+          rawMap['bannedUntil'] ??
+          rawMap['banned_until'] ??
+          rawMap['suspendUntil'] ??
+          rawMap['suspend_until'],
+    );
+  }
+
+  bool isTemporaryBan(Map<String, dynamic> item) {
+    return getActionToken(item) == 'temporary_ban';
+  }
+
+  bool isPermanentBan(Map<String, dynamic> item) {
+    return getActionToken(item) == 'permanent_ban';
+  }
+
+  bool isRestrictionActive(Map<String, dynamic> item) {
+    if (isPermanentBan(item)) return true;
+
+    if (isTemporaryBan(item)) {
+      final until = getBanUntil(item);
+      if (until == null) return true;
+      return DateTime.now().isBefore(until);
+    }
+
+    return false;
+  }
+
+  Duration getRemainingRestrictionDuration(Map<String, dynamic> item) {
+    if (!isTemporaryBan(item)) return Duration.zero;
+
+    final until = getBanUntil(item);
+    if (until == null) return Duration.zero;
+
+    final diff = until.difference(DateTime.now());
+    if (diff.isNegative) return Duration.zero;
+    return diff;
+  }
+
+  String buildPopupFingerprint(Map<String, dynamic> item) {
+    final docId = (item['documentId'] ?? item['reportId'] ?? '').toString();
+    final createdAt = _toDateTime(item['createdAt']);
+    return '${docId}_${createdAt.millisecondsSinceEpoch}';
+  }
+
   Future<Map<String, dynamic>?> getLatestActiveAction() async {
     final reports = await getReportsAgainstMe();
     if (reports.isEmpty) return null;
     return reports.first;
+  }
+
+  Future<Map<String, dynamic>?> getLatestRestrictionAction() async {
+    final reports = await getReportsAgainstMe();
+
+    for (final item in reports) {
+      if (isRestrictionActive(item)) {
+        return item;
+      }
+    }
+
+    return null;
   }
 
   Future<void> submitAppeal({

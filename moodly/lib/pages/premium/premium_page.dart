@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/models/premium_access_model.dart';
 import '../../core/services/premium_service.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 import 'premium_catalog.dart';
@@ -34,10 +35,13 @@ class MoodlyPremiumPage extends StatefulWidget {
 
 class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   late final PageController _pageController;
+
   int _currentPage = 1;
   int _selectedBillingIndex = 0;
   String _languageCode = 'id';
   bool _isActivatingPremium = false;
+  bool _isLoadingAccess = true;
+  PremiumAccessModel _access = PremiumAccessModel.empty();
 
   static const Color _bg = Color(0xFFF6FAEE);
   static const Color _card = Color(0xFFFFFEFB);
@@ -57,8 +61,6 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   static const Map<String, Map<String, String>> _copy = {
     'id': {
       'title': 'Paket Premium',
-      'subtitle':
-          'Pilih pengalaman Moodly yang paling cocok buat menemani harimu.',
       'freemium': 'Freemium',
       'premium': 'Premium',
       'studentPremium': 'Student Premium',
@@ -96,39 +98,43 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           'Freemium tetap bisa masuk ruang curhat. Premium membuka filter yang lebih spesifik.',
       'entryMoodTitle': 'Analisa mood kapan saja',
       'entryMoodDesc':
-          'Freemium bisa akses analisa mood setiap tanggal 1. Premium bisa membukanya kapan pun.',
+          'Gunakan Premium agar bisa melihat Analisa Mood kapan pun!',
       'freeTagline':
           'Akses dasar yang hangat dan cukup untuk journaling pelan-pelan.',
       'premiumTagline':
           'Lebih lengkap, lebih personal, dan lebih nyaman untuk dipakai rutin.',
       'studentTagline':
-          'Versi mahasiswa yang tetap manis, tapi nanti pakai verifikasi email kampus.',
+          'Moodly hadir bagi para mahasiswa, nikmati akses gratis melalui verifikasi email kampus.',
       'freeHero1': 'Mood, diary, dan statistik dasar',
       'freeHero2': 'Afirmasi standar setiap hari',
       'freeHero3': 'Tetap bisa ikut streak dan poin',
-      'premiumHero1': 'Analisa mood kapan saja',
+      'premiumHero1': 'Buka analisa mood kapan saja',
       'premiumHero2': 'Filter gender di chat anonim',
       'premiumHero3': 'Freeze streak ekstra + bonus poin',
-      'premiumHero4': 'Koleksi afirmasi premium',
-      'studentHero1': 'Benefit premium versi mahasiswa',
+      'premiumHero4': 'Buka lebih banyak afirmasi',
+      'studentHero1': 'Benefit premium gratis untuk mahasiswa',
       'studentHero2': 'Verifikasi pakai email kampus',
       'studentHero3': 'Fokus untuk support belajar dan self-care',
-      'studentHero4': 'Aktivasi masih coming soon',
+      'studentHero4': 'Aktivasi akan segera hadir',
       'billedAt': 'Total pembayaran',
       'normalPrice': 'Harga normal',
-      'studentFoot':
-          'Student Premium belum bisa dibeli dulu, tapi tampilan dan konsepnya sudah kita siapin.',
+      'studentFoot': 'Student Premium akan segera hadir.',
       'freeFooter':
           'Freemium tetap bisa menjaga harimu dengan baik. Premium hanya bikin pengalaman lebih kaya.',
       'premiumFooter':
           'Paket premium cocok kalau kamu ingin insight lebih detail dan akses lebih fleksibel.',
       'badgePopular': 'Favorit',
       'badgeStudent': 'Mahasiswa',
+      'premiumOnTitle': 'Premium berhasil diaktifkan',
+      'premiumOnBody':
+          'Premium testing aktif untuk paket yang kamu pilih.',
+      'premiumActiveButton': 'Paketmu aktif',
+      'premiumActiveInfo': 'Akses premium kamu sedang aktif.',
+      'activeUntil': 'Aktif sampai',
+      'loadingPlan': 'Memuat status paket...',
     },
     'en': {
       'title': 'Premium Plans',
-      'subtitle':
-          'Choose the Moodly experience that best fits your emotional routine.',
       'freemium': 'Freemium',
       'premium': 'Premium',
       'studentPremium': 'Student Premium',
@@ -166,34 +172,39 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           'Freemium can still access the anonymous chat. Premium unlocks more specific filtering.',
       'entryMoodTitle': 'Open mood analysis anytime',
       'entryMoodDesc':
-          'Freemium can access mood analysis every 1st day of the month. Premium can open it anytime.',
+          'Use Premium to open your Mood Analysis anytime.',
       'freeTagline':
           'Warm basic access for gentle journaling and daily emotional check-ins.',
       'premiumTagline':
           'More complete, more personal, and more comfortable for routine use.',
       'studentTagline':
-          'A student version with a soft mood, later verified using a campus email.',
+          'Moodly is here for students, enjoy free access through campus email verification.',
       'freeHero1': 'Basic mood, diary, and statistics',
       'freeHero2': 'Standard daily affirmations',
       'freeHero3': 'Still join streaks and points',
-      'premiumHero1': 'Mood analysis anytime',
+      'premiumHero1': 'Open mood analysis anytime',
       'premiumHero2': 'Gender filter in anonymous chat',
       'premiumHero3': 'Extra streak freeze + point bonus',
-      'premiumHero4': 'Premium affirmation packs',
+      'premiumHero4': 'See more affirmations',
       'studentHero1': 'Student version of premium benefits',
       'studentHero2': 'Campus email verification',
       'studentHero3': 'Built around study support and self-care',
       'studentHero4': 'Activation is still coming soon',
       'billedAt': 'Billing total',
       'normalPrice': 'Normal price',
-      'studentFoot':
-          'Student Premium cannot be purchased yet, but the concept and UI are already prepared.',
+      'studentFoot': 'Student Premium is coming soon.',
       'freeFooter':
           'Freemium can still support your day well. Premium simply makes the experience richer.',
       'premiumFooter':
           'Premium is ideal if you want deeper insight and more flexible access.',
       'badgePopular': 'Popular',
       'badgeStudent': 'Student',
+      'premiumOnTitle': 'Premium activated',
+      'premiumOnBody': 'Testing premium is now active for your selected plan.',
+      'premiumActiveButton': 'Your plan is active',
+      'premiumActiveInfo': 'Your premium access is currently active.',
+      'activeUntil': 'Active until',
+      'loadingPlan': 'Loading plan status...',
     },
   };
 
@@ -205,13 +216,18 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
       initialPage: _currentPage,
       viewportFraction: 0.92,
     );
-    _loadLanguage();
+    _hydrate();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _hydrate() async {
+    await _loadLanguage();
+    await _loadPremiumAccess();
   }
 
   int _resolveInitialPage(PremiumEntrySource source) {
@@ -233,10 +249,97 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
     });
   }
 
+  Future<void> _loadPremiumAccess() async {
+    try {
+      await PremiumService.instance.refreshPremiumStatus();
+      final access = await PremiumService.instance.getAccess();
+
+      if (!mounted) return;
+      setState(() {
+        _access = access;
+        _isLoadingAccess = false;
+
+        if (access.hasPremiumAccess) {
+          if (access.tier == PremiumTier.student) {
+            _currentPage = 2;
+          } else {
+            _currentPage = 1;
+          }
+          _pageController.jumpToPage(_currentPage);
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingAccess = false;
+        _access = PremiumAccessModel.empty();
+      });
+    }
+  }
+
   String _t(String key) => _copy[_languageCode]?[key] ?? key;
 
   PremiumBillingOption get _selectedBilling =>
       kPremiumBillingOptions[_selectedBillingIndex];
+
+  bool get _isCurrentFreemium => !_access.hasPremiumAccess;
+  bool get _isCurrentPremium =>
+      _access.hasPremiumAccess && _access.tier == PremiumTier.premium;
+  bool get _isCurrentStudent =>
+      _access.hasPremiumAccess && _access.tier == PremiumTier.student;
+
+  TextStyle _headlineStyle(BuildContext context, {Color? color, double? size}) {
+    return (Theme.of(context).textTheme.headlineLarge ??
+            const TextStyle(fontSize: 24, fontWeight: FontWeight.w600))
+        .copyWith(
+      color: color ?? _textDark,
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+    );
+  }
+
+  TextStyle _titleStyle(BuildContext context, {Color? color, double? size}) {
+    return (Theme.of(context).textTheme.titleMedium ??
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))
+        .copyWith(
+      color: color ?? _textDark,
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+    );
+  }
+
+  TextStyle _bodyStyle(BuildContext context, {Color? color, double? size}) {
+    return (Theme.of(context).textTheme.bodyMedium ??
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+        .copyWith(
+      color: color ?? _textSoft,
+      fontSize: size,
+      height: 1.5,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  TextStyle _bodySmallStyle(BuildContext context,
+      {Color? color, double? size, FontWeight? weight}) {
+    return (Theme.of(context).textTheme.bodySmall ??
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+        .copyWith(
+      color: color ?? _textDark,
+      fontSize: size,
+      height: 1.4,
+      fontWeight: weight ?? FontWeight.w700,
+    );
+  }
+
+  TextStyle _labelStyle(BuildContext context, {Color? color, double? size}) {
+    return (Theme.of(context).textTheme.labelLarge ??
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))
+        .copyWith(
+      color: color,
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+    );
+  }
 
   void _showPremiumSoonPopup() {
     showCuteTopPopup(
@@ -259,7 +362,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Future<void> _activatePremiumForTesting() async {
-    if (_isActivatingPremium) return;
+    if (_isActivatingPremium || _isCurrentPremium) return;
 
     setState(() {
       _isActivatingPremium = true;
@@ -274,23 +377,15 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
 
       if (!mounted) return;
 
-      final durationLabel = _selectedBilling.months == 1
-          ? _t('monthly')
-          : _selectedBilling.months == 6
-              ? _t('sixMonths')
-              : _t('yearly');
-
       showCuteTopPopup(
         context,
-        title: _languageCode == 'en'
-            ? 'Premium activated'
-            : 'Premium berhasil diaktifkan',
-        message: _languageCode == 'en'
-            ? 'Testing premium is now active for $durationLabel.'
-            : 'Premium testing sekarang aktif untuk $durationLabel.',
+        title: _t('premiumOnTitle'),
+        message: _t('premiumOnBody'),
         type: CutePopupType.success,
         duration: const Duration(seconds: 3),
       );
+
+      await _loadPremiumAccess();
 
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
@@ -301,9 +396,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
 
       showCuteTopPopup(
         context,
-        title: _languageCode == 'en'
-            ? 'Activation failed'
-            : 'Aktivasi gagal',
+        title: _languageCode == 'en' ? 'Activation failed' : 'Aktivasi gagal',
         message: _languageCode == 'en'
             ? 'Premium testing could not be activated.'
             : 'Premium testing belum berhasil diaktifkan.',
@@ -340,6 +433,38 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
     }
   }
 
+  String _formatDate(DateTime value) {
+    final monthNamesId = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt',
+      'Nov', 'Des'
+    ];
+    final monthNamesEn = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
+      'Nov', 'Dec'
+    ];
+    final months = _languageCode == 'en' ? monthNamesEn : monthNamesId;
+    return '${value.day} ${months[value.month - 1]} ${value.year}';
+  }
+
+  String _currentPlanLabel(_PlanKind kind) {
+    switch (kind) {
+      case _PlanKind.freemium:
+        return _isCurrentFreemium ? _t('currentActive') : _t('freemium');
+      case _PlanKind.premium:
+        return _isCurrentPremium ? _t('currentActive') : _t('premium');
+      case _PlanKind.student:
+        return _isCurrentStudent ? _t('currentActive') : _t('studentPremium');
+    }
+  }
+
+  double _sliderHeight(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final raw = screenHeight * 0.72;
+    if (raw < 600) return 600;
+    if (raw > 760) return 760;
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
@@ -369,16 +494,14 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                     const SizedBox(height: 18),
                     _buildEntryBanner(),
                     const SizedBox(height: 18),
-                    Text(
-                      _t('subtitle'),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.5,
-                        color: _textSoft,
-                        fontWeight: FontWeight.w500,
+                    if (_isLoadingAccess)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          _t('loadingPlan'),
+                          style: _bodyStyle(context),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
                     _buildSlider(),
                     const SizedBox(height: 14),
                     _buildPageDots(),
@@ -405,11 +528,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
         Expanded(
           child: Text(
             _t('title'),
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: _textDark,
-            ),
+            style: _headlineStyle(context, size: 26),
           ),
         ),
       ],
@@ -480,21 +599,12 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
               children: [
                 Text(
                   _entryTitle(),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: _textDark,
-                  ),
+                  style: _titleStyle(context, size: 18),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   _entryDescription(),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
-                    color: _textSoft,
-                  ),
+                  style: _bodyStyle(context, size: 13),
                 ),
               ],
             ),
@@ -506,7 +616,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
 
   Widget _buildSlider() {
     return SizedBox(
-      height: 920,
+      height: _sliderHeight(context),
       child: PageView(
         controller: _pageController,
         onPageChanged: (value) {
@@ -552,7 +662,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             tagline: _t('freeTagline'),
             accentA: _greenSoft,
             accentB: _pinkSoft,
-            badgeText: _t('currentActive'),
+            badgeText: _isCurrentFreemium ? _t('currentActive') : _t('freemium'),
             badgeColor: _green,
             emoji: '🌿',
           ),
@@ -584,6 +694,8 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Widget _buildPremiumSlide() {
+    final isCurrentPlan = _isCurrentPremium;
+
     return _PlanSlideShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,10 +705,35 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             tagline: _t('premiumTagline'),
             accentA: const Color(0xFFFFE2D2),
             accentB: const Color(0xFFFFF1E7),
-            badgeText: _t('recommended'),
-            badgeColor: _orange,
+            badgeText: isCurrentPlan ? _t('currentActive') : _t('recommended'),
+            badgeColor: isCurrentPlan ? _green : _orange,
             emoji: '👑',
           ),
+          if (isCurrentPlan && _access.expiresAt != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: _greenTint,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t('premiumActiveInfo'),
+                    style: _bodySmallStyle(context, color: _greenDark),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_t('activeUntil')}: ${_formatDate(_access.expiresAt!)}',
+                    style: _bodyStyle(context, color: _greenDark, size: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           _buildBillingSelector(),
           const SizedBox(height: 16),
@@ -619,12 +756,18 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(
-            label: _isActivatingPremium
-                ? (_languageCode == 'en' ? 'Activating...' : 'Mengaktifkan...')
-                : _t('choosePlan'),
-            background: _orange,
+            label: isCurrentPlan
+                ? _t('premiumActiveButton')
+                : _isActivatingPremium
+                    ? (_languageCode == 'en'
+                        ? 'Activating...'
+                        : 'Mengaktifkan...')
+                    : _t('choosePlan'),
+            background: isCurrentPlan ? _green : _orange,
             foreground: Colors.white,
-            onTap: _isActivatingPremium ? () {} : _activatePremiumForTesting,
+            onTap: isCurrentPlan
+                ? _showPremiumSoonPopup
+                : (_isActivatingPremium ? () {} : _activatePremiumForTesting),
           ),
           const SizedBox(height: 10),
           Center(
@@ -632,10 +775,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
               onPressed: _showPremiumSoonPopup,
               child: Text(
                 _t('continueLater'),
-                style: const TextStyle(
-                  color: _textSoft,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: _bodySmallStyle(context, color: _textSoft),
               ),
             ),
           ),
@@ -654,7 +794,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             tagline: _t('studentTagline'),
             accentA: const Color(0xFFE5F7DD),
             accentB: const Color(0xFFFFEEF4),
-            badgeText: _t('badgeStudent'),
+            badgeText: _isCurrentStudent ? _t('currentActive') : _t('badgeStudent'),
             badgeColor: _pink,
             emoji: '🎓',
           ),
@@ -685,10 +825,11 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                       ),
                       child: Text(
                         _t('comingSoon'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                        style: _bodySmallStyle(
+                          context,
                           color: _orangeDark,
+                          size: 11,
+                          weight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -703,21 +844,12 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                 const SizedBox(height: 14),
                 Text(
                   _t('studentCta'),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: _textDark,
-                  ),
+                  style: _headlineStyle(context, size: 24),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   _t('studentFoot'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: _textSoft,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: _bodyStyle(context, size: 13),
                 ),
               ],
             ),
@@ -791,41 +923,31 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: badgeColor,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   badgeText,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                  style: _bodySmallStyle(
+                    context,
                     color: Colors.white,
+                    size: 11,
+                    weight: FontWeight.w800,
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: _textDark,
-                ),
+                style: _headlineStyle(context, size: 28),
               ),
               const SizedBox(height: 8),
               Text(
                 tagline,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  height: 1.5,
-                  color: _textSoft,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: _bodyStyle(context, size: 13),
               ),
             ],
           ),
@@ -835,101 +957,95 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Widget _buildBillingSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: List.generate(kPremiumBillingOptions.length, (index) {
-            final option = kPremiumBillingOptions[index];
-            final selected = index == _selectedBillingIndex;
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: List.generate(kPremiumBillingOptions.length, (index) {
+        final option = kPremiumBillingOptions[index];
+        final selected = index == _selectedBillingIndex;
 
-            String label;
-            if (option.months == 1) {
-              label = _t('monthly');
-            } else if (option.months == 6) {
-              label = _t('sixMonths');
-            } else {
-              label = _t('yearly');
-            }
+        String label;
+        if (option.months == 1) {
+          label = _t('monthly');
+        } else if (option.months == 6) {
+          label = _t('sixMonths');
+        } else {
+          label = _t('yearly');
+        }
 
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedBillingIndex = index;
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                decoration: BoxDecoration(
-                  color: selected ? _orange : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: selected ? _orange : const Color(0xFFE7E2D7),
-                    width: 1.2,
-                  ),
-                  boxShadow: selected
-                      ? const [
-                          BoxShadow(
-                            color: Color.fromRGBO(255, 181, 106, 0.26),
-                            blurRadius: 18,
-                            offset: Offset(0, 8),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: selected ? Colors.white : _textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatRupiah(option.totalPrice),
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? Colors.white : _textSoft,
-                      ),
-                    ),
-                    if (option.discountPercent > 0) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? Colors.white.withOpacity(0.22)
-                              : _pinkSoft,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '${option.discountPercent}% ${_t('off')}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: selected ? Colors.white : _pinkDark,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedBillingIndex = index;
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: selected ? _orange : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? _orange : const Color(0xFFE7E2D7),
+                width: 1.2,
               ),
-            );
-          }),
-        ),
-      ],
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color.fromRGBO(255, 181, 106, 0.26),
+                        blurRadius: 18,
+                        offset: Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: _titleStyle(
+                    context,
+                    size: 15,
+                    color: selected ? Colors.white : _textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatRupiah(option.totalPrice),
+                  style: _bodySmallStyle(
+                    context,
+                    size: 12,
+                    color: selected ? Colors.white : _textSoft,
+                  ),
+                ),
+                if (option.discountPercent > 0) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Colors.white.withOpacity(0.22)
+                          : _pinkSoft,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${option.discountPercent}% ${_t('off')}',
+                      style: _bodySmallStyle(
+                        context,
+                        size: 11,
+                        color: selected ? Colors.white : _pinkDark,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 
@@ -964,22 +1080,20 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
         children: [
           Text(
             '${_t('premium')} • $durationLabel',
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: _textDark,
-            ),
+            style: _titleStyle(context, size: 18),
           ),
           const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                formatRupiah(option.totalPrice),
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: _orangeDark,
+              Flexible(
+                child: Text(
+                  formatRupiah(option.totalPrice),
+                  style: _headlineStyle(
+                    context,
+                    size: 30,
+                    color: _orangeDark,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -988,11 +1102,12 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     formatRupiah(option.normalPrice),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      decoration: TextDecoration.lineThrough,
+                    style: _bodyStyle(
+                      context,
+                      size: 13,
                       color: _textSoft,
-                      fontWeight: FontWeight.w600,
+                    ).copyWith(
+                      decoration: TextDecoration.lineThrough,
                     ),
                   ),
                 ),
@@ -1021,19 +1136,22 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
         Expanded(
           child: Text(
             left,
-            style: TextStyle(
-              fontSize: 13,
+            style: _bodyStyle(
+              context,
+              size: 13,
               color: highlight ? _greenDark : _textSoft,
+            ).copyWith(
               fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
             ),
           ),
         ),
         Text(
           right,
-          style: TextStyle(
-            fontSize: 13,
+          style: _bodySmallStyle(
+            context,
+            size: 13,
             color: highlight ? _greenDark : _textDark,
-            fontWeight: FontWeight.w800,
+            weight: FontWeight.w800,
           ),
         ),
       ],
@@ -1080,11 +1198,11 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                     Expanded(
                       child: Text(
                         item,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          height: 1.45,
-                          fontWeight: FontWeight.w600,
+                        style: _bodySmallStyle(
+                          context,
+                          size: 13,
                           color: _textDark,
+                          weight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1098,12 +1216,6 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Widget _buildFeatureComparisonCard(_PlanKind kind) {
-    final planTitle = kind == _PlanKind.freemium
-        ? _t('freemium')
-        : kind == _PlanKind.premium
-            ? _t('premium')
-            : _t('studentPremium');
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -1123,11 +1235,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
         children: [
           Text(
             _t('comparisonTitle'),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: _textDark,
-            ),
+            style: _titleStyle(context, size: 18),
           ),
           const SizedBox(height: 12),
           Container(
@@ -1141,21 +1249,23 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
                 Expanded(
                   child: Text(
                     _t('freeColumn'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
+                    style: _bodySmallStyle(
+                      context,
+                      size: 12,
                       color: _greenDark,
+                      weight: FontWeight.w800,
                     ),
                   ),
                 ),
                 Expanded(
                   child: Text(
-                    kind == _PlanKind.freemium ? _t('currentActive') : planTitle,
+                    _currentPlanLabel(kind),
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
+                    style: _bodySmallStyle(
+                      context,
+                      size: 12,
                       color: _pinkDark,
+                      weight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -1163,9 +1273,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             ),
           ),
           const SizedBox(height: 12),
-          ...kPremiumFeatureRows.map(
-            (row) => _buildCompareRow(row, kind),
-          ),
+          ...kPremiumFeatureRows.map((row) => _buildCompareRow(row, kind)),
         ],
       ),
     );
@@ -1207,43 +1315,75 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
               Expanded(
                 child: Text(
                   row.title(_languageCode),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: _textDark,
-                  ),
+                  style: _titleStyle(context, size: 14),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _compareCell(
-                  text: row.freeText(_languageCode),
-                  background: _greenTint,
-                  iconColor: _greenDark,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _compareCell(
-                  text: rightText,
-                  background: kind == _PlanKind.freemium
-                      ? _greenTint
-                      : kind == _PlanKind.premium
-                          ? _pinkSoft
-                          : _peach,
-                  iconColor: kind == _PlanKind.freemium
-                      ? _greenDark
-                      : kind == _PlanKind.premium
-                          ? _pinkDark
-                          : _orangeDark,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stackVertically = constraints.maxWidth < 330;
+
+              if (stackVertically) {
+                return Column(
+                  children: [
+                    _compareCell(
+                      title: _t('freeColumn'),
+                      text: row.freeText(_languageCode),
+                      background: _greenTint,
+                      iconColor: _greenDark,
+                    ),
+                    const SizedBox(height: 10),
+                    _compareCell(
+                      title: _currentPlanLabel(kind),
+                      text: rightText,
+                      background: kind == _PlanKind.freemium
+                          ? _greenTint
+                          : kind == _PlanKind.premium
+                              ? _pinkSoft
+                              : _peach,
+                      iconColor: kind == _PlanKind.freemium
+                          ? _greenDark
+                          : kind == _PlanKind.premium
+                              ? _pinkDark
+                              : _orangeDark,
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _compareCell(
+                      title: _t('freeColumn'),
+                      text: row.freeText(_languageCode),
+                      background: _greenTint,
+                      iconColor: _greenDark,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _compareCell(
+                      title: _currentPlanLabel(kind),
+                      text: rightText,
+                      background: kind == _PlanKind.freemium
+                          ? _greenTint
+                          : kind == _PlanKind.premium
+                              ? _pinkSoft
+                              : _peach,
+                      iconColor: kind == _PlanKind.freemium
+                          ? _greenDark
+                          : kind == _PlanKind.premium
+                              ? _pinkDark
+                              : _orangeDark,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1251,35 +1391,51 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Widget _compareCell({
+    required String title,
     required String text,
     required Color background,
     required Color iconColor,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.check_circle_rounded,
-            size: 16,
-            color: iconColor,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.45,
-                fontWeight: FontWeight.w600,
-                color: _textDark,
-              ),
+          Text(
+            title,
+            style: _bodySmallStyle(
+              context,
+              size: 11,
+              color: iconColor,
+              weight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.check_circle_rounded,
+                size: 16,
+                color: iconColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: _bodyStyle(
+                    context,
+                    size: 12,
+                    color: _textDark,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1307,12 +1463,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 12.5,
-                height: 1.5,
-                fontWeight: FontWeight.w600,
-                color: _textDark,
-              ),
+              style: _bodyStyle(context, size: 12.5, color: _textDark),
             ),
           ),
         ],
@@ -1341,10 +1492,8 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
         ),
         child: Text(
           label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
+          style: _labelStyle(context, color: foreground, size: 14),
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -1376,22 +1525,13 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           Text(
             _t('allUsersSafeTitle'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: _textDark,
-            ),
+            style: _titleStyle(context, size: 17),
           ),
           const SizedBox(height: 8),
           Text(
             _t('allUsersSafeDesc'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: _textSoft,
-              fontWeight: FontWeight.w600,
-            ),
+            style: _bodyStyle(context, size: 13),
           ),
           const SizedBox(height: 12),
           Container(
@@ -1403,11 +1543,11 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             child: Text(
               _t('companionNote'),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.45,
+              style: _bodySmallStyle(
+                context,
+                size: 12,
                 color: _textDark,
-                fontWeight: FontWeight.w700,
+                weight: FontWeight.w700,
               ),
             ),
           ),
@@ -1449,7 +1589,10 @@ class _PlanSlideShell extends StatelessWidget {
             ),
           ],
         ),
-        child: child,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: child,
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +26,7 @@ class Homepage extends StatefulWidget {
   State<Homepage> createState() => _HomepageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
   int _currentNavIndex = 0;
 
   String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
@@ -44,6 +45,18 @@ class _HomepageState extends State<Homepage> {
       'reportedTitle': 'Kamu telah dilaporkan',
       'later': 'Nanti',
       'viewDetail': 'Lihat Detail',
+      'freezeTemporaryTitle': 'Akunmu sedang dibekukan sementara',
+      'freezePermanentTitle': 'Akunmu dibekukan permanen',
+      'freezeTemporaryDesc':
+          'Homepage dikunci sementara sampai masa tindakan selesai. Kamu hanya bisa membuka riwayat laporan dan halaman banding.',
+      'freezePermanentDesc':
+          'Homepage dikunci karena ada tindakan permanen. Kamu hanya bisa membuka riwayat laporan dan halaman banding.',
+      'remainingTime': 'Sisa waktu',
+      'openReportHistory': 'Buka Riwayat Laporan',
+      'openAppealPage': 'Ajukan Banding',
+      'freezeReason': 'Alasan laporan',
+      'freezeAction': 'Tindakan',
+      'freezeAppeal': 'Status banding',
       'goodMorning': 'Selamat pagi,',
       'goodAfternoon': 'Selamat siang,',
       'goodEvening': 'Selamat sore,',
@@ -51,6 +64,7 @@ class _HomepageState extends State<Homepage> {
       'todayAffirmation': 'Untuk hari ini',
       'points': 'Gunakan poin',
       'explorePremium': 'Jelajahi paket premium',
+      'premiumSubscribed': 'Anda berlangganan Premium',
       'pickDate': 'Pilih Tanggal',
       'myDiary': 'Lihat diarymu',
       'publicDiary': 'Kunjungi diary publik',
@@ -123,6 +137,18 @@ class _HomepageState extends State<Homepage> {
       'reportedTitle': 'You have been reported',
       'later': 'Later',
       'viewDetail': 'View Detail',
+      'freezeTemporaryTitle': 'Your account is temporarily frozen',
+      'freezePermanentTitle': 'Your account is permanently frozen',
+      'freezeTemporaryDesc':
+          'The homepage is locked until the action period ends. You can only open report history and the appeal page.',
+      'freezePermanentDesc':
+          'The homepage is locked because of a permanent action. You can only open report history and the appeal page.',
+      'remainingTime': 'Remaining time',
+      'openReportHistory': 'Open Report History',
+      'openAppealPage': 'Submit Appeal',
+      'freezeReason': 'Report reason',
+      'freezeAction': 'Action',
+      'freezeAppeal': 'Appeal status',
       'goodMorning': 'Good morning,',
       'goodAfternoon': 'Good afternoon,',
       'goodEvening': 'Good evening,',
@@ -130,6 +156,7 @@ class _HomepageState extends State<Homepage> {
       'todayAffirmation': 'For today',
       'points': 'Use points',
       'explorePremium': 'Explore premium plans',
+      'premiumSubscribed': 'You are subscribed to Premium',
       'pickDate': 'Pick Date',
       'myDiary': 'View your diary',
       'publicDiary': 'Visit public diary',
@@ -227,7 +254,30 @@ class _HomepageState extends State<Homepage> {
   DateTime selectedDate = DateTime.now();
 
   bool _hasUnreadNotifications = false;
-  bool _actionPopupChecked = false;
+
+  bool _isRefreshingModerationState = false;
+  bool _isModerationDialogOpen = false;
+
+  Map<String, dynamic>? _latestModerationItem;
+  Map<String, dynamic>? _activeRestrictionItem;
+
+  Timer? _restrictionTimer;
+  Duration _restrictionRemaining = Duration.zero;
+
+  static const String _lastShownReportCacheKeyPrefix =
+      'moodly_last_shown_report_popup';
+
+  bool get _isRestrictionActive =>
+      _activeRestrictionItem != null &&
+      UserAppealService.instance.isRestrictionActive(_activeRestrictionItem!);
+
+  bool get _isTemporaryRestriction =>
+      _activeRestrictionItem != null &&
+      UserAppealService.instance.isTemporaryBan(_activeRestrictionItem!);
+
+  bool get _isPermanentRestriction =>
+      _activeRestrictionItem != null &&
+      UserAppealService.instance.isPermanentBan(_activeRestrictionItem!);
 
   static const List<String> _homepageAfirmasiCategories = [
     'Rasa Syukur',
@@ -248,6 +298,7 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _syncHomepageState();
     _bootstrapSignals();
@@ -256,13 +307,22 @@ class _HomepageState extends State<Homepage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _restrictionTimer?.cancel();
     MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _bootstrapSignals();
+    }
+  }
+
   Future<void> _bootstrapSignals() async {
     await MoodlyNotificationService.instance.syncForCurrentUser();
-    await _checkModerationActionPopup();
+    await _refreshModerationState(showPopupIfNeeded: true);
   }
 
   Future<void> _loadPremiumStatus() async {
@@ -282,185 +342,318 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
-  Future<void> _checkModerationActionPopup() async {
-    if (_actionPopupChecked) return;
-    _actionPopupChecked = true;
+  String _shownPopupCacheKey() =>
+      '${_lastShownReportCacheKeyPrefix}_${_uid ?? 'guest'}';
 
-    final item = await UserAppealService.instance.getLatestActiveAction();
-    if (item == null) return;
-    if (!mounted) return;
+  Future<void> _refreshModerationState({
+    bool showPopupIfNeeded = false,
+  }) async {
+    if (_isRefreshingModerationState) return;
+    _isRefreshingModerationState = true;
 
-    final actionLabel =
-        UserAppealService.instance.buildCurrentActionLabel(item);
-    final appealLabel =
-        UserAppealService.instance.buildAppealStatusLabel(item);
-    final reportTitle =
-        UserAppealService.instance.buildReportTitle(item);
-    final reportSummary =
-        UserAppealService.instance.buildReportSummary(item);
+    try {
+      final latestItem = await UserAppealService.instance.getLatestActiveAction();
+      final restrictionItem =
+          await UserAppealService.instance.getLatestRestrictionAction();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-      await showDialog(
-        context: context,
-        barrierColor: Colors.black.withOpacity(0.38),
-        builder: (_) {
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: _softShadow,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _pinkSoft,
-                    ),
-                    child: const Icon(
-                      Icons.shield_rounded,
-                      size: 36,
-                      color: _greenDark,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _t('reportedPopupTitle'),
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: 22,
-                          color: _textDark,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    reportTitle,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: _textDark,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    reportSummary,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: _textSoft,
-                          height: 1.45,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _pinkSoft,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          actionLabel,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: _textDark,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _greenSoft,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          appealLabel,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: _textDark,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            backgroundColor: _pinkSoft,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text(
-                            _t('later'),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: _textDark,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ReportHistoryPage(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _green,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text(
-                            _t('viewDetail'),
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
+      setState(() {
+        _latestModerationItem = latestItem;
+        _activeRestrictionItem = restrictionItem;
+        _restrictionRemaining = restrictionItem != null
+            ? UserAppealService.instance
+                .getRemainingRestrictionDuration(restrictionItem)
+            : Duration.zero;
+      });
+
+      _syncRestrictionTimer();
+
+      if (showPopupIfNeeded && latestItem != null) {
+        await _showModerationDialogIfNeeded(latestItem);
+      }
+    } finally {
+      _isRefreshingModerationState = false;
+    }
+  }
+
+  void _syncRestrictionTimer() {
+    _restrictionTimer?.cancel();
+
+    if (!_isTemporaryRestriction || _activeRestrictionItem == null) {
+      return;
+    }
+
+    _restrictionRemaining = UserAppealService.instance
+        .getRemainingRestrictionDuration(_activeRestrictionItem!);
+
+    _restrictionTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (!mounted || _activeRestrictionItem == null) return;
+
+      final remaining = UserAppealService.instance
+          .getRemainingRestrictionDuration(_activeRestrictionItem!);
+
+      if (remaining <= Duration.zero) {
+        _restrictionTimer?.cancel();
+
+        if (!mounted) return;
+        setState(() {
+          _restrictionRemaining = Duration.zero;
+        });
+
+        await _refreshModerationState(showPopupIfNeeded: false);
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _restrictionRemaining = remaining;
+      });
     });
+  }
+
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  String _formatRestrictionRemaining() {
+    final duration = _restrictionRemaining;
+
+    final days = duration.inDays;
+    final hours = duration.inHours.remainder(24);
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (days > 0) {
+      return _languageCode == 'en'
+          ? '$days day ${_twoDigits(hours)}:${_twoDigits(minutes)}:${_twoDigits(seconds)}'
+          : '$days hari ${_twoDigits(hours)}:${_twoDigits(minutes)}:${_twoDigits(seconds)}';
+    }
+
+    return '${_twoDigits(hours)}:${_twoDigits(minutes)}:${_twoDigits(seconds)}';
+  }
+
+  Future<void> _showModerationDialogIfNeeded(
+    Map<String, dynamic> item,
+  ) async {
+    if (!mounted || _isModerationDialogOpen) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final fingerprint = UserAppealService.instance.buildPopupFingerprint(item);
+    final lastShown = prefs.getString(_shownPopupCacheKey());
+
+    if (lastShown == fingerprint) return;
+
+    await prefs.setString(_shownPopupCacheKey(), fingerprint);
+
+    final actionLabel = UserAppealService.instance.buildCurrentActionLabel(item);
+    final appealLabel = UserAppealService.instance.buildAppealStatusLabel(item);
+    final reportTitle = UserAppealService.instance.buildReportTitle(item);
+    final reportSummary = UserAppealService.instance.buildReportSummary(item);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _isModerationDialogOpen) return;
+
+      _isModerationDialogOpen = true;
+
+      try {
+        await showDialog(
+          context: context,
+          barrierColor: Colors.black.withOpacity(0.38),
+          builder: (_) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: _softShadow,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _pinkSoft,
+                      ),
+                      child: const Icon(
+                        Icons.shield_rounded,
+                        size: 36,
+                        color: _greenDark,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _t('reportedPopupTitle'),
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontSize: 22,
+                            color: _textDark,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      reportTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: _textDark,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      reportSummary,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: _textSoft,
+                            height: 1.45,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _pinkSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            actionLabel,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: _textDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _greenSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            appealLabel,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: _textDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              backgroundColor: _pinkSoft,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              _t('later'),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: _textDark,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              await _openReportHistoryFromFreeze();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              _t('viewDetail'),
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      } finally {
+        _isModerationDialogOpen = false;
+      }
+    });
+  }
+
+  Future<void> _openReportHistoryFromFreeze() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ReportHistoryPage(),
+      ),
+    );
+
+    if (!mounted) return;
+    await _refreshModerationState(showPopupIfNeeded: false);
+  }
+
+  Future<void> _openAppealFromFreeze() async {
+    final target = _latestModerationItem ?? _activeRestrictionItem;
+    if (target == null) return;
+
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AjukanBandingPage(report: target),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (changed == true) {
+      await _refreshModerationState(showPopupIfNeeded: false);
+    }
+  }
+
+  String _restrictionTitle() {
+    if (_isPermanentRestriction) return _t('freezePermanentTitle');
+    return _t('freezeTemporaryTitle');
+  }
+
+  String _restrictionDescription() {
+    if (_isPermanentRestriction) return _t('freezePermanentDesc');
+    return _t('freezeTemporaryDesc');
   }
 
   String get _greetingText {
@@ -764,7 +957,12 @@ class _HomepageState extends State<Homepage> {
     ),
   ];
 
-  void _goToPage(Widget page) {
+  void _goToPage(
+    Widget page, {
+    bool allowDuringRestriction = false,
+  }) {
+    if (_isRestrictionActive && !allowDuringRestriction) return;
+
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
@@ -827,6 +1025,8 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> _onNavbarTap(int index) async {
+    if (_isRestrictionActive) return;
+
     if (index == 0) {
       if (_currentNavIndex != 0) {
         setState(() => _currentNavIndex = 0);
@@ -860,6 +1060,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   void _onEmergencyTap() {
+    if (_isRestrictionActive) return;
     _goToPage(const EmergencySupportPage());
   }
 
@@ -1345,6 +1546,50 @@ class _HomepageState extends State<Homepage> {
                         },
                         child: Container(
                           height: 44,
+                          decoration: BoxDecoration(
+                            gradient: _isPremiumUser
+                                ? null
+                                : const LinearGradient(
+                                    colors: [_premiumA, _premiumB],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                            color: _isPremiumUser ? _greenSoft : null,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: _softShadow,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isPremiumUser
+                                    ? Icons.verified_rounded
+                                    : Icons.workspace_premium_rounded,
+                                color: _isPremiumUser ? _greenDark : Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _isPremiumUser
+                                      ? _t('premiumSubscribed')
+                                      : _t('premiumCta'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.bodyAlt(context).copyWith(
+                                    fontSize: 12,
+                                    color: _isPremiumUser ? _greenDark : Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 13,
+                                color: _isPremiumUser ? _greenDark : Colors.white,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -2038,6 +2283,223 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
+  Widget _buildRestrictionOverlay() {
+    final item = _activeRestrictionItem;
+    if (item == null) return const SizedBox.shrink();
+
+    final actionLabel = UserAppealService.instance.buildCurrentActionLabel(item);
+    final appealLabel = UserAppealService.instance.buildAppealStatusLabel(item);
+    final reportSummary = UserAppealService.instance
+        .buildReportSummary(_latestModerationItem ?? item);
+
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.34),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: _softShadow,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 82,
+                      height: 82,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _pinkSoft,
+                      ),
+                      child: Icon(
+                        _isPermanentRestriction
+                            ? Icons.gpp_bad_rounded
+                            : Icons.lock_clock_rounded,
+                        size: 40,
+                        color: _greenDark,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _restrictionTitle(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontSize: 24,
+                            color: _textDark,
+                          ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _restrictionDescription(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: _textSoft,
+                            height: 1.5,
+                          ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (_isTemporaryRestriction) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _greenMint,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              _t('remainingTime'),
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: _greenDark,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatRestrictionRemaining(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineLarge
+                                  ?.copyWith(
+                                    fontSize: 22,
+                                    color: _greenDark,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _pinkSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${_t('freezeAction')}: $actionLabel',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: _textDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _greenSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${_t('freezeAppeal')}: $appealLabel',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: _textDark,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: _greenSoft),
+                      ),
+                      child: Text(
+                        '${_t('freezeReason')}: $reportSummary',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: _textSoft,
+                              height: 1.45,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: _openReportHistoryFromFreeze,
+                            style: TextButton.styleFrom(
+                              backgroundColor: _pinkSoft,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              _t('openReportHistory'),
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: _textDark,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _openAppealFromFreeze,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              _t('openAppealPage'),
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (FirebaseAuth.instance.currentUser == null) {
@@ -2046,85 +2508,95 @@ class _HomepageState extends State<Homepage> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: _homeSystemUi,
-      child: Scaffold(
-        backgroundColor: _bg,
-        body: Stack(
-          children: [
-            Positioned(
-              top: -50,
-              right: -30,
-              child: Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _pinkSoft.withOpacity(0.52),
+      child: WillPopScope(
+        onWillPop: () async => !_isRestrictionActive,
+        child: Scaffold(
+          backgroundColor: _bg,
+          body: Stack(
+            children: [
+              Positioned(
+                top: -50,
+                right: -30,
+                child: Container(
+                  width: 190,
+                  height: 190,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _pinkSoft.withOpacity(0.52),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              top: 210,
-              left: -65,
-              child: Container(
-                width: 170,
-                height: 170,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _greenMint.withOpacity(0.75),
+              Positioned(
+                top: 210,
+                left: -65,
+                child: Container(
+                  width: 170,
+                  height: 170,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _greenMint.withOpacity(0.75),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 120,
-              right: -70,
-              child: Container(
-                width: 230,
-                height: 230,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _greenSoft.withOpacity(0.55),
+              Positioned(
+                bottom: 120,
+                right: -70,
+                child: Container(
+                  width: 230,
+                  height: 230,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _greenSoft.withOpacity(0.55),
+                  ),
                 ),
               ),
-            ),
-            SafeArea(
-              child: ScrollConfiguration(
-                behavior: const _SoftScrollBehavior(),
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-                      sliver: SliverToBoxAdapter(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _headerSection(),
-                            const SizedBox(height: 18),
-                            _streakCommandSection(),
-                            const SizedBox(height: 18),
-                            _calendarNavigator(),
-                            const SizedBox(height: 18),
-                            _diaryBridgeSection(),
-                            const SizedBox(height: 18),
-                            _sectionHeader(_t('dailyRoom')),
-                            const SizedBox(height: 12),
-                            _moodCluster(),
-                          ],
+              SafeArea(
+                child: ScrollConfiguration(
+                  behavior: const _SoftScrollBehavior(),
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _headerSection(),
+                              const SizedBox(height: 18),
+                              _streakCommandSection(),
+                              const SizedBox(height: 18),
+                              _calendarNavigator(),
+                              const SizedBox(height: 18),
+                              _diaryBridgeSection(),
+                              const SizedBox(height: 18),
+                              _sectionHeader(_t('dailyRoom')),
+                              const SizedBox(height: 12),
+                              _moodCluster(),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+              if (_isRestrictionActive) _buildRestrictionOverlay(),
+            ],
+          ),
+          bottomNavigationBar: IgnorePointer(
+            ignoring: _isRestrictionActive,
+            child: Opacity(
+              opacity: _isRestrictionActive ? 0.45 : 1,
+              child: MoodlyBottomNavbar(
+                currentIndex: _currentNavIndex,
+                onTap: _onNavbarTap,
+                onEmergencyTap: _onEmergencyTap,
+              ),
             ),
-          ],
+          ),
         ),
-        bottomNavigationBar: MoodlyBottomNavbar(
-          currentIndex: _currentNavIndex,
-          onTap: _onNavbarTap,
-          onEmergencyTap: _onEmergencyTap,
-        ),
-      )
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import '../../widgets/streak/streak_feedback_popup.dart';
 import 'streak_detail_page.dart';
 import '../../core/services/streak_service.dart';
 import '../setting/moodly_settings_support.dart';
+import '../afirmasi/afirmasi.dart';
 
 class StreakPage extends StatelessWidget {
   const StreakPage({super.key});
@@ -495,6 +496,22 @@ class StreakPage extends StatelessWidget {
       icon: Icons.ondemand_video_rounded,
       accent: const Color(0xFFE29A3A),
       buttonLabel: 'Oke',
+    );
+  }
+
+  Future<void> _handleAdBonusTap(BuildContext context, StreakState state) async {
+    if (state.adBonusDoneToday) {
+      await _showAdMissionInfo(context, state);
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AfirmasiPage(),
+      ),
     );
   }
 
@@ -1919,7 +1936,7 @@ class StreakPage extends StatelessWidget {
     final done = state.adBonusDoneToday;
 
     return GestureDetector(
-      onTap: () => _showAdMissionInfo(context, state),
+      onTap: () => _handleAdBonusTap(context, state),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),

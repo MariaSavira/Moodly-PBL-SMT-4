@@ -53,6 +53,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
   Timer? _typingTimer;
   String _languageCode = 'id';
+  bool _isShowingReportSuccessFlow = false;
 
   static const Map<String, Map<String, String>> _copy = {
     'id': {
@@ -77,6 +78,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'messageUpdated': 'Pesan diperbarui',
       'messageUpdatedSaved': 'Perubahan pesan sudah disimpan.',
       'messageDeleted': 'Pesan dihapus',
+      'messageDeletedTitle': 'Pesan dihapus',
+      'messageDeletedSuccess': 'Pesanmu berhasil dihapus untuk semua.',
       'photo': 'Foto',
       'photoSeen': 'Foto sudah dilihat',
       'selectReportReason': 'Pilih alasan laporan',
@@ -104,6 +107,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'reply': 'Balas',
       'reportShort': 'Lapor',
       'editMessage': 'Mengedit pesan',
+      'edit': 'Edit',
+      'delete': 'Hapus',
       'selectPhotoMode': 'Pilih Mode Foto',
       'normal': 'Biasa',
       'normalDesc': 'Foto bisa dilihat tanpa batas selama room aktif',
@@ -152,6 +157,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'messageUpdated': 'Message updated',
       'messageUpdatedSaved': 'Your message changes have been saved.',
       'messageDeleted': 'Message deleted',
+      'messageDeletedTitle': 'Message deleted',
+      'messageDeletedSuccess': 'Your message was deleted for everyone.',
       'photo': 'Photo',
       'photoSeen': 'Photo already viewed',
       'selectReportReason': 'Choose a report reason',
@@ -179,6 +186,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'reply': 'Reply',
       'reportShort': 'Report',
       'editMessage': 'Editing message',
+      'edit': 'Edit',
+      'delete': 'Delete',
       'selectPhotoMode': 'Choose Photo Mode',
       'normal': 'Normal',
       'normalDesc': 'The photo can be viewed freely while the room is active',
@@ -269,6 +278,29 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
+  Future<void> _showReportSuccessFeedbackFlow() async {
+    if (_isShowingReportSuccessFlow || !mounted) return;
+    _isShowingReportSuccessFlow = true;
+
+    _showTopInfo(
+      title: _t('reportSent'),
+      message: _t('reportSentDesc'),
+      type: CutePopupType.warning,
+    );
+
+    await Future.delayed(const Duration(milliseconds: 450));
+    if (!mounted) {
+      _isShowingReportSuccessFlow = false;
+      return;
+    }
+
+    await _showAfterReportSheet();
+
+    if (mounted) {
+      _isShowingReportSuccessFlow = false;
+    }
+  }
+
   void _showRoomAutoClosePopupOnce() {
     if (_hasShownRoomInfoPopup || !mounted) return;
     _hasShownRoomInfoPopup = true;
@@ -336,7 +368,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   bool isSelectingReport = false;
 
   final Set<String> selectedReportMessageIds = {};
-  final List<QueryDocumentSnapshot<Map<String, dynamic>>> selectedReportMessages = [];
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> selectedReportMessages =
+      [];
 
   String? _selectedReportReason;
   String? _selectedReportTag;
@@ -346,34 +379,43 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     required String highlight,
     required String suffix,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 13,
-            vertical: 6,
+            horizontal: 14,
+            vertical: 8,
           ),
           decoration: BoxDecoration(
             color: const Color(0xFFF8BDC0),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF8BDC0).withOpacity(0.24),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: RichText(
             textAlign: TextAlign.center,
             text: TextSpan(
-              style: const TextStyle(
+              style: textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                height: 1.55,
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'OpenSans',
+                height: 1.45,
               ),
               children: [
                 TextSpan(text: prefix),
                 TextSpan(
                   text: highlight,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 TextSpan(text: suffix),
@@ -386,26 +428,28 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   }
 
   Widget buildDateChip(String text) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 13,
-            vertical: 6,
+            horizontal: 14,
+            vertical: 8,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8BDC0),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.82),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFFF1D5DA),
+            ),
           ),
           child: Text(
             text,
-            style: const TextStyle(
+            style: textTheme.bodySmall?.copyWith(
               fontSize: 12,
-              height: 1.55,
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'OpenSans',
+              color: const Color(0xFF8E7081),
             ),
           ),
         ),
@@ -422,11 +466,14 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.95),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFFF2D5DB),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -447,14 +494,55 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       child: Text(
         _t('roomAutoClose'),
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 12,
-          height: 1.45,
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'OpenSans',
-        ),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 12,
+              color: Colors.white,
+              height: 1.45,
+            ),
       ),
+    );
+  }
+
+  Widget _buildDecorativeBackground() {
+    return Stack(
+      children: [
+        Positioned(
+          top: -30,
+          right: -40,
+          child: Container(
+            width: 180,
+            height: 180,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFE0F0CB),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 140,
+          left: -80,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFF4E6DB),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 180,
+          right: -70,
+          child: Container(
+            width: 210,
+            height: 210,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFE0F1C8),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -543,16 +631,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       _selectedReportReason = null;
     });
 
-    _showTopInfo(
-      title: _t('reportSent'),
-      message: _t('reportSentDesc'),
-      type: CutePopupType.warning,
-    );
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-
-    _showAfterReportSheet();
+    await _showReportSuccessFeedbackFlow();
   }
 
   Future<void> _checkWarningStatus() async {
@@ -761,6 +840,25 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     });
   }
 
+  Future<void> _handleDeleteOwnMessage(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    if (roomId == null) return;
+
+    await _chatService.deleteMessageForEveryone(
+      roomId: roomId!,
+      messageId: doc.id,
+    );
+
+    if (!mounted) return;
+
+    _showTopInfo(
+      title: _t('messageDeletedTitle'),
+      message: _t('messageDeletedSuccess'),
+      type: CutePopupType.info,
+    );
+  }
+
   void _cancelEditing() {
     if (roomId != null) {
       _chatService.updateTypingStatus(
@@ -807,58 +905,49 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   ) {
     final data = doc.data();
     final type = data['type'] ?? 'text';
-
     if (type != 'text') return;
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.78,
-          minChildSize: 0.55,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF8),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 46,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5E0),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
-                      children: [
-                        Text(
-                          _t('selectReportReason'),
-                          style:
-                              Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                    fontSize: 22,
-                                    color: Colors.black,
-                                  ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
-                    ),
-                  ),
-                ],
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _actionSheetItem(
+                icon: Icons.edit_rounded,
+                label: _t('edit'),
+                iconColor: const Color(0xFF6FB65B),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditMessageDialog(doc.id, (data['text'] ?? '').toString());
+                },
               ),
-            );
-          },
+              _actionSheetItem(
+                icon: Icons.delete_rounded,
+                label: _t('delete'),
+                iconColor: const Color(0xFFE36A77),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _handleDeleteOwnMessage(doc);
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -870,6 +959,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     required Color iconColor,
     required VoidCallback onTap,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -891,9 +982,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: textTheme.bodySmall?.copyWith(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
               color: Colors.black87,
             ),
           ),
@@ -1058,13 +1148,15 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     String? currentUid,
   ) {
     final type = data['type'] ?? 'text';
+    final textTheme = Theme.of(context).textTheme;
 
     if (type == 'deleted') {
       return Text(
         _t('messageDeleted'),
-        style: const TextStyle(
+        style: textTheme.bodyMedium?.copyWith(
           fontStyle: FontStyle.italic,
           color: Colors.grey,
+          fontSize: 14,
         ),
       );
     }
@@ -1080,7 +1172,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             data: data,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: Image.network(
               data['imageUrl'],
               width: 180,
@@ -1118,9 +1210,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                 const SizedBox(height: 8),
                 Text(
                   canOpen ? _t('photo') : _t('photoSeen'),
-                  style: const TextStyle(
+                  style: textTheme.bodyMedium?.copyWith(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
                     color: Colors.black54,
                   ),
                 ),
@@ -1138,28 +1229,27 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
         if (data['replyTo'] != null)
           Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: const Color(0xFFF7E8EB),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               data['replyTo']['text'] ?? '',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                color: Color(0xFF7B6670),
-                fontWeight: FontWeight.w700,
+                color: const Color(0xFF7B6670),
               ),
             ),
           ),
         Text(
           text,
-          style: const TextStyle(
+          style: textTheme.bodyMedium?.copyWith(
             fontSize: 16,
             color: Colors.black87,
-            fontWeight: FontWeight.w500,
+            height: 1.35,
           ),
         ),
       ],
@@ -1170,6 +1260,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     if (roomId == null) return;
 
     final picker = ImagePicker();
+
+    final mode = await _showImageModePicker();
+    if (mode == null) return;
 
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
@@ -1256,8 +1349,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 180),
                                   margin: const EdgeInsets.only(bottom: 14),
-                                  padding:
-                                      const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      14, 14, 14, 14),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? const Color(0xFFFFF1F3)
@@ -1587,158 +1680,176 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFFE8EFCF);
-    const pinkBubble = Color(0xFFFFFFFF);
     const greenButton = Color(0xFF84C76A);
-    const inputBg = Color(0xFFF5F5F5);
+    const inputBg = Color(0xFFFFFFFF);
     const shadowColor = Color(0x22000000);
+
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Container(
-              height: 74,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: const BoxDecoration(
-                color: bgColor,
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0x22000000),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 42),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        chatPartnerName,
-                        style: Theme.of(context).textTheme.headlineLarge,
+            Positioned.fill(child: _buildDecorativeBackground()),
+            Column(
+              children: [
+                Container(
+                  height: 82,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: bgColor.withOpacity(0.92),
+                    border: const Border(
+                      bottom: BorderSide(
+                        color: Color(0x22000000),
+                        width: 1,
                       ),
                     ),
-                  ),
-                  MoodlyInventoryFrameAvatar(
-                    uid: chatPartnerUid,
-                    size: 42,
-                    innerPadding: 2.5,
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFA8F0D6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          chatPartnerAvatar,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.asset(
-                              'assets/profile_pic/PP_default.jpg',
-                              fit: BoxFit.cover,
-                              alignment: Alignment.center,
-                            );
-                          },
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 42),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            chatPartnerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.headlineLarge?.copyWith(
+                              fontSize: 24,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: MoodlyInventoryFrameAvatar(
+                          uid: chatPartnerUid,
+                          size: 46,
+                          innerPadding: 2.5,
+                          child: Container(
+                            width: 46,
+                            height: 46,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFA8F0D6),
+                            ),
+                            child: ClipOval(
+                              child: Image.asset(
+                                chatPartnerAvatar,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
+                                    'assets/profile_pic/PP_default.jpg',
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.center,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            if (isLoading)
-              const Expanded(
-                child: Center(
-                  child: CircularProgressIndicator(),
                 ),
-              )
-            else
-              Expanded(
-                child: Stack(
-                  children: [
-                    Column(
+                if (isLoading)
+                  const Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Stack(
                       children: [
-                        Expanded(
-                          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                            stream: _chatService.messagesStream(roomId!),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                      ConnectionState.waiting &&
-                                  !snapshot.hasData) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
+                        Column(
+                          children: [
+                            Expanded(
+                              child: StreamBuilder<
+                                  QuerySnapshot<Map<String, dynamic>>>(
+                                stream: _chatService.messagesStream(roomId!),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                          ConnectionState.waiting &&
+                                      !snapshot.hasData) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
 
-                              final docs = snapshot.data?.docs
-                                      .where((doc) =>
-                                          doc.data()['createdAt'] != null)
-                                      .toList() ??
-                                  [];
-                              final currentUid =
-                                  FirebaseAuth.instance.currentUser?.uid;
+                                  final docs = snapshot.data?.docs
+                                          .where((doc) =>
+                                              doc.data()['createdAt'] != null)
+                                          .toList() ??
+                                      [];
+                                  final currentUid =
+                                      FirebaseAuth.instance.currentUser?.uid;
 
-                              if (docs.isNotEmpty) {
-                                _chatService.markMessagesAsSeen(
-                                  roomId: roomId!,
-                                  messages: docs,
-                                );
-                              }
+                                  if (docs.isNotEmpty) {
+                                    _chatService.markMessagesAsSeen(
+                                      roomId: roomId!,
+                                      messages: docs,
+                                    );
+                                  }
 
-                              return ListView(
-                                clipBehavior: Clip.hardEdge,
-                                padding: EdgeInsets.fromLTRB(
-                                  18,
-                                  0,
-                                  18,
-                                  MediaQuery.of(context).viewInsets.bottom + 125,
-                                ),
-                                children: [
-                                  const SizedBox(height: 10),
-                                  buildSystemMessage(
-                                    prefix: _t('youConnectedWith'),
-                                    highlight: chatPartnerName,
-                                    suffix: '!',
-                                  ),
-                                  buildSystemMessage(
-                                    prefix: _t('talkPolitely'),
-                                    highlight: _t('respectOthers'),
-                                    suffix: '!',
-                                  ),
-                                  buildSystemMessage(
-                                    prefix: '',
-                                    highlight: _t('startTelling'),
-                                    suffix: '',
-                                  ),
-                                  buildDateChip(_t('today')),
-                                  const SizedBox(height: 10),
-                                  ...docs.map((doc) {
-                                    final data = doc.data();
-                                    final text = data['text'] ?? '';
-                                    final senderId = data['senderId'];
-                                    final isMe = senderId == currentUid;
-                                    final isLast = doc == docs.last;
-                                    final createdAt =
-                                        data['createdAt'] as Timestamp?;
+                                  return ListView(
+                                    clipBehavior: Clip.hardEdge,
+                                    physics: const BouncingScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(
+                                      18,
+                                      12,
+                                      18,
+                                      MediaQuery.of(context).viewInsets.bottom +
+                                          132,
+                                    ),
+                                    children: [
+                                      buildSystemMessage(
+                                        prefix: _t('youConnectedWith'),
+                                        highlight: chatPartnerName,
+                                        suffix: '!',
+                                      ),
+                                      buildSystemMessage(
+                                        prefix: _t('talkPolitely'),
+                                        highlight: _t('respectOthers'),
+                                        suffix: '!',
+                                      ),
+                                      buildSystemMessage(
+                                        prefix: '',
+                                        highlight: _t('startTelling'),
+                                        suffix: '',
+                                      ),
+                                      buildDateChip(_t('today')),
+                                      const SizedBox(height: 8),
+                                      ...docs.map((doc) {
+                                        final data = doc.data();
+                                        final text = data['text'] ?? '';
+                                        final senderId = data['senderId'];
+                                        final isMe = senderId == currentUid;
+                                        final isLast = doc == docs.last;
+                                        final createdAt =
+                                            data['createdAt'] as Timestamp?;
 
-                                    return Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 14),
-                                      child: Column(
-                                        crossAxisAlignment: isMe
-                                            ? CrossAxisAlignment.end
-                                            : CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: isMe
-                                                ? MainAxisAlignment.end
-                                                : MainAxisAlignment.start,
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 14),
+                                          child: Column(
+                                            crossAxisAlignment: isMe
+                                                ? CrossAxisAlignment.end
+                                                : CrossAxisAlignment.start,
                                             children: [
                                               GestureDetector(
                                                 onLongPress: () {
@@ -1777,54 +1888,66 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                 child: Container(
                                                   constraints:
                                                       const BoxConstraints(
-                                                    maxWidth: 265,
+                                                    maxWidth: 278,
                                                   ),
-                                                  padding: const EdgeInsets.symmetric(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
                                                     horizontal: 16,
                                                     vertical: 12,
                                                   ),
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        selectedReportMessageIds
-                                                                .contains(doc.id)
+                                                    color: selectedReportMessageIds
+                                                            .contains(doc.id)
+                                                        ? const Color(
+                                                            0xFFFFD6D6)
+                                                        : editingMessageId ==
+                                                                doc.id
                                                             ? const Color(
-                                                                0xFFFFD6D6)
-                                                            : editingMessageId ==
-                                                                    doc.id
+                                                                0xFFFFF1F3)
+                                                            : isMe
                                                                 ? const Color(
-                                                                    0xFFFFF1F3)
-                                                                : isMe
-                                                                    ? const Color(
-                                                                        0xFFE9F6E2)
-                                                                    : pinkBubble,
-                                                    border: editingMessageId ==
-                                                            doc.id
-                                                        ? Border.all(
-                                                            color: const Color(
-                                                                0xFFF4B7C1),
-                                                            width: 1.4,
-                                                          )
-                                                        : null,
+                                                                    0xFFF5FFF0)
+                                                                : Colors.white
+                                                                    .withOpacity(
+                                                                        0.95),
+                                                    border: Border.all(
+                                                      color: selectedReportMessageIds
+                                                              .contains(doc.id)
+                                                          ? const Color(
+                                                              0xFFF0A8A8)
+                                                          : editingMessageId ==
+                                                                  doc.id
+                                                              ? const Color(
+                                                                  0xFFF4B7C1)
+                                                              : isMe
+                                                                  ? const Color(
+                                                                      0xFFD8EECC)
+                                                                  : const Color(
+                                                                      0xFFF1D5DB),
+                                                      width: 1.2,
+                                                    ),
                                                     borderRadius:
                                                         BorderRadius.only(
                                                       topLeft:
                                                           const Radius.circular(
-                                                              18),
+                                                              20),
                                                       topRight:
                                                           const Radius.circular(
-                                                              18),
+                                                              20),
                                                       bottomLeft:
                                                           Radius.circular(
-                                                              isMe ? 18 : 6),
+                                                              isMe ? 20 : 8),
                                                       bottomRight:
                                                           Radius.circular(
-                                                              isMe ? 6 : 18),
+                                                              isMe ? 8 : 20),
                                                     ),
-                                                    boxShadow: const [
+                                                    boxShadow: [
                                                       BoxShadow(
-                                                        color: shadowColor,
-                                                        blurRadius: 8,
-                                                        offset: Offset(0, 3),
+                                                        color: Colors.black
+                                                            .withOpacity(0.06),
+                                                        blurRadius: 12,
+                                                        offset:
+                                                            const Offset(0, 5),
                                                       ),
                                                     ],
                                                   ),
@@ -1836,440 +1959,503 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                   ),
                                                 ),
                                               ),
+                                              if (data['isEdited'] == true)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                    top: 5,
+                                                    left: 4,
+                                                    right: 4,
+                                                  ),
+                                                  child: Text(
+                                                    _t('edited'),
+                                                    style: textTheme.bodyMedium
+                                                        ?.copyWith(
+                                                      fontSize: 11,
+                                                      color: Colors.black45,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(height: 4),
+                                              if (isLast)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        _formatMessageTime(
+                                                            createdAt),
+                                                        style: textTheme
+                                                            .bodyMedium
+                                                            ?.copyWith(
+                                                          fontSize: 11,
+                                                          color: Colors.black54,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      if (isMe)
+                                                        Icon(
+                                                          (data['seenBy'] !=
+                                                                          null &&
+                                                                      (data['seenBy']
+                                                                              as List)
+                                                                          .length >
+                                                                          1)
+                                                              ? Icons.done_all
+                                                              : Icons.done,
+                                                          size: 14,
+                                                          color: (data['seenBy'] !=
+                                                                          null &&
+                                                                      (data['seenBy']
+                                                                              as List)
+                                                                          .length >
+                                                                          1)
+                                                              ? Colors.blue
+                                                              : Colors.grey,
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
                                             ],
                                           ),
-                                          if (data['isEdited'] == true)
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.only(top: 4),
-                                              child: Text(
-                                                _t('edited'),
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.black45,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ),
-                                          const SizedBox(height: 4),
-                                          if (isLast)
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(_formatMessageTime(createdAt)),
-                                                const SizedBox(width: 4),
-                                                if (isMe)
-                                                  Icon(
-                                                    (data['seenBy'] != null &&
-                                                            (data['seenBy']
-                                                                        as List)
-                                                                    .length >
-                                                                1)
-                                                        ? Icons.done_all
-                                                        : Icons.done,
-                                                    size: 14,
-                                                    color: (data['seenBy'] !=
-                                                                null &&
-                                                            (data['seenBy']
-                                                                        as List)
-                                                                    .length >
-                                                                1)
-                                                        ? Colors.blue
-                                                        : Colors.grey,
-                                                  ),
-                                              ],
-                                            ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                                    stream: _chatService.roomStream(roomId!),
-                                    builder: (context, snapshot) {
-                                      final typingUsers =
-                                          snapshot.data?.data()?['typingUsers'] ??
+                                        );
+                                      }),
+                                      StreamBuilder<
+                                          DocumentSnapshot<
+                                              Map<String, dynamic>>>(
+                                        stream: _chatService.roomStream(roomId!),
+                                        builder: (context, snapshot) {
+                                          final typingUsers = snapshot.data
+                                                  ?.data()?['typingUsers'] ??
                                               [];
 
-                                      final isOtherTyping = typingUsers is List &&
-                                          typingUsers.any(
-                                            (uid) =>
-                                                uid !=
-                                                FirebaseAuth
-                                                    .instance.currentUser?.uid,
-                                          );
+                                          final isOtherTyping =
+                                              typingUsers is List &&
+                                                  typingUsers.any(
+                                                    (uid) =>
+                                                        uid !=
+                                                        FirebaseAuth
+                                                            .instance
+                                                            .currentUser
+                                                            ?.uid,
+                                                  );
 
-                                      if (!isOtherTyping) {
-                                        return const SizedBox();
-                                      }
-                                      return _typingBubble();
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isSelectingReport)
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 78,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4F6),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: const Color(0xFFF4C7CF),
-                              width: 1.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF8D3D9),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.warning_rounded,
-                                  color: Color(0xFFE36A77),
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '${selectedReportMessages.length} ${_t('selectedForReport')}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6C5962),
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: _confirmReportMessages,
-                                icon: const Icon(
-                                  Icons.check_rounded,
-                                  color: Color(0xFF84C76A),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    isSelectingReport = false;
-                                    selectedReportMessageIds.clear();
-                                    selectedReportMessages.clear();
-                                  });
-                                },
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  color: Color(0xFF8D737C),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (replyingMessageId != null)
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 70,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4F6),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFFF4C7CF),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF39AAA),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  replyingText ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF6C5962),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    replyingMessageId = null;
-                                    replyingText = null;
-                                    replyingType = null;
-                                    replyingSenderId = null;
-                                  });
-                                },
-                                child: const Icon(
-                                  Icons.close_rounded,
-                                  color: Color(0xFF8D737C),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (editingMessageId != null)
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 70,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4F6),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFFF4C7CF),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF84C76A),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _messageController.text.isNotEmpty
-                                      ? _messageController.text
-                                      : (editingOriginalText ?? _t('editMessage')),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF5B6953),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: _cancelEditing,
-                                child: const Icon(
-                                  Icons.close_rounded,
-                                  color: Color(0xFF7B8A72),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        color: bgColor,
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: _handleEndChat,
-                              child: Container(
-                                width: 95,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: greenButton,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _t('stop'),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Container(
-                                height: 42,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: inputBg,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: _handlePickImage,
-                                      child: const Icon(
-                                        Icons.image_outlined,
-                                        size: 20,
-                                        color: Color(0xFF86B864),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _messageController,
-                                        onChanged: (value) {
-                                          if (roomId == null) return;
-
-                                          _typingTimer?.cancel();
-
-                                          if (editingMessageId != null) {
-                                            setState(() {});
+                                          if (!isOtherTyping) {
+                                            return const SizedBox();
                                           }
-
-                                          if (value.trim().isEmpty) {
-                                            _chatService.updateTypingStatus(
-                                              roomId: roomId!,
-                                              isTyping: false,
-                                            );
-                                            return;
-                                          }
-
-                                          _chatService.updateTypingStatus(
-                                            roomId: roomId!,
-                                            isTyping: true,
-                                          );
-
-                                          _typingTimer = Timer(
-                                              const Duration(seconds: 2), () {
-                                            if (roomId == null) return;
-
-                                            _chatService.updateTypingStatus(
-                                              roomId: roomId!,
-                                              isTyping: false,
-                                            );
-                                          });
+                                          return _typingBubble();
                                         },
-                                        decoration: InputDecoration(
-                                          hintText: editingMessageId != null
-                                              ? _t('updateMessageHint')
-                                              : _t('messageHint'),
-                                          hintStyle: const TextStyle(
-                                            color: Color(0xFF8A8A8A),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          border: InputBorder.none,
-                                          isCollapsed: true,
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textInputAction: TextInputAction.send,
-                                        onSubmitted: (_) => _handleSend(),
                                       ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: _handleSend,
-                                      child: AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 180),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 7,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: editingMessageId != null
-                                              ? const Color(0xFFF39AAA)
-                                              : const Color(0xFF8CCF68),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              editingMessageId != null
-                                                  ? Icons.check_rounded
-                                                  : Icons.send_rounded,
-                                              size: 14,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              editingMessageId != null
-                                                  ? _t('save')
-                                                  : _t('send'),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        if (isSelectingReport)
+                          Positioned(
+                            left: 20,
+                            right: 20,
+                            bottom: 78,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF4F6),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xFFF4C7CF),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFF8D3D9),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.warning_rounded,
+                                      color: Color(0xFFE36A77),
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      '${selectedReportMessages.length} ${_t('selectedForReport')}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF6C5962),
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _confirmReportMessages,
+                                    icon: const Icon(
+                                      Icons.check_rounded,
+                                      color: Color(0xFF84C76A),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        isSelectingReport = false;
+                                        selectedReportMessageIds.clear();
+                                        selectedReportMessages.clear();
+                                      });
+                                    },
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFF8D737C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (replyingMessageId != null)
+                          Positioned(
+                            left: 20,
+                            right: 20,
+                            bottom: 70,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF4F6),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFF4C7CF),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF39AAA),
+                                      borderRadius:
+                                          BorderRadius.circular(99),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      replyingText ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF6C5962),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        replyingMessageId = null;
+                                        replyingText = null;
+                                        replyingType = null;
+                                        replyingSenderId = null;
+                                      });
+                                    },
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFF8D737C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (editingMessageId != null)
+                          Positioned(
+                            left: 20,
+                            right: 20,
+                            bottom: 70,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF4F6),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFF4C7CF),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF84C76A),
+                                      borderRadius:
+                                          BorderRadius.circular(99),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _messageController.text.isNotEmpty
+                                          ? _messageController.text
+                                          : (editingOriginalText ??
+                                              _t('editMessage')),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF5B6953),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: _cancelEditing,
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      color: Color(0xFF7B8A72),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: bgColor.withOpacity(0.94),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, -4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                GestureDetector(
+                                  onTap: _handleEndChat,
+                                  child: Container(
+                                    width: 110,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: greenButton,
+                                      borderRadius: BorderRadius.circular(18),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: shadowColor,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _t('stop'),
+                                        style: textTheme.labelLarge?.copyWith(
+                                          fontSize: 15,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      minHeight: 48,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: inputBg,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: const Color(0xFFEADADF),
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: shadowColor,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: _handlePickImage,
+                                          child: Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFF3F8E8),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.image_outlined,
+                                              size: 20,
+                                              color: Color(0xFF86B864),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _messageController,
+                                            minLines: 1,
+                                            maxLines: 4,
+                                            onChanged: (value) {
+                                              if (roomId == null) return;
+
+                                              _typingTimer?.cancel();
+
+                                              if (editingMessageId != null) {
+                                                setState(() {});
+                                              }
+
+                                              if (value.trim().isEmpty) {
+                                                _chatService.updateTypingStatus(
+                                                  roomId: roomId!,
+                                                  isTyping: false,
+                                                );
+                                                return;
+                                              }
+
+                                              _chatService.updateTypingStatus(
+                                                roomId: roomId!,
+                                                isTyping: true,
+                                              );
+
+                                              _typingTimer = Timer(
+                                                const Duration(seconds: 2),
+                                                () {
+                                                  if (roomId == null) return;
+
+                                                  _chatService.updateTypingStatus(
+                                                    roomId: roomId!,
+                                                    isTyping: false,
+                                                  );
+                                                },
+                                              );
+                                            },
+                                            decoration: InputDecoration(
+                                              hintText: editingMessageId != null
+                                                  ? _t('updateMessageHint')
+                                                  : _t('messageHint'),
+                                              hintStyle:
+                                                  textTheme.bodyMedium?.copyWith(
+                                                color:
+                                                    const Color(0xFF8A8A8A),
+                                                fontSize: 12,
+                                              ),
+                                              border: InputBorder.none,
+                                              isCollapsed: true,
+                                            ),
+                                            style:
+                                                textTheme.bodyMedium?.copyWith(
+                                              fontSize: 15,
+                                              color: Colors.black87,
+                                            ),
+                                            textInputAction:
+                                                TextInputAction.send,
+                                            onSubmitted: (_) => _handleSend(),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: _handleSend,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 180),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 9,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: editingMessageId != null
+                                                  ? const Color(0xFFF39AAA)
+                                                  : const Color(0xFF8CCF68),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  editingMessageId != null
+                                                      ? Icons.check_rounded
+                                                      : Icons.send_rounded,
+                                                  size: 15,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  editingMessageId != null
+                                                      ? _t('save')
+                                                      : _t('send'),
+                                                  style: textTheme.labelLarge
+                                                      ?.copyWith(
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -2308,7 +2494,8 @@ class _TypingDotsState extends State<_TypingDots>
       animation: _controller,
       builder: (_, __) {
         final progress = (_controller.value - (index * 0.12)) % 1.0;
-        final opacity = 0.35 + (0.65 * (1 - ((progress - 0.5).abs() * 2)));
+        final opacity =
+            0.35 + (0.65 * (1 - ((progress - 0.5).abs() * 2)));
         return Container(
           width: 8,
           height: 8,

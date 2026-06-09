@@ -12,17 +12,19 @@
         android:scaleType="centerCrop"
         android:src="@drawable/widget_bg_1" />
 
-    <View
+    <TextView
         android:id="@+id/widget_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#44000000" />
+        android:background="#44000000"
+        android:text=""
+        android:textSize="1sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:gravity="center"
+        android:orientation="vertical"
         android:paddingLeft="14dp"
         android:paddingTop="12dp"
         android:paddingRight="14dp"
@@ -48,16 +50,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:maxWidth="220dp"
-            android:maxLines="3"
             android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
             android:includeFontPadding="false"
             android:lineSpacingExtra="1dp"
+            android:maxLines="3"
+            android:maxWidth="220dp"
             android:text="Aku boleh beristirahat tanpa merasa bersalah."
             android:textColor="#FFFFFF"
             android:textSize="15sp"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium" />
+            android:textStyle="bold" />
     </LinearLayout>
 </FrameLayout>
