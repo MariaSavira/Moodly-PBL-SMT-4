@@ -247,24 +247,6 @@ class _SecurityPageState extends State<SecurityPage> {
                       const SizedBox(height: 18),
                       MoodlySectionTitle(
                         palette: palette,
-                        title: _t('extraVerification'),
-                      ),
-                      const SizedBox(height: 12),
-                      MoodlySettingsCard(
-                        palette: palette,
-                        child: MoodlySwitchTile(
-                          palette: palette,
-                          icon: Icons.verified_user_rounded,
-                          iconColor: palette.greenDark,
-                          title: _t('extraTitle'),
-                          subtitle: _t('extraBody'),
-                          value: _is2FAEnabled,
-                          onChanged: _toggleTwoFactor,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      MoodlySectionTitle(
-                        palette: palette,
                         title: _t('accountStatus'),
                       ),
                       const SizedBox(height: 12),

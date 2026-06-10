@@ -5,6 +5,7 @@ import 'pages/admin/moderasi_admin.dart';
 import 'pages/admin/list_laporan_user_admin_page.dart';
 import 'pages/admin/list_ajuan_banding_admin_page.dart';
 import 'pages/admin/dashboard_admin.dart';
+import 'pages/admin/profil_admin_page.dart';
 
 // firebase
 import 'package:firebase_auth/firebase_auth.dart';
@@ -86,11 +87,13 @@ class MoodlyApp extends StatelessWidget {
       routes: {
         '/admin-dashboard': (context) => const DashboardAdminPage(),
         '/admin-moderasi': (context) => const ModerasiAdminPage(),
-        '/admin-laporan': (context) => const ListLaporanUserAdminPage(),
         '/admin-banding': (context) => const ListAjuanBandingAdminPage(),
+        '/admin-profil': (context) => const ProfilAdminPage(),
+
+        // keep dulu biar file lama tidak rusak mendadak
+        '/admin-laporan': (context) => const ListLaporanUserAdminPage(),
       },
     );
-
   }
 }
 

@@ -349,12 +349,16 @@ class ChatService {
       'status': 'pending',
     });
 
-    await _firestore.collection('users').doc(reportedUid).set({
-      'hasWarning': true,
-      'warningMessage':
-          'Percakapanmu telah dilaporkan. Harap berbicara dengan lebih sopan.',
-      'warningUpdatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await _firestore.collection('users').doc(reportedUid).set({
+        'hasWarning': true,
+        'warningMessage':
+            'Percakapanmu telah dilaporkan. Harap berbicara dengan lebih sopan.',
+        'warningUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('WARNING reportMessages warning flag failed: $e');
+    }
   }
 
   Future<void> sendImageMessage({

@@ -4,7 +4,6 @@ class UserModel {
   final String uid;
   final String fullName;
   final String email;
-  final String? phoneNumber;
   final String? photoUrl;
   final DateTime? createdAt;
   final bool isEmailVerified;
@@ -31,7 +30,6 @@ class UserModel {
     required this.uid,
     required this.fullName,
     required this.email,
-    this.phoneNumber,
     this.photoUrl,
     this.createdAt,
     this.isEmailVerified = false,
@@ -100,7 +98,6 @@ class UserModel {
       uid: uid,
       fullName: map['fullName'] as String? ?? '',
       email: map['email'] as String? ?? '',
-      phoneNumber: map['phoneNumber'] as String?,
       photoUrl: map['photoUrl'] as String?,
       createdAt: parseDate(map['createdAt']),
       isEmailVerified: map['isEmailVerified'] as bool? ?? false,
@@ -125,7 +122,6 @@ class UserModel {
       'uid': uid,
       'fullName': fullName,
       'email': email,
-      'phoneNumber': phoneNumber,
       'photoUrl': photoUrl,
       'createdAt': createdAt?.toIso8601String(),
       'isEmailVerified': isEmailVerified,
@@ -148,7 +144,6 @@ class UserModel {
     String? uid,
     String? fullName,
     String? email,
-    String? phoneNumber,
     String? photoUrl,
     DateTime? createdAt,
     bool? isEmailVerified,
@@ -169,7 +164,6 @@ class UserModel {
       uid: uid ?? this.uid,
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
       photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt ?? this.createdAt,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,

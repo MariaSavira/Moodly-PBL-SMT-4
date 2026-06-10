@@ -24,7 +24,6 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -44,7 +43,6 @@ class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -98,7 +96,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (_fullNameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
         _confirmPasswordController.text.trim().isEmpty) {
       setState(() {
@@ -188,7 +185,6 @@ class _RegisterPageState extends State<RegisterPage> {
           builder: (_) => OtpVerificationPage(
             fullName: _fullNameController.text.trim(),
             email: _emailController.text.trim(),
-            phoneNumber: _phoneController.text.trim(),
             password: _passwordController.text.trim(),
           ),
         ),
@@ -528,20 +524,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                           const Icon(Icons.mail_outline),
                                       keyboardType:
                                           TextInputType.emailAddress,
-                                      hasError: _contactError,
-                                      onChanged: (_) => _clearError(),
-                                    ),
-
-                                    const SizedBox(height: 18),
-
-                                    MoodlyTextField(
-                                      controller: _phoneController,
-                                      label: 'Nomor Telepon',
-                                      labelStyle: sectionLabelStyle,
-                                      hintText: '+62 812-1234-5678',
-                                      prefixIcon:
-                                          const Icon(Icons.phone_outlined),
-                                      keyboardType: TextInputType.phone,
                                       hasError: _contactError,
                                       onChanged: (_) => _clearError(),
                                     ),

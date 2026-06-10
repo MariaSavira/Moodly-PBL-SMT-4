@@ -66,17 +66,17 @@ class EmergencySupportPage extends StatelessWidget {
     {
       'title': _t(languageCode, 'contact1Title'),
       'subtitle': _t(languageCode, 'contact1Subtitle'),
-      'number': 'ISI-NOMOR-KONTAK-DARURAT',
+      'number': '0813-3095-0452',
     },
     {
       'title': _t(languageCode, 'contact2Title'),
       'subtitle': _t(languageCode, 'contact2Subtitle'),
-      'number': 'ISI-NOMOR-HOTLINE-VALID',
+      'number': '119+8',
     },
     {
       'title': _t(languageCode, 'contact3Title'),
       'subtitle': _t(languageCode, 'contact3Subtitle'),
-      'number': 'ISI-NOMOR-DARURAT-LOKAL',
+      'number': '119+8',
     },
   ];
 

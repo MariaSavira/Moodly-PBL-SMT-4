@@ -12,14 +12,12 @@ import 'auth.dart';
 class OtpVerificationPage extends StatefulWidget {
   final String fullName;
   final String email;
-  final String phoneNumber;
   final String password;
 
   const OtpVerificationPage({
     super.key,
     required this.fullName,
     required this.email,
-    required this.phoneNumber,
     required this.password,
   });
 
@@ -145,7 +143,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       await OtpService.instance.verifyRegisterOtpAndCreateUser(
         fullName: widget.fullName,
         email: widget.email,
-        phoneNumber: widget.phoneNumber,
         password: widget.password,
         otp: otp,
       );

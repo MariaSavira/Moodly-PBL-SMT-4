@@ -61,7 +61,8 @@ class PremiumFeatureRow {
       languageCode == 'en' ? studentEn : studentId;
 }
 
-const int kMoodlyPremiumMonthlyPrice = 25000;
+const int kMoodlyPremiumMonthlyPrice = 35000;
+const int kMoodlyStudentMonthlyPrice = 15000;
 
 const List<PremiumBillingOption> kPremiumBillingOptions = [
   PremiumBillingOption(
@@ -96,9 +97,9 @@ const List<PremiumFeatureRow> kPremiumFeatureRows = [
     premiumEn:
         'More detailed insights, longer history, and more personal recommendations.',
     studentId:
-        'Insight premium untuk mahasiswa, dengan verifikasi email kampus.',
+        'Insight lebih detail, riwayat lebih panjang, rekomendasi lebih personal.',
     studentEn:
-        'Premium insights for students with campus email verification.',
+        'More detailed insights, longer history, and more personal recommendations.',
   ),
   PremiumFeatureRow(
     emoji: '📔',
@@ -106,14 +107,10 @@ const List<PremiumFeatureRow> kPremiumFeatureRows = [
     titleEn: 'Online Diary',
     freeId: 'Tulis diary private, akses diary public dasar.',
     freeEn: 'Write private diaries and access the basic public diary.',
-    premiumId:
-        'Template refleksi eksklusif, highlight tulisan favorit, organisasi lebih nyaman.',
-    premiumEn:
-        'Exclusive reflection templates, favorite highlights, and better organization.',
-    studentId:
-        'Benefit diary premium versi mahasiswa, lebih nyaman untuk refleksi rutin.',
-    studentEn:
-        'Student premium diary benefits for more comfortable routine reflection.',
+    premiumId: 'Tersedia penuh untuk semua user.',
+    premiumEn: 'Fully available for all users.',
+    studentId: 'Tersedia penuh untuk semua user.',
+    studentEn: 'Fully available for all users.',
   ),
   PremiumFeatureRow(
     emoji: '⭐',
@@ -122,13 +119,13 @@ const List<PremiumFeatureRow> kPremiumFeatureRows = [
     freeId: 'Afirmasi harian standar.',
     freeEn: 'Standard daily affirmations.',
     premiumId:
-        'Koleksi afirmasi premium, pack tematik, variasi lebih banyak.',
+        'Lihat lebih banyak afirmasi, hilangkan limitasi, variasi lebih banyak.',
     premiumEn:
-        'Premium affirmation collections, themed packs, and more variety.',
+        'See more affirmations, remove limitations, and get more variety.',
     studentId:
-        'Afirmasi premium mahasiswa, fokus semangat belajar dan self-care.',
+        'Lihat lebih banyak afirmasi, hilangkan limitasi, variasi lebih banyak.',
     studentEn:
-        'Student-focused premium affirmations for study motivation and self-care.',
+        'See more affirmations, remove limitations, and get more variety.',
   ),
   PremiumFeatureRow(
     emoji: '💬',
@@ -136,14 +133,12 @@ const List<PremiumFeatureRow> kPremiumFeatureRows = [
     titleEn: 'Anonymous Chat',
     freeId: 'Akses ruang curhat anonim.',
     freeEn: 'Access the anonymous chat space.',
-    premiumId:
-        'Filter gender, bonus poin ringan, dan benefit prioritas kecil.',
+    premiumId: 'Buka filter gender agar pengalaman curhat lebih nyaman.',
     premiumEn:
-        'Gender filter, light point bonuses, and small priority benefits.',
-    studentId:
-        'Benefit chat premium mahasiswa, cocok untuk ruang cerita yang lebih relevan.',
+        'Unlock gender filter for a more comfortable anonymous chat experience.',
+    studentId: 'Buka filter gender agar pengalaman curhat lebih nyaman.',
     studentEn:
-        'Student premium chat benefits for more relevant matching spaces.',
+        'Unlock gender filter for a more comfortable anonymous chat experience.',
   ),
   PremiumFeatureRow(
     emoji: '📊',
@@ -152,35 +147,33 @@ const List<PremiumFeatureRow> kPremiumFeatureRows = [
     freeId: 'Statistik perkembangan mood dasar.',
     freeEn: 'Basic mood progress statistics.',
     premiumId:
-        'Rekap mingguan dan bulanan lebih cantik, insight lebih mendalam.',
-    premiumEn:
-        'Nicer weekly and monthly recap with deeper insights.',
+        'Rekap mingguan/bulanan lebih cantik, insight lebih mendalam.',
+    premiumEn: 'More polished weekly/monthly recaps with deeper insights.',
     studentId:
-        'Akses statistik premium mahasiswa dengan insight yang lebih lengkap.',
-    studentEn:
-        'Student premium statistics with richer insights.',
+        'Rekap mingguan/bulanan lebih cantik, insight lebih mendalam.',
+    studentEn: 'More polished weekly/monthly recaps with deeper insights.',
   ),
   PremiumFeatureRow(
     emoji: '🔥',
     titleId: 'Streak & Poin',
     titleEn: 'Streak & Points',
-    freeId: 'Ikut streak, dapat poin harian, 1 freeze awal.',
-    freeEn: 'Join streaks, earn daily points, and get 1 starter freeze.',
+    freeId: 'Ikut streak, dapat poin harian, 1 freeze streak awal.',
+    freeEn: 'Join streaks, earn daily points, and get 1 starter streak freeze.',
     premiumId:
-        'Bonus poin saat berlangganan, tambahan freeze streak, progression reward lebih kaya.',
+        'Bonus poin saat berlangganan, tambahan freeze streak, reward progression lebih kaya.',
     premiumEn:
         'Subscription point bonus, extra streak freeze, and richer reward progression.',
     studentId:
-        'Benefit streak premium mahasiswa dengan bonus kecil untuk tetap konsisten.',
+        'Bonus poin saat berlangganan, tambahan freeze streak, reward progression lebih kaya.',
     studentEn:
-        'Student premium streak benefits with small extras to stay consistent.',
+        'Subscription point bonus, extra streak freeze, and richer reward progression.',
   ),
   PremiumFeatureRow(
     emoji: '🚨',
     titleId: 'Bantuan & Dukungan',
     titleEn: 'Help & Support',
-    freeId: 'Tetap tersedia penuh untuk semua user.',
-    freeEn: 'Still fully available for all users.',
+    freeId: 'Tombol bantuan darurat dan arahan bantuan profesional.',
+    freeEn: 'Emergency support button and professional help guidance.',
     premiumId: 'Tetap tersedia penuh untuk semua user.',
     premiumEn: 'Still fully available for all users.',
     studentId: 'Tetap tersedia penuh untuk semua user.',

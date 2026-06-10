@@ -78,7 +78,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           'Tampilan premium sudah siap. Alur pembayaran akan kita sambungkan di tahap berikutnya.',
       'studentSoonTitle': 'Student Premium segera hadir',
       'studentSoonDesc':
-          'Gunakan email kampus untuk verifikasi. Alur aktivasi mahasiswa akan dibuka setelahnya.',
+          'Gunakan email kampus untuk verifikasi. Student Premium akan dibuka dengan harga Rp15.000 per bulan untuk mahasiswa.',
       'studentCta': 'Gunakan email kampus',
       'monthly': '1 bulan',
       'sixMonths': '6 bulan',
@@ -104,21 +104,22 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
       'premiumTagline':
           'Lebih lengkap, lebih personal, dan lebih nyaman untuk dipakai rutin.',
       'studentTagline':
-          'Moodly hadir bagi para mahasiswa, nikmati akses gratis melalui verifikasi email kampus.',
+          'Benefit premium yang sama, lebih hemat untuk mahasiswa dengan verifikasi email kampus.',
       'freeHero1': 'Mood, diary, dan statistik dasar',
       'freeHero2': 'Afirmasi standar setiap hari',
       'freeHero3': 'Tetap bisa ikut streak dan poin',
       'premiumHero1': 'Buka analisa mood kapan saja',
-      'premiumHero2': 'Filter gender di chat anonim',
-      'premiumHero3': 'Freeze streak ekstra + bonus poin',
-      'premiumHero4': 'Buka lebih banyak afirmasi',
-      'studentHero1': 'Benefit premium gratis untuk mahasiswa',
-      'studentHero2': 'Verifikasi pakai email kampus',
-      'studentHero3': 'Fokus untuk support belajar dan self-care',
-      'studentHero4': 'Aktivasi akan segera hadir',
+      'premiumHero2': 'Buka filter gender di chat anonim',
+      'premiumHero3': 'Bonus poin saat berlangganan + freeze streak ekstra',
+      'premiumHero4': 'Lihat lebih banyak afirmasi',
+      'studentHero1': 'Buka analisa mood kapan saja',
+      'studentHero2': 'Buka filter gender di chat anonim',
+      'studentHero3': 'Bonus poin saat berlangganan + freeze streak ekstra',
+      'studentHero4': 'Lihat lebih banyak afirmasi',
       'billedAt': 'Total pembayaran',
       'normalPrice': 'Harga normal',
-      'studentFoot': 'Student Premium akan segera hadir.',
+      'studentFoot':
+          'Student Premium segera hadir. Benefitnya sama seperti Premium biasa, dengan harga mahasiswa memakai email kampus.',
       'freeFooter':
           'Freemium tetap bisa menjaga harimu dengan baik. Premium hanya bikin pengalaman lebih kaya.',
       'premiumFooter':
@@ -152,7 +153,7 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           'The premium UI is ready. We will connect the payment flow in the next stage.',
       'studentSoonTitle': 'Student Premium is coming soon',
       'studentSoonDesc':
-          'Use your campus email for verification. The student activation flow will open later.',
+          'Use your campus email for verification. Student Premium will launch at Rp15.000 per month for students.',
       'studentCta': 'Use campus email',
       'monthly': '1 month',
       'sixMonths': '6 months',
@@ -178,21 +179,22 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
       'premiumTagline':
           'More complete, more personal, and more comfortable for routine use.',
       'studentTagline':
-          'Moodly is here for students, enjoy free access through campus email verification.',
+          'The same premium benefits, but more affordable for students with campus email verification.',
       'freeHero1': 'Basic mood, diary, and statistics',
       'freeHero2': 'Standard daily affirmations',
       'freeHero3': 'Still join streaks and points',
       'premiumHero1': 'Open mood analysis anytime',
-      'premiumHero2': 'Gender filter in anonymous chat',
-      'premiumHero3': 'Extra streak freeze + point bonus',
+      'premiumHero2': 'Unlock gender filter in anonymous chat',
+      'premiumHero3': 'Subscription point bonus + extra streak freeze',
       'premiumHero4': 'See more affirmations',
-      'studentHero1': 'Student version of premium benefits',
-      'studentHero2': 'Campus email verification',
-      'studentHero3': 'Built around study support and self-care',
-      'studentHero4': 'Activation is still coming soon',
+      'studentHero1': 'Open mood analysis anytime',
+      'studentHero2': 'Unlock gender filter in anonymous chat',
+      'studentHero3': 'Subscription point bonus + extra streak freeze',
+      'studentHero4': 'See more affirmations',
       'billedAt': 'Billing total',
       'normalPrice': 'Normal price',
-      'studentFoot': 'Student Premium is coming soon.',
+      'studentFoot':
+          'Student Premium is coming soon. It carries the same benefits as regular Premium, with student pricing through campus email.',
       'freeFooter':
           'Freemium can still support your day well. Premium simply makes the experience richer.',
       'premiumFooter':
@@ -672,8 +674,6 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             _t('freeHero2'),
             _t('freeHero3'),
           ], accent: _green),
-          const SizedBox(height: 18),
-          _buildFeatureComparisonCard(_PlanKind.freemium),
           const SizedBox(height: 16),
           _buildBottomNote(
             text: _t('freeFooter'),
@@ -785,6 +785,8 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
   }
 
   Widget _buildStudentSlide() {
+    final isCurrentPlan = _isCurrentStudent;
+
     return _PlanSlideShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,66 +796,37 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
             tagline: _t('studentTagline'),
             accentA: const Color(0xFFE5F7DD),
             accentB: const Color(0xFFFFEEF4),
-            badgeText: _isCurrentStudent ? _t('currentActive') : _t('badgeStudent'),
-            badgeColor: _pink,
+            badgeText: isCurrentPlan ? _t('currentActive') : _t('badgeStudent'),
+            badgeColor: isCurrentPlan ? _green : _pink,
             emoji: '🎓',
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFCF8),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: const Color(0xFFF2D8B7),
+          if (isCurrentPlan && _access.expiresAt != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: _greenTint,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t('premiumActiveInfo'),
+                    style: _bodySmallStyle(context, color: _greenDark),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_t('activeUntil')}: ${_formatDate(_access.expiresAt!)}',
+                    style: _bodyStyle(context, color: _greenDark, size: 12),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _peach,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _t('comingSoon'),
-                        style: _bodySmallStyle(
-                          context,
-                          color: _orangeDark,
-                          size: 11,
-                          weight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.school_rounded,
-                      size: 18,
-                      color: _greenDark,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  _t('studentCta'),
-                  style: _headlineStyle(context, size: 24),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _t('studentFoot'),
-                  style: _bodyStyle(context, size: 13),
-                ),
-              ],
-            ),
-          ),
+          ],
+          const SizedBox(height: 16),
+          _buildStudentPriceCard(),
           const SizedBox(height: 16),
           _buildMiniBenefits([
             _t('studentHero1'),
@@ -872,10 +845,10 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(
-            label: _t('studentCta'),
+            label: isCurrentPlan ? _t('premiumActiveButton') : _t('studentCta'),
             background: _green,
             foreground: Colors.white,
-            onTap: _showStudentSoonPopup,
+            onTap: isCurrentPlan ? () => Navigator.pop(context) : _showStudentSoonPopup,
           ),
         ],
       ),
@@ -1125,6 +1098,74 @@ class _MoodlyPremiumPageState extends State<MoodlyPremiumPage> {
               highlight: true,
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudentPriceCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(132, 147, 118, 0.10),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _peach,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _t('comingSoon'),
+                  style: _bodySmallStyle(
+                    context,
+                    color: _orangeDark,
+                    size: 11,
+                    weight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.school_rounded,
+                size: 18,
+                color: _greenDark,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${_t('studentPremium')} • ${_t('monthly')}',
+            style: _titleStyle(context, size: 18),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            formatRupiah(kMoodlyStudentMonthlyPrice),
+            style: _headlineStyle(
+              context,
+              size: 30,
+              color: _greenDark,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _t('studentSoonDesc'),
+            style: _bodyStyle(context, size: 13),
+          ),
         ],
       ),
     );

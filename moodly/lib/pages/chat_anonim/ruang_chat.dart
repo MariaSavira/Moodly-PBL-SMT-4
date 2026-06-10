@@ -296,6 +296,43 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
+  Widget _buildPartnerAvatar() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.62),
+        shape: BoxShape.circle,
+      ),
+      child: MoodlyInventoryFrameAvatar(
+        uid: chatPartnerUid,
+        size: 52,
+        innerPadding: 2.8,
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFFA8F0D6),
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              chatPartnerAvatar,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.asset(
+                  'assets/profile_pic/PP_default.jpg',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Map<String, String>> get _reportOptions => [
         {
           'tag': _t('reportTag1'),
@@ -485,8 +522,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             text: TextSpan(
               style: textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                color: Colors.white,
+                color: const Color(0xFF8A6674),
                 height: 1.35,
+                fontWeight: FontWeight.w700,
               ),
               children: [
                 TextSpan(text: prefix),
@@ -494,7 +532,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                   text: highlight,
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    color: Colors.white,
+                    color: const Color(0xFF744F5F),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -747,11 +785,22 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final confirmed = await _showReportConfirmSheet();
     if (!confirmed) return;
 
-    await _chatService.reportMessages(
-      messages: selectedReportMessages,
-      reportTag: _selectedReportTag ?? _t('reportTag6'),
-      reportReason: _selectedReportReason ?? _t('reportReason6'),
-    );
+    try {
+      await _chatService.reportMessages(
+        messages: selectedReportMessages,
+        reportTag: _selectedReportTag ?? _t('reportTag6'),
+        reportReason: _selectedReportReason ?? _t('reportReason6'),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      _showTopInfo(
+        title: _languageCode == 'en' ? 'Report failed' : 'Laporan gagal',
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: CutePopupType.error,
+      );
+      return;
+    }
 
     if (!mounted) return;
 
@@ -763,7 +812,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       _selectedReportReason = null;
     });
 
-    await Future.delayed(const Duration(milliseconds: 80));
+    await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
 
     await _showReportSuccessFeedbackFlow();
@@ -1856,7 +1905,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     const shadowColor = Color(0x22000000);
 
     final textTheme = Theme.of(context).textTheme;
-    final double stopButtonWidth = _languageCode == 'en' ? 86 : 110;
+    final double stopButtonWidth = _languageCode == 'en' ? 78 : 92;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -1867,8 +1916,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             Column(
               children: [
                 Container(
-                  height: 84,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 96,
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                   decoration: BoxDecoration(
                     color: bgColor.withOpacity(0.94),
                     border: const Border(
@@ -1887,110 +1936,35 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                   ),
                   child: Row(
                     children: [
-                      const SizedBox(width: 42),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 52),
                       Expanded(
                         child: Center(
-                          child: Stack(
-                            children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildHeaderGenderBadge(chatPartnerGender),
-                                    const SizedBox(width: 8),
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(maxWidth: 190),
-                                      child: Text(
-                                        chatPartnerName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                        style: textTheme.headlineLarge?.copyWith(
-                                          fontSize: 23,
-                                          color: const Color(0xFF171717),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.55),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: MoodlyInventoryFrameAvatar(
-                                    uid: chatPartnerUid,
-                                    size: 46,
-                                    innerPadding: 2.5,
-                                    child: Container(
-                                      width: 46,
-                                      height: 46,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color(0xFFA8F0D6),
-                                      ),
-                                      child: ClipOval(
-                                        child: Image.asset(
-                                          chatPartnerAvatar,
-                                          fit: BoxFit.cover,
-                                          alignment: Alignment.center,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Image.asset(
-                                              'assets/profile_pic/PP_default.jpg',
-                                              fit: BoxFit.cover,
-                                              alignment: Alignment.center,
-                                            );
-                                          },
-                                        ),
-                                      ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildHeaderGenderBadge(chatPartnerGender),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    chatPartnerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: textTheme.headlineLarge?.copyWith(
+                                      fontSize: 23,
+                                      color: const Color(0xFF171717),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.55),
-                          shape: BoxShape.circle,
-                        ),
-                        child: MoodlyInventoryFrameAvatar(
-                          uid: chatPartnerUid,
-                          size: 46,
-                          innerPadding: 2.5,
-                          child: Container(
-                            width: 46,
-                            height: 46,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFFA8F0D6),
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                chatPartnerAvatar,
-                                fit: BoxFit.cover,
-                                alignment: Alignment.center,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/profile_pic/PP_default.jpg',
-                                    fit: BoxFit.cover,
-                                    alignment: Alignment.center,
-                                  );
-                                },
-                              ),
+                              ],
                             ),
                           ),
                         ),
                       ),
+                      const SizedBox(width: 10),
+                      _buildPartnerAvatar(),
                     ],
                   ),
                 ),

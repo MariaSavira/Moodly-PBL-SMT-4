@@ -305,11 +305,10 @@ app.post("/verify-register-otp", async (req, res) => {
   try {
     const fullName = String(req.body.fullName || "").trim();
     const email = normalizeEmail(req.body.email);
-    const phoneNumber = String(req.body.phoneNumber || "").trim();
     const password = String(req.body.password || "");
     const otp = String(req.body.otp || "").trim();
 
-    if (!fullName || !email || !phoneNumber || !password || !otp) {
+    if (!fullName || !email || !password || !otp) {
       return res.status(400).json({
         success: false,
         message: "Semua data wajib diisi.",
@@ -363,19 +362,6 @@ app.post("/verify-register-otp", async (req, res) => {
       });
     }
 
-    const phoneQuery = await db
-      .collection("users")
-      .where("phoneNumber", "==", phoneNumber)
-      .limit(1)
-      .get();
-
-    if (!phoneQuery.empty) {
-      return res.status(409).json({
-        success: false,
-        message: "Nomor telepon sudah digunakan.",
-      });
-    }
-
     let userRecord;
 
     try {
@@ -405,7 +391,6 @@ app.post("/verify-register-otp", async (req, res) => {
       uid: userRecord.uid,
       fullName,
       email,
-      phoneNumber,
       role: "user",
       isEmailVerified: true,
       isPremium: false,

@@ -28,7 +28,7 @@ class OtpService {
     }
 
     throw Exception(
-      'Backend OTP belum dikonfigurasi. Untuk browser lokal, pastikan server backend aktif di http://localhost:5000. Untuk Android/iOS, jalankan Flutter dengan --dart-define=OTP_BASE_URL=http://IP_BACKEND:5000',
+      'Backend OTP belum dikonfigurasi. Untuk web lokal, backend bisa di http://localhost:5000. Untuk Android/iOS fisik, localhost tidak bisa dipakai. Jalankan Flutter dengan --dart-define=OTP_BASE_URL=http://IP_LAPTOP:5000',
     );
   }
 
@@ -125,7 +125,6 @@ class OtpService {
   Future<void> verifyRegisterOtpAndCreateUser({
     required String fullName,
     required String email,
-    required String phoneNumber,
     required String password,
     required String otp,
   }) async {
@@ -133,7 +132,6 @@ class OtpService {
     final requestBody = {
       'fullName': fullName.trim(),
       'email': email.trim().toLowerCase(),
-      'phoneNumber': phoneNumber.trim(),
       'password': password,
       'otp': otp.trim(),
     };

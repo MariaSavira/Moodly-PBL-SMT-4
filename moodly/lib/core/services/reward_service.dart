@@ -282,6 +282,37 @@ class RewardService {
         final streakSnap = await tx.get(streakRef);
         final inventorySnap = await tx.get(inventoryRef);
 
+        DocumentSnapshot<Map<String, dynamic>>? currentUserSnap;
+        DocumentSnapshot<Map<String, dynamic>>? targetUserSnap;
+
+        final String targetUid = giftedUserId?.trim() ?? '';
+
+        // =========================
+        // SEMUA READ DILAKUKAN DULU
+        // =========================
+        if (kind == RewardKind.premiumSelf) {
+          currentUserSnap = await tx.get(userRef);
+        }
+
+        if (kind == RewardKind.premiumGift) {
+          if (targetUid.isEmpty) {
+            throw Exception('User ID tujuan tidak boleh kosong.');
+          }
+
+          if (targetUid == uid) {
+            throw Exception(
+              'Gunakan penukaran premium biasa untuk dirimu sendiri.',
+            );
+          }
+
+          final targetRef = _userRef(targetUid);
+          targetUserSnap = await tx.get(targetRef);
+
+          if (!targetUserSnap.exists) {
+            throw Exception('User ID tujuan tidak ditemukan.');
+          }
+        }
+
         final streakData = streakSnap.data() ?? {};
         final inventoryData = inventorySnap.data() ?? {};
 
@@ -305,6 +336,9 @@ class RewardService {
           throw Exception('Frame ini sudah kamu miliki.');
         }
 
+        // =========================
+        // BARU MULAI WRITE
+        // =========================
         tx.set(streakRef, {
           'totalPoints': totalPoints - price,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -345,8 +379,7 @@ class RewardService {
             return 'Freeze +1 hari berhasil ditukar.';
 
           case RewardKind.premiumSelf:
-            final userSnap = await tx.get(userRef);
-            final userData = userSnap.data() ?? {};
+            final userData = currentUserSnap?.data() ?? {};
             final now = DateTime.now();
 
             tx.set(
@@ -364,26 +397,10 @@ class RewardService {
             return 'Premium 1 bulan berhasil diaktifkan.';
 
           case RewardKind.premiumGift:
-            final targetUid = giftedUserId?.trim() ?? '';
-            if (targetUid.isEmpty) {
-              throw Exception('User ID tujuan tidak boleh kosong.');
-            }
-
-            if (targetUid == uid) {
-              throw Exception(
-                'Gunakan penukaran premium biasa untuk dirimu sendiri.',
-              );
-            }
-
             final targetRef = _userRef(targetUid);
-            final targetSnap = await tx.get(targetRef);
-
-            if (!targetSnap.exists) {
-              throw Exception('User ID tujuan tidak ditemukan.');
-            }
-
-            final targetData = targetSnap.data() ?? {};
+            final targetData = targetUserSnap?.data() ?? {};
             final now = DateTime.now();
+
             final giftPatch = _buildPremiumActivationPatch(
               userData: targetData,
               now: now,

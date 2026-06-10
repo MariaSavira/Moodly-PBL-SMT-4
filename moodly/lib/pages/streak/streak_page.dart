@@ -1,3 +1,4 @@
+import '../../core/services/premium_service.dart';
 import 'package:flutter/material.dart';
 import 'package:moodly/core/services/reward_service.dart';
 import 'reward_page.dart';
@@ -145,7 +146,7 @@ class StreakPage extends StatelessWidget {
       ];
 
   List<_MissionSection> _buildSections(StreakState state) {
-    final moodDailyCompleted = state.moodDoneToday ? 1 : 0;
+    final moodDailyCompleted = state.moodMissionCompletedCount;
     final diaryCompleted = state.diaryMissionCompletedCount;
     final affirmationCompleted = state.affirmationMissionCompletedCount;
 
@@ -154,7 +155,7 @@ class StreakPage extends StatelessWidget {
         title: 'Mood',
         pointsLabel:
             '+${StreakService.moodPoints + StreakService.moodInsightPoints}',
-        progressLabel: '$moodDailyCompleted/1',
+        progressLabel: '$moodDailyCompleted/2',
         accent: const Color(0xFFF6D2D7),
         accentSoft: const Color(0xFFFFF1F4),
         chipColor: const Color(0xFFF3B6BF),
@@ -193,8 +194,8 @@ class StreakPage extends StatelessWidget {
           ),
           _MissionTask(
             title: _text(
-              'Lihat insight bulanan (opsional, +${StreakService.moodInsightPoints})',
-              'View monthly insight (optional, +${StreakService.moodInsightPoints})',
+              'Lihat insight bulanan (+${StreakService.moodInsightPoints})',
+              'View monthly insight (+${StreakService.moodInsightPoints})',
             ),
             isDone: state.moodInsightDoneThisMonth,
           ),
@@ -303,13 +304,9 @@ class StreakPage extends StatelessWidget {
   }
 
   int _completedTodayCount(StreakState state) {
-    int count = 0;
-    if (state.moodDoneToday) count++;
-    if (state.diaryDoneToday) count++;
-    if (state.publicDiaryInteractionDoneToday) count++;
-    if (state.affirmationDoneToday) count++;
-    if (state.comboDoneToday) count++;
-    return count;
+    return state.moodMissionCompletedCount +
+        state.diaryMissionCompletedCount +
+        state.affirmationMissionCompletedCount;
   }
 
   int _earnedTodayPoints(StreakState state) {
@@ -349,9 +346,9 @@ class StreakPage extends StatelessWidget {
   }
 
   bool _comboReady(StreakState state) {
-    return state.moodDoneToday &&
-        state.diaryDoneToday &&
-        state.affirmationDoneToday &&
+    return state.moodMissionCompletedCount == 2 &&
+        state.diaryMissionCompletedCount == 2 &&
+        state.affirmationMissionCompletedCount == 2 &&
         !state.comboDoneToday;
   }
 
@@ -1982,7 +1979,7 @@ class StreakPage extends StatelessWidget {
             children: List.generate(7, (index) {
               final day = index + 1;
               final isClaimed = claimedDays.contains(day);
-              final isActive = !isClaimed && day == activeDay;
+              final isActive = !isClaimed && activeDay == day;
               final rewardLabel = '+${StreakService.weeklyBonusForDay(day)}';
 
               return Expanded(
@@ -2193,7 +2190,7 @@ class StreakPage extends StatelessWidget {
 
   Widget _buildMissionHeader(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
-    const totalTasks = 5;
+    const totalTasks = 6;
     final completed = _completedTodayCount(state);
     final progress = completed / totalTasks;
     final todayPoints = _earnedTodayPoints(state);
@@ -2308,8 +2305,23 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _buildComboBanner(context, state),
-          const SizedBox(height: 12),
-          _buildAdBonusBanner(context, state),
+          FutureBuilder<bool>(
+            future: PremiumService.instance.hasActivePremium(),
+            builder: (context, snapshot) {
+              final isPremiumUser = snapshot.data ?? false;
+
+              if (isPremiumUser) {
+                return const SizedBox.shrink();
+              }
+
+              return Column(
+                children: [
+                  const SizedBox(height: 12),
+                  _buildAdBonusBanner(context, state),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

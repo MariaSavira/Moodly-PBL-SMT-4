@@ -58,7 +58,6 @@ class AuthService {
     try {
       return await _safeGetUserModel(
         user,
-        fallbackPhoneNumber: user.phoneNumber,
       );
     } catch (e, st) {
       debugPrint('GET CURRENT USER MODEL ERROR: $e');
@@ -129,7 +128,6 @@ class AuthService {
             firebaseUser.email?.split('@').first ??
             '',
         email: firebaseUser.email ?? '',
-        phoneNumber: firebaseUser.phoneNumber,
         photoUrl: firebaseUser.photoURL,
         createdAt: firebaseUser.metadata.creationTime,
         isEmailVerified: firebaseUser.emailVerified,
@@ -139,12 +137,10 @@ class AuthService {
       await _safeSyncUserDoc(
         firebaseUser: firebaseUser,
         fallbackUser: fallbackUser,
-        phoneNumber: firebaseUser.phoneNumber,
       );
 
       final user = await _safeGetUserModel(
         firebaseUser,
-        fallbackPhoneNumber: firebaseUser.phoneNumber,
       );
 
       return AuthResult.success(user);
@@ -167,25 +163,10 @@ class AuthService {
     required String fullName,
     required String email,
     required String password,
-    required String phoneNumber,
   }) async {
     try {
       final cleanFullName = fullName.trim();
       final cleanEmail = email.trim();
-      final cleanPhoneNumber = phoneNumber.trim();
-
-      final phoneQuery = await _firestore
-          .collection('users')
-          .where('phoneNumber', isEqualTo: cleanPhoneNumber)
-          .limit(1)
-          .get();
-
-      if (phoneQuery.docs.isNotEmpty) {
-        return AuthResult.failure(
-          message: 'Nomor telepon sudah digunakan.',
-          errorType: AuthErrorType.phoneAlreadyInUse,
-        );
-      }
 
       final credential = await _auth.createUserWithEmailAndPassword(
         email: cleanEmail,
@@ -207,7 +188,6 @@ class AuthService {
         uid: firebaseUser.uid,
         fullName: cleanFullName,
         email: cleanEmail,
-        phoneNumber: cleanPhoneNumber,
         createdAt: DateTime.now(),
         isEmailVerified: firebaseUser.emailVerified,
         role: 'user',
@@ -216,12 +196,10 @@ class AuthService {
       await _safeSyncUserDoc(
         firebaseUser: firebaseUser,
         fallbackUser: newUser,
-        phoneNumber: cleanPhoneNumber,
       );
 
       final savedUser = await _safeGetUserModel(
         firebaseUser,
-        fallbackPhoneNumber: cleanPhoneNumber,
       );
 
       return AuthResult.success(savedUser);
@@ -593,10 +571,7 @@ class AuthService {
     }
   }
 
-  Future<UserModel> _safeGetUserModel(
-    User firebaseUser, {
-    String? fallbackPhoneNumber,
-  }) async {
+  Future<UserModel> _safeGetUserModel(User firebaseUser) async {
     try {
       final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
 
@@ -617,7 +592,6 @@ class AuthService {
           ? displayName
           : ((email != null && email.isNotEmpty) ? email.split('@').first : ''),
       email: email ?? '',
-      phoneNumber: fallbackPhoneNumber ?? firebaseUser.phoneNumber,
       photoUrl: firebaseUser.photoURL,
       createdAt: firebaseUser.metadata.creationTime,
       isEmailVerified: firebaseUser.emailVerified,
@@ -628,13 +602,11 @@ class AuthService {
   Future<void> _safeSyncUserDoc({
     required User firebaseUser,
     required UserModel fallbackUser,
-    String? phoneNumber,
   }) async {
     try {
       await _saveUserToFirestore(
         firebaseUser: firebaseUser,
         fallbackUser: fallbackUser,
-        phoneNumber: phoneNumber,
       );
     } catch (e, st) {
       debugPrint('AUTH SYNC USER DOC ERROR: $e');
@@ -645,7 +617,6 @@ class AuthService {
   Future<void> _saveUserToFirestore({
     required User firebaseUser,
     required UserModel fallbackUser,
-    String? phoneNumber,
   }) async {
     final userRef = _firestore.collection('users').doc(firebaseUser.uid);
     final doc = await userRef.get();
@@ -660,7 +631,6 @@ class AuthService {
       'uid': firebaseUser.uid,
       'fullName': fallbackUser.fullName,
       'email': fallbackUser.email,
-      'phoneNumber': phoneNumber ?? fallbackUser.phoneNumber,
       'photoUrl': fallbackUser.photoUrl,
       'isEmailVerified':
           firebaseUser.emailVerified || fallbackUser.isEmailVerified,
@@ -687,7 +657,6 @@ class AuthService {
       uid: uid,
       fullName: firebaseUser?.displayName ?? '',
       email: firebaseUser?.email ?? '',
-      phoneNumber: firebaseUser?.phoneNumber,
       photoUrl: firebaseUser?.photoURL,
       createdAt: firebaseUser?.metadata.creationTime,
       isEmailVerified: firebaseUser?.emailVerified ?? false,

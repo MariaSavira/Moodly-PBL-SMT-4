@@ -239,9 +239,19 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
 
   void _onLanguageChanged() {
     if (!mounted) return;
+
+    final nextLanguage =
+        MoodlySettingsPrefs.languageNotifier.value == 'en' ? 'en' : 'id';
+
+    if (nextLanguage == _languageCode) return;
+
     setState(() {
-      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+      _languageCode = nextLanguage;
+      _affirmationPreview = _t('affirmationFallback');
+      _affirmationCategory = _t('todayAffirmation');
     });
+
+    _loadHomepageAffirmationPreview();
   }
 
   bool _isPremiumUser = false;

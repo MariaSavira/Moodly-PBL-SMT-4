@@ -338,6 +338,28 @@ class StreakState {
     return a.year == b.year && a.month == b.month;
   }
 
+  bool _wasFullMissionCompletedOnDate(StreakState state, DateTime day) {
+    final moodDone = _isSameDay(state.lastMoodCheckInAt, day);
+    final moodInsightDone = _isSameMonth(state.lastMoodInsightClaimAt, day);
+    final diaryDone = _isSameDay(state.lastDiaryClaimAt, day);
+    final publicDiaryDone =
+        _isSameDay(state.lastPublicDiaryInteractionClaimAt, day);
+
+    final affirmationReadDone =
+        _isSameDay(state.lastAffirmationReadAt, day) &&
+        state.affirmationReadCountToday >= 5;
+
+    final affirmationSharedDone =
+        _isSameDay(state.lastAffirmationShareAt, day);
+
+    return moodDone &&
+        moodInsightDone &&
+        diaryDone &&
+        publicDiaryDone &&
+        affirmationReadDone &&
+        affirmationSharedDone;
+  }
+
   bool get moodDoneToday => _isSameDay(lastMoodCheckInAt, DateTime.now());
   bool get moodInsightDoneThisMonth =>
       _isSameMonth(lastMoodInsightClaimAt, DateTime.now());
@@ -487,6 +509,33 @@ class StreakService {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  bool _isSameMonth(DateTime? a, DateTime b) {
+    if (a == null) return false;
+    return a.year == b.year && a.month == b.month;
+  }
+
+  bool _wasFullMissionCompletedOnDate(StreakState state, DateTime day) {
+    final moodDone = _isSameDay(state.lastMoodCheckInAt, day);
+    final moodInsightDone = _isSameMonth(state.lastMoodInsightClaimAt, day);
+    final diaryDone = _isSameDay(state.lastDiaryClaimAt, day);
+    final publicDiaryDone =
+        _isSameDay(state.lastPublicDiaryInteractionClaimAt, day);
+
+    final affirmationReadDone =
+        _isSameDay(state.lastAffirmationReadAt, day) &&
+        state.affirmationReadCountToday >= 5;
+
+    final affirmationSharedDone =
+        _isSameDay(state.lastAffirmationShareAt, day);
+
+    return moodDone &&
+        moodInsightDone &&
+        diaryDone &&
+        publicDiaryDone &&
+        affirmationReadDone &&
+        affirmationSharedDone;
+  }
+
   Future<void> _ensureExists(String uid) async {
     final ref = _streakRef(uid);
     final snap = await ref.get();
@@ -588,6 +637,15 @@ class StreakService {
       String? nextMonthlyKey = current.lastMonthlyFreezeRefillKey;
       List<int> nextWeeklyClaimedDays =
           List<int>.from(current.weeklyRewardClaimedDays);
+
+      final yesterday = today.subtract(const Duration(days: 1));
+
+      if (current.lastStateReviewAt != null) {
+        final failedYesterday = !_wasFullMissionCompletedOnDate(current, yesterday);
+        if (failedYesterday) {
+          nextWeeklyClaimedDays = <int>[];
+        }
+      }
 
       final lastMoodDay = current.lastMoodCheckInAt == null
           ? null
@@ -1112,16 +1170,16 @@ class StreakService {
         );
       }
 
-      final ready = current.moodDoneToday &&
-          current.diaryDoneToday &&
-          current.affirmationDoneToday;
+      final ready = current.moodMissionCompletedCount == 2 &&
+        current.diaryMissionCompletedCount == 2 &&
+        current.affirmationMissionCompletedCount == 2;
 
       if (!ready) {
         return StreakClaimResult(
           state: current,
           success: false,
           message:
-              'Combo belum siap. Selesaikan mood, diary, dan afirmasi dulu.',
+              'Combo belum siap. Selesaikan seluruh 6 misi harian terlebih dahulu.',
         );
       }
 

@@ -328,14 +328,15 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
   
   Widget _buildPageHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 42,
-              height: 42,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.88),
                 shape: BoxShape.circle,
@@ -357,13 +358,20 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              _t('title'),
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: const Color(0xFF1F1F1F),
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                _t('title'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: const Color(0xFF1F1F1F),
+                      height: 1.1,
+                    ),
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           GestureDetector(
             onTap: () async {
               final access = await PremiumService.instance.getAccess();
@@ -381,8 +389,8 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
               );
             },
             child: Container(
-              width: 42,
-              height: 42,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.88),
                 shape: BoxShape.circle,
