@@ -362,6 +362,15 @@ class StreakState {
           ? rewardedAdWatchCountToday.clamp(0, 2)
           : 0;
 
+  bool get affirmationReadDoneToday => affirmationReadProgressToday >= 5;
+
+  int get affirmationMissionCompletedCount {
+    int count = 0;
+    if (affirmationReadDoneToday) count++;
+    if (affirmationSharedToday) count++;
+    return count;
+  }
+
   bool get adBonusDoneToday =>
       _isSameDay(lastAdBonusClaimAt, DateTime.now());
 
@@ -432,9 +441,13 @@ class StreakService {
 
   static const int moodPoints = 10;
   static const int moodInsightPoints = 15;
-  static const int diaryPoints = 5;
-  static const int diaryInteractionPoints = 5;
-  static const int affirmationPoints = 5;
+
+  // total Diary section = 25
+  static const int diaryPoints = 10;
+  static const int diaryInteractionPoints = 15;
+
+  // total Affirmation section = 25
+  static const int affirmationPoints = 25;
   static const int adMissionPoints = 30;
   static const int comboPoints = 0;
   static const int adBonusPoints = 30;
@@ -899,10 +912,20 @@ class StreakService {
 
       if (current.affirmationSharedToday) return;
 
-      final next = current.copyWith(
+      var next = current.copyWith(
         lastAffirmationShareAt: now,
         lastStateReviewAt: _dateOnly(now),
       );
+
+      final readDone = next.affirmationReadProgressToday >= 5;
+
+      if (readDone && !next.affirmationDoneToday) {
+        next = next.copyWith(
+          totalPoints: next.totalPoints + affirmationPoints,
+          lastAffirmationClaimAt: now,
+          lastStateReviewAt: _dateOnly(now),
+        );
+      }
 
       tx.set(ref, next.toMap(), SetOptions(merge: true));
     });
@@ -952,12 +975,59 @@ class StreakService {
   }
 
   Future<StreakClaimResult> claimAffirmationBonus() async {
-    return _claimDailyBonus(
-      type: _DailyBonusType.affirmation,
-      points: affirmationPoints,
-      successMessage: 'Bonus afirmasi berhasil diklaim.',
-      alreadyMessage: 'Bonus afirmasi hari ini sudah diklaim.',
-    );
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      return StreakClaimResult(
+        state: StreakState.initial(),
+        success: false,
+        message: 'User belum login.',
+      );
+    }
+
+    await _ensureExists(uid);
+    await refreshStateForToday();
+
+    final ref = _streakRef(uid);
+    final now = DateTime.now();
+
+    return _firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = StreakState.fromMap(snap.data() ?? {});
+
+      if (current.affirmationDoneToday) {
+        return StreakClaimResult(
+          state: current,
+          success: false,
+          message: 'Bonus afirmasi hari ini sudah diklaim.',
+        );
+      }
+
+      final readDone = current.affirmationReadProgressToday >= 5;
+      final shareDone = current.affirmationSharedToday;
+
+      if (!readDone || !shareDone) {
+        return StreakClaimResult(
+          state: current,
+          success: false,
+          message: 'Selesaikan baca 5 afirmasi dan bagikan 1 afirmasi terlebih dahulu.',
+        );
+      }
+
+      final next = current.copyWith(
+        totalPoints: current.totalPoints + affirmationPoints,
+        lastAffirmationClaimAt: now,
+        lastStateReviewAt: _dateOnly(now),
+      );
+
+      tx.set(ref, next.toMap(), SetOptions(merge: true));
+
+      return StreakClaimResult(
+        state: next,
+        success: true,
+        message: 'Bonus afirmasi berhasil diklaim.',
+        pointsAdded: affirmationPoints,
+      );
+    });
   }
 
   Future<StreakClaimResult> _claimDailyBonus({
@@ -1051,7 +1121,7 @@ class StreakService {
           state: current,
           success: false,
           message:
-              'Combo belum siap. Selesaikan mood, diary publik, dan afirmasi dulu.',
+              'Combo belum siap. Selesaikan mood, diary, dan afirmasi dulu.',
         );
       }
 

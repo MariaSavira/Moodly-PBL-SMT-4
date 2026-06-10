@@ -9,6 +9,8 @@ class UserModel {
   final DateTime? createdAt;
   final bool isEmailVerified;
   final String role;
+  final String? gender;
+  final String preferredMatchGender;
 
   // legacy shortcut
   final bool isPremium;
@@ -34,6 +36,8 @@ class UserModel {
     this.createdAt,
     this.isEmailVerified = false,
     this.role = 'user',
+    this.gender,
+    this.preferredMatchGender = 'all',
     this.isPremium = false,
     this.premiumActivatedAt,
     this.premiumExpiresAt,
@@ -101,6 +105,9 @@ class UserModel {
       createdAt: parseDate(map['createdAt']),
       isEmailVerified: map['isEmailVerified'] as bool? ?? false,
       role: map['role'] as String? ?? 'user',
+      gender: map['gender'] as String?,
+      preferredMatchGender:
+          (map['preferredMatchGender'] as String?)?.trim() ?? 'all',
       isPremium: resolvedPremium,
       premiumActivatedAt: activatedAt,
       premiumExpiresAt: expiresAt,
@@ -123,6 +130,8 @@ class UserModel {
       'createdAt': createdAt?.toIso8601String(),
       'isEmailVerified': isEmailVerified,
       'role': role,
+      'gender': gender,
+      'preferredMatchGender': preferredMatchGender,
       'isPremium': isPremium,
       'premiumActivatedAt': premiumActivatedAt?.toIso8601String(),
       'premiumExpiresAt': premiumExpiresAt?.toIso8601String(),
@@ -144,6 +153,8 @@ class UserModel {
     DateTime? createdAt,
     bool? isEmailVerified,
     String? role,
+    String? gender,
+    String? preferredMatchGender,
     bool? isPremium,
     DateTime? premiumActivatedAt,
     DateTime? premiumExpiresAt,
@@ -163,6 +174,9 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       role: role ?? this.role,
+      gender: gender ?? this.gender,
+      preferredMatchGender:
+          preferredMatchGender ?? this.preferredMatchGender,
       isPremium: isPremium ?? this.isPremium,
       premiumActivatedAt: premiumActivatedAt ?? this.premiumActivatedAt,
       premiumExpiresAt: premiumExpiresAt ?? this.premiumExpiresAt,
@@ -182,6 +196,8 @@ class UserModel {
         'fullName: $fullName, '
         'email: $email, '
         'role: $role, '
+        'gender: $gender, '
+        'preferredMatchGender: $preferredMatchGender, '
         'isPremium: $isPremium, '
         'premiumTier: $premiumTier, '
         'premiumStatus: $premiumStatus, '

@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import '../../core/services/reward_service.dart';
 import '../../widgets/streak/streak_feedback_popup.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
+import '../setting/moodly_settings_support.dart';
 
 enum _RewardSectionTab { reguler, premium }
 
 class RewardPage extends StatefulWidget {
   final int totalPoints;
+  final bool openPremiumTab;
 
   const RewardPage({
     super.key,
     required this.totalPoints,
+    this.openPremiumTab = false,
   });
 
   @override
@@ -68,6 +71,142 @@ class _RewardPageState extends State<RewardPage> {
   final TextEditingController _giftUserIdController = TextEditingController();
 
   late int _currentPoints;
+
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
+  String _ui(String key) => _t(_languageCode, key);
+
+  String _text(String idText, String enText) {
+    return _languageCode == 'en' ? enText : idText;
+  }
+
+  String _pointsText(int value) => '$value ${_ui('points')}';
+
+  String _itemTitle(_RewardItem item) {
+    switch (item.id) {
+      case 'avatar_oren_imut':
+        return _text('Avatar Oren Imut', 'Cute Orange Avatar');
+      case 'avatar_matcha_calm':
+        return _text('Avatar Matcha Calm', 'Matcha Calm Avatar');
+      case 'frame_bloom':
+        return _text('Bingkai Bloom', 'Bloom Frame');
+      case 'frame_meadow':
+        return _text('Bingkai Meadow', 'Meadow Frame');
+      case 'freeze_plus_1':
+        return _text('Freeze +1 Hari', 'Freeze +1 Day');
+      case 'premium_self_1_month':
+        return _text('Premium 1 Bulan', '1 Month Premium');
+      case 'premium_gift_1_month':
+        return _text('Hadiahkan Premium', 'Gift Premium');
+      default:
+        return item.title;
+    }
+  }
+
+  String _itemSubtitle(_RewardItem item) {
+    switch (item.id) {
+      case 'avatar_oren_imut':
+        return _text('Avatar anonim baru', 'New anonymous avatar');
+      case 'avatar_matcha_calm':
+        return _text('Avatar anonim baru', 'New anonymous avatar');
+      case 'frame_bloom':
+        return _text('Dekor avatar lembut', 'Soft avatar decoration');
+      case 'frame_meadow':
+        return _text('Dekor avatar hijau', 'Green avatar decoration');
+      case 'freeze_plus_1':
+        return _text('Tambah proteksi streak', 'Add streak protection');
+      case 'premium_self_1_month':
+        return _text(
+          'Aktifkan premium untuk dirimu',
+          'Activate premium for your account',
+        );
+      case 'premium_gift_1_month':
+        return _text(
+          'Kirim premium 1 bulan via User ID',
+          'Send 1 month premium via User ID',
+        );
+      default:
+        return item.subtitle;
+    }
+  }
+
+  String _actionLabel({
+    required bool alreadyOwned,
+    required bool canAfford,
+  }) {
+    if (alreadyOwned) {
+      return _text('Dimiliki', 'Owned');
+    }
+    if (canAfford) {
+      return _text('Tukar', 'Redeem');
+    }
+    return _text('Kurang', 'Not enough');
+  }
+
+  String _sectionTitle(String raw) {
+    switch (raw) {
+      case 'Avatar':
+        return _text('Avatar', 'Avatar');
+      case 'Bingkai':
+        return _text('Bingkai', 'Frame');
+      case 'Freeze':
+        return 'Freeze';
+      case 'Premium':
+        return 'Premium';
+      default:
+        return raw;
+    }
+  }
+
+  String _localizedRedeemMessage({
+    required _RewardItem item,
+    required bool success,
+    required String rawMessage,
+  }) {
+    if (_languageCode != 'en') return rawMessage;
+
+    if (success) {
+      switch (item.kind) {
+        case RewardKind.avatar:
+        case RewardKind.frame:
+        case RewardKind.freeze:
+          return '${_itemTitle(item)} redeemed successfully.';
+        case RewardKind.premiumSelf:
+          return _ui('redeemPremiumSelfSuccess');
+        case RewardKind.premiumGift:
+          return _ui('redeemPremiumGiftSuccess');
+      }
+    }
+
+    final lower = rawMessage.toLowerCase();
+
+    if (lower.contains('tidak cukup') || lower.contains('poin kamu kurang')) {
+      return 'Your points are not enough for this reward.';
+    }
+    if (lower.contains('sudah dimiliki')) {
+      return 'You already own this reward.';
+    }
+    if (lower.contains('user id') &&
+        (lower.contains('tidak ditemukan') || lower.contains('invalid'))) {
+      return 'The destination User ID was not found.';
+    }
+    if (lower.contains('aktivasi premium') &&
+        (lower.contains('belum') || lower.contains('tidak sempurna'))) {
+      return _ui('redeemPremiumPartial');
+    }
+    if (lower.contains('gagal')) {
+      return 'Reward redemption failed. Please try again.';
+    }
+
+    return rawMessage;
+  }
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
@@ -171,10 +310,15 @@ class _RewardPageState extends State<RewardPage> {
   void initState() {
     super.initState();
     _currentPoints = widget.totalPoints;
+    _selectedTab = widget.openPremiumTab
+        ? _RewardSectionTab.premium
+        : _RewardSectionTab.reguler;
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
   }
 
   @override
   void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     _giftUserIdController.dispose();
     super.dispose();
   }
@@ -208,15 +352,23 @@ class _RewardPageState extends State<RewardPage> {
 
       showCuteTopPopup(
         context,
-        title: 'Berhasil',
-        message: result.message,
+        title: _ui('redeemSuccess'),
+        message: _localizedRedeemMessage(
+          item: item,
+          success: true,
+          rawMessage: result.message,
+        ),
         type: CutePopupType.success,
       );
     } else {
       showCuteTopPopup(
         context,
-        title: 'Gagal',
-        message: result.message,
+        title: _ui('redeemFailed'),
+        message: _localizedRedeemMessage(
+          item: item,
+          success: false,
+          rawMessage: result.message,
+        ),
         type: CutePopupType.error,
       );
     }
@@ -250,7 +402,7 @@ class _RewardPageState extends State<RewardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hadiahkan Premium',
+                  _ui('giftPremium'),
                   style: textTheme.headlineLarge?.copyWith(
                     fontSize: 24,
                     color: _textDark,
@@ -258,7 +410,10 @@ class _RewardPageState extends State<RewardPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Masukkan User ID teman yang ingin kamu beri premium 1 bulan.',
+                  _text(
+                    'Masukkan User ID teman yang ingin kamu beri premium 1 bulan.',
+                    'Enter the User ID of the friend you want to gift 1 month premium to.',
+                  ),
                   style: textTheme.bodyMedium?.copyWith(
                     color: _textSoft,
                     height: 1.45,
@@ -268,7 +423,7 @@ class _RewardPageState extends State<RewardPage> {
                 TextField(
                   controller: _giftUserIdController,
                   decoration: InputDecoration(
-                    hintText: 'Masukkan User ID',
+                    hintText: _text('Masukkan User ID', 'Enter User ID'),
                     filled: true,
                     fillColor: _greenSoft.withOpacity(0.45),
                     border: OutlineInputBorder(
@@ -293,7 +448,7 @@ class _RewardPageState extends State<RewardPage> {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    child: const Text('Lanjutkan'),
+                    child: Text(_text('Lanjutkan', 'Continue')),
                   ),
                 ),
               ],
@@ -329,7 +484,7 @@ class _RewardPageState extends State<RewardPage> {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Hadiah',
+            _ui('header'),
             style: textTheme.headlineLarge?.copyWith(
               fontSize: 28,
               color: _textDark,
@@ -371,7 +526,7 @@ class _RewardPageState extends State<RewardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Total poinmu',
+                  _text('Total poinmu', 'Your total points'),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: _textSoft,
@@ -380,7 +535,7 @@ class _RewardPageState extends State<RewardPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$_currentPoints poin',
+                  _pointsText(_currentPoints),
                   style: textTheme.headlineLarge?.copyWith(
                     fontSize: 30,
                     color: _textDark,
@@ -388,7 +543,10 @@ class _RewardPageState extends State<RewardPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Gunakan poinmu untuk hadiah kecil yang menyenangkan, atau simpan untuk hadiah besar.',
+                  _text(
+                    'Gunakan poinmu untuk hadiah kecil yang menyenangkan, atau simpan untuk hadiah besar.',
+                    'Use your points for small fun rewards, or save them for bigger ones.',
+                  ),
                   style: textTheme.bodyMedium?.copyWith(
                     fontSize: 12,
                     height: 1.45,
@@ -447,14 +605,14 @@ class _RewardPageState extends State<RewardPage> {
       child: Row(
         children: [
           tab(
-            label: 'Hadiah Reguler',
+            label: _ui('regularReward'),
             active: _selectedTab == _RewardSectionTab.reguler,
             activeBg: _greenSoft,
             onTap: () => setState(() => _selectedTab = _RewardSectionTab.reguler),
           ),
           const SizedBox(width: 8),
           tab(
-            label: 'Hadiah Premium',
+            label: _ui('premiumReward'),
             active: _selectedTab == _RewardSectionTab.premium,
             activeBg: _pinkSoft,
             onTap: () => setState(() => _selectedTab = _RewardSectionTab.premium),
@@ -526,15 +684,15 @@ class _RewardPageState extends State<RewardPage> {
     final Color buttonTextColor;
 
     if (alreadyOwned) {
-      buttonLabel = 'Dimiliki';
+      buttonLabel = _actionLabel(alreadyOwned: true, canAfford: canAfford);
       buttonColor = const Color(0xFFEAEAE4);
       buttonTextColor = _textSoft;
     } else if (canAfford) {
-      buttonLabel = 'Tukar';
+      buttonLabel = _actionLabel(alreadyOwned: false, canAfford: true);
       buttonColor = _green;
       buttonTextColor = Colors.white;
     } else {
-      buttonLabel = 'Kurang';
+      buttonLabel = _actionLabel(alreadyOwned: false, canAfford: false);
       buttonColor = const Color(0xFFEAEAE4);
       buttonTextColor = _textSoft;
     }
@@ -570,7 +728,7 @@ class _RewardPageState extends State<RewardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.title,
+                  _itemTitle(item),
                   style: textTheme.bodyMedium?.copyWith(
                     fontSize: 14,
                     color: _textDark,
@@ -579,7 +737,7 @@ class _RewardPageState extends State<RewardPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item.subtitle,
+                  _itemSubtitle(item),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 11,
                     color: _textSoft,
@@ -588,7 +746,7 @@ class _RewardPageState extends State<RewardPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${item.price} poin',
+                  _pointsText(item.price),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 11,
                     color: canAfford ? _green : const Color(0xFFC0818C),
@@ -700,7 +858,7 @@ class _RewardPageState extends State<RewardPage> {
                           padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
                           child: _buildSection(
                             context,
-                            title: entry.key,
+                            title: _sectionTitle(entry.key),
                             items: entry.value,
                             inventory: inventory,
                           ),

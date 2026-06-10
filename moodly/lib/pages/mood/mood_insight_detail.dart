@@ -238,6 +238,49 @@ class _MoodInsightDetailState extends State<MoodInsightDetail> {
         color: const Color(0xFF1F1F1F),
         height: 1.45,
       );
+  
+  Widget _buildPageHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF1F1F1F),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('title'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: const Color(0xFF1F1F1F),
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _displayMood(String mood) {
     switch (mood) {
@@ -573,16 +616,6 @@ class _MoodInsightDetailState extends State<MoodInsightDetail> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8EA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(_t('title'), style: _headline),
-      ),
       body: Stack(
         children: [
           Positioned(
@@ -609,330 +642,333 @@ class _MoodInsightDetailState extends State<MoodInsightDetail> {
               ),
             ),
           ),
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.08),
-                        offset: Offset(0, 8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 7,
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
+              child: Column(
+                children: [
+                  _buildPageHeader(),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: widget.isPremiumContext
+                                      ? const Color(0xFFFFF4DF)
+                                      : const Color(0xFFFFEEF2),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  widget.isPremiumContext
+                                      ? _t('premiumBadge')
+                                      : _t('regularBadge'),
+                                  style: _bodyDark,
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                color: widget.isPremiumContext
-                                    ? const Color(0xFFFFF4DF)
-                                    : const Color(0xFFFFEEF2),
+                              const SizedBox(height: 12),
+                              Text(_t('heroTitle'), style: _headline),
+                              const SizedBox(height: 8),
+                              Text(_t('heroSub'), style: _body),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 86,
+                          height: 86,
+                          decoration: BoxDecoration(
+                            color: dominantSoft,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(14),
+                          child: dominant == '-'
+                              ? const Icon(
+                                  Icons.auto_graph_rounded,
+                                  color: Color(0xFF84C96C),
+                                  size: 34,
+                                )
+                              : Image.asset(
+                                  _dynamicMoodAsset(dominant),
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) {
+                                    return Image.asset(
+                                      _staticMoodAsset(dominant),
+                                      fit: BoxFit.contain,
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_t('periodLabel'), style: _body),
+                        const SizedBox(height: 4),
+                        Text(widget.periodLabel, style: _title?.copyWith(fontSize: 20)),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _statChip(
+                              label: _t('dominantLabel'),
+                              value: displayDominant,
+                              bg: dominantSoft,
+                              fg: dominantAccent,
+                            ),
+                            const SizedBox(width: 10),
+                            _statChip(
+                              label: _t('recordedLabel'),
+                              value: '${widget.recordedCount}',
+                              bg: const Color(0xFFE9F7E8),
+                              fg: const Color(0xFF2D6B20),
+                            ),
+                            const SizedBox(width: 10),
+                            _statChip(
+                              label: _t('consistencyLabel'),
+                              value: '${(widget.consistencyRate * 100).round()}%',
+                              bg: const Color(0xFFFFF4DF),
+                              fg: const Color(0xFF8A5A09),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_t('mainReadTitle'), style: _title?.copyWith(fontSize: 19)),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: dominantSoft,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Text(
+                            _summaryText(),
+                            style: _bodyDark?.copyWith(color: const Color(0xFF364134)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(_t('visualTitle'), style: _title),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: dominantSoft,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: dominantAccent.withOpacity(0.16)),
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 118,
+                                height: 118,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.62),
+                                ),
+                                padding: const EdgeInsets.all(18),
+                                child: dominant == '-'
+                                    ? const Icon(
+                                        Icons.favorite_rounded,
+                                        size: 46,
+                                        color: Color(0xFF84C96C),
+                                      )
+                                    : Image.asset(
+                                        _dynamicMoodAsset(dominant),
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) {
+                                          return Image.asset(
+                                            _staticMoodAsset(dominant),
+                                            fit: BoxFit.contain,
+                                          );
+                                        },
+                                      ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                _visualLabel(),
+                                textAlign: TextAlign.center,
+                                style: _title?.copyWith(color: dominantAccent),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_t('activityTitle'), style: _title?.copyWith(fontSize: 19)),
+                        const SizedBox(height: 6),
+                        Text(_t('activitySub'), style: _body),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 196,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: activities.length,
+                            itemBuilder: (_, index) => _activityCard(activities[index]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.08),
+                          offset: Offset(0, 8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_t('promptTitle'), style: _title?.copyWith(fontSize: 19)),
+                        const SizedBox(height: 14),
+                        ...prompts.map(
+                          (text) => Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7FAF1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              text,
+                              style: _bodyDark,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const AddDiaryPage()),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: dominantAccent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(999),
                               ),
-                              child: Text(
-                                widget.isPremiumContext
-                                    ? _t('premiumBadge')
-                                    : _t('regularBadge'),
-                                style: _bodyDark,
-                              ),
                             ),
-                            const SizedBox(height: 12),
-                            Text(_t('heroTitle'), style: _headline),
-                            const SizedBox(height: 8),
-                            Text(_t('heroSub'), style: _body),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 86,
-                        height: 86,
-                        decoration: BoxDecoration(
-                          color: dominantSoft,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(14),
-                        child: dominant == '-'
-                            ? const Icon(
-                                Icons.auto_graph_rounded,
-                                color: Color(0xFF84C96C),
-                                size: 34,
-                              )
-                            : Image.asset(
-                                _dynamicMoodAsset(dominant),
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) {
-                                  return Image.asset(
-                                    _staticMoodAsset(dominant),
-                                    fit: BoxFit.contain,
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.08),
-                        offset: Offset(0, 8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_t('periodLabel'), style: _body),
-                      const SizedBox(height: 4),
-                      Text(widget.periodLabel, style: _title?.copyWith(fontSize: 20)),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _statChip(
-                            label: _t('dominantLabel'),
-                            value: displayDominant,
-                            bg: dominantSoft,
-                            fg: dominantAccent,
+                            child: Text(_t('openDiary')),
                           ),
-                          const SizedBox(width: 10),
-                          _statChip(
-                            label: _t('recordedLabel'),
-                            value: '${widget.recordedCount}',
-                            bg: const Color(0xFFE9F7E8),
-                            fg: const Color(0xFF2D6B20),
-                          ),
-                          const SizedBox(width: 10),
-                          _statChip(
-                            label: _t('consistencyLabel'),
-                            value: '${(widget.consistencyRate * 100).round()}%',
-                            bg: const Color(0xFFFFF4DF),
-                            fg: const Color(0xFF8A5A09),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.08),
-                        offset: Offset(0, 8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_t('mainReadTitle'), style: _title?.copyWith(fontSize: 19)),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: dominantSoft,
-                          borderRadius: BorderRadius.circular(24),
                         ),
-                        child: Text(
-                          _summaryText(),
-                          style: _bodyDark?.copyWith(color: const Color(0xFF364134)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(_t('visualTitle'), style: _title),
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: dominantSoft,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: dominantAccent.withOpacity(0.16)),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 118,
-                              height: 118,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.62),
-                              ),
-                              padding: const EdgeInsets.all(18),
-                              child: dominant == '-'
-                                  ? const Icon(
-                                      Icons.favorite_rounded,
-                                      size: 46,
-                                      color: Color(0xFF84C96C),
-                                    )
-                                  : Image.asset(
-                                      _dynamicMoodAsset(dominant),
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) {
-                                        return Image.asset(
-                                          _staticMoodAsset(dominant),
-                                          fit: BoxFit.contain,
-                                        );
-                                      },
-                                    ),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              _visualLabel(),
-                              textAlign: TextAlign.center,
-                              style: _title?.copyWith(color: dominantAccent),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.08),
-                        offset: Offset(0, 8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_t('activityTitle'), style: _title?.copyWith(fontSize: 19)),
-                      const SizedBox(height: 6),
-                      Text(_t('activitySub'), style: _body),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 196,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: activities.length,
-                          itemBuilder: (_, index) => _activityCard(activities[index]),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.08),
-                        offset: Offset(0, 8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_t('promptTitle'), style: _title?.copyWith(fontSize: 19)),
-                      const SizedBox(height: 14),
-                      ...prompts.map(
-                        (text) => Container(
+                        const SizedBox(height: 10),
+                        SizedBox(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7FAF1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            text,
-                            style: _bodyDark,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const AddDiaryPage()),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: dominantAccent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                          child: Text(_t('openDiary')),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            _t('back'),
-                            style: _bodyDark?.copyWith(
-                              color: const Color(0xFF6E746B),
+                          height: 46,
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              _t('back'),
+                              style: _bodyDark?.copyWith(
+                                color: const Color(0xFF6E746B),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          )
         ],
       ),
     );
-  }
+  }  
 }
 
 class _InsightActivity {

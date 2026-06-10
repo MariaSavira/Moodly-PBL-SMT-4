@@ -182,6 +182,46 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
           offset: Offset(0, 8),
         ),
       ];
+    
+  Widget _buildPageHeader(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              shape: BoxShape.circle,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.10),
+                  offset: Offset(0, 6),
+                  blurRadius: 18,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: _textDark,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            _t('pageTitle'),
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: _textDark,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
   
   static const List<String> _reportCategoriesId = [
     'Spam',
@@ -1193,26 +1233,8 @@ class _PublicDiaryPageState extends State<PublicDiaryPage> {
                       sliver: SliverToBoxAdapter(
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    color: _textDark,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    _t('pageTitle'),
-                                    style: _text.headlineLarge?.copyWith(
-                                      color: _textDark,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
+                            _buildPageHeader(context),
+                            const SizedBox(height: 14),
                             _hero(),
                             const SizedBox(height: 14),
                             Container(

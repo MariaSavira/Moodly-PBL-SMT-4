@@ -199,22 +199,43 @@ class _MonthPageState extends State<MonthPage> {
   Widget _header() {
     return Row(
       children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: _textDark,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             _t('pageTitle'),
             style: _text.headlineLarge?.copyWith(
               color: _textDark,
-              fontSize: 28,
             ),
           ),
         ),
+        const SizedBox(width: 12),
         Container(
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.88),
             shape: BoxShape.circle,
-            color: Colors.white,
             boxShadow: _softShadow,
           ),
           child: IconButton(
+            padding: EdgeInsets.zero,
             onPressed: () {
               Navigator.push(
                 context,
@@ -224,7 +245,7 @@ class _MonthPageState extends State<MonthPage> {
             icon: const Icon(
               Icons.search_rounded,
               color: _greenDark,
-              size: 28,
+              size: 22,
             ),
           ),
         ),

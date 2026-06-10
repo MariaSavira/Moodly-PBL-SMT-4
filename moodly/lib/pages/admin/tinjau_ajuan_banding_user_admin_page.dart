@@ -36,15 +36,15 @@ class _TinjauAjuanBandingUserAdminPageState
           userId: 'USER-001',
           avatarUrl: '',
           jenisBan: 'Ban Sementara',
-          alasanBanding: 'Tidak sengaja, aku hanya berbagi cerita pribadi....',
+          alasanBanding:
+              'Tidak sengaja, aku hanya berbagi cerita pribadi....',
           tanggal: DateTime(2026, 4, 10),
           status: AjuanBandingStatus.pending,
           catatanAdmin: '',
-alasanTindakan: 'User melanggar aturan komunitas.',
-tindakanSaatIni: TindakanUser.banSementara,
-
-isiPesan: 'Menggunakan kata-kata kasar',
-tanggalGabung: DateTime(2026, 1, 12),
+          alasanTindakan: 'User melanggar aturan komunitas.',
+          tindakanSaatIni: TindakanUser.banSementara,
+          isiPesan: 'Menggunakan kata-kata kasar',
+          tanggalGabung: DateTime(2026, 1, 12),
         );
 
     _catatanController.text = _ajuan.catatanAdmin;
@@ -54,201 +54,208 @@ tanggalGabung: DateTime(2026, 1, 12),
     });
   }
 
-Future<void> _ubahStatus(
-  AjuanBandingStatus status, {
-  TindakanUser? tindakanDipilih,
-  DateTime? banUntil,
-}) async {
-  if (_ajuan.documentId.isEmpty) {
-    _showMessage('Data ajuan belum terhubung ke Firebase');
-    return;
+  Future<void> _ubahStatus(
+    AjuanBandingStatus status, {
+    TindakanUser? tindakanDipilih,
+    DateTime? banUntil,
+  }) async {
+    if (_ajuan.documentId.isEmpty) {
+      _showMessage('Data ajuan belum terhubung ke Firebase');
+      return;
+    }
+
+    await _ajuanService.updateStatusAjuanBanding(
+      documentId: _ajuan.documentId,
+      status: status,
+      catatanAdmin: _catatanController.text.trim(),
+      tindakanDipilih: tindakanDipilih,
+      banUntil: banUntil,
+    );
+
+    _showMessage(
+      status == AjuanBandingStatus.disetujui
+          ? 'Banding berhasil disetujui'
+          : 'Banding berhasil ditolak',
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context, true);
   }
 
-  await _ajuanService.updateStatusAjuanBanding(
-    documentId: _ajuan.documentId,
-    status: status,
-    catatanAdmin: _catatanController.text.trim(),
-    tindakanDipilih: tindakanDipilih,
-    banUntil: banUntil,
-    
-  );
-_showMessage(
-  status == AjuanBandingStatus.disetujui
-      ? 'Banding berhasil disetujui'
-      : 'Banding berhasil ditolak',
-);
-  if (!mounted) return;
-  Navigator.pop(context, true);
-}
-Future<bool> _showConfirmDialog(String title) async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: const Text('Tindakan ini akan menyimpan keputusan admin.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Ya'),
-        ),
-      ],
-    ),
-  );
+  Future<bool> _showConfirmDialog(String title) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: const Text('Tindakan ini akan menyimpan keputusan admin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya'),
+          ),
+        ],
+      ),
+    );
 
-  return result ?? false;
-}
-void _showPilihTindakanSheet() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Pilih Tindakan Akhir',
-              style: GoogleFonts.fredoka(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF486253),
+    return result ?? false;
+  }
+
+  void _showPilihTindakanSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pilih Tindakan Akhir',
+                style: GoogleFonts.fredoka(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF486253),
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            _tindakanOption(TindakanUser.batasiUser),
-            _tindakanOption(TindakanUser.banSementara),
-            _tindakanOption(TindakanUser.banPermanen),
-            _tindakanOption(TindakanUser.cabutTindakan),
-          ],
-        ),
-      );
-    },
-  );
-}
-void _showPilihDurasiBanSheet() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Pilih Durasi Ban Sementara'),
-            const SizedBox(height: 12),
-            _durasiOption('1 Jam', const Duration(hours: 1)),
-            _durasiOption('6 Jam', const Duration(hours: 6)),
-            _durasiOption('12 Jam', const Duration(hours: 12)),
-            _durasiOption('1 Hari', const Duration(days: 1)),
-            _durasiOption('3 Hari', const Duration(days: 3)),
-            _durasiOption('7 Hari', const Duration(days: 7)),
-          ],
-        ),
-      );
-    },
-  );
-}
-Widget _tindakanOption(TindakanUser tindakan) {
-  return GestureDetector(
-    onTap: () async {
-      if (tindakan == TindakanUser.banSementara) {
+              const SizedBox(height: 18),
+              _tindakanOption(TindakanUser.batasiUser),
+              _tindakanOption(TindakanUser.banSementara),
+              _tindakanOption(TindakanUser.banPermanen),
+              _tindakanOption(TindakanUser.cabutTindakan),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPilihDurasiBanSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Pilih Durasi Ban Sementara'),
+              const SizedBox(height: 12),
+              _durasiOption('1 Jam', const Duration(hours: 1)),
+              _durasiOption('6 Jam', const Duration(hours: 6)),
+              _durasiOption('12 Jam', const Duration(hours: 12)),
+              _durasiOption('1 Hari', const Duration(days: 1)),
+              _durasiOption('3 Hari', const Duration(days: 3)),
+              _durasiOption('7 Hari', const Duration(days: 7)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tindakanOption(TindakanUser tindakan) {
+    return GestureDetector(
+      onTap: () async {
+        if (tindakan == TindakanUser.banSementara) {
+          Navigator.pop(context);
+          _showPilihDurasiBanSheet();
+          return;
+        }
+
         Navigator.pop(context);
-        _showPilihDurasiBanSheet();
-        return;
-      }
 
-      Navigator.pop(context);
+        final confirm = await _showConfirmDialog(
+          'Terima banding dengan tindakan ${tindakan.label}?',
+        );
 
-      final confirm = await _showConfirmDialog(
-        'Terima banding dengan tindakan ${tindakan.label}?',
-      );
+        if (!confirm) return;
 
-      if (!confirm) return;
-
-      _ubahStatus(
-        AjuanBandingStatus.disetujui,
-        tindakanDipilih: tindakan,
-      );
-    },
-    child: Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(vertical: 13),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: tindakan == TindakanUser.cabutTindakan
-            ? const Color(0xFFD9FFD0)
-            : const Color(0xFFFFF1F1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        tindakan.label,
-        style: GoogleFonts.fredoka(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF0C0E0C),
+        await _ubahStatus(
+          AjuanBandingStatus.disetujui,
+          tindakanDipilih: tindakan,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: tindakan == TindakanUser.cabutTindakan
+              ? const Color(0xFFD9FFD0)
+              : const Color(0xFFFFF1F1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          tindakan.label,
+          style: GoogleFonts.fredoka(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0C0E0C),
+          ),
         ),
       ),
-    ),
-  );
-}
-Widget _durasiOption(String label, Duration duration) {
-  return ListTile(
-    title: Text(label),
-    onTap: () async {
-      Navigator.pop(context);
+    );
+  }
 
-      final confirm = await _showConfirmDialog(
-        'Terima banding dengan Ban Sementara selama $label?',
-      );
+  Widget _durasiOption(String label, Duration duration) {
+    return ListTile(
+      title: Text(label),
+      onTap: () async {
+        Navigator.pop(context);
 
-      if (!confirm) return;
+        final confirm = await _showConfirmDialog(
+          'Terima banding dengan Ban Sementara selama $label?',
+        );
 
-      _ubahStatus(
-        AjuanBandingStatus.disetujui,
-        tindakanDipilih: TindakanUser.banSementara,
-        banUntil: _getBanUntil(duration),
-      );
-    },
-  );
-}
+        if (!confirm) return;
+
+        await _ubahStatus(
+          AjuanBandingStatus.disetujui,
+          tindakanDipilih: TindakanUser.banSementara,
+          banUntil: _getBanUntil(duration),
+        );
+      },
+    );
+  }
+
   void _showMessage(String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        message,
-        style: GoogleFonts.openSans(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.openSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF486253),
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        duration: const Duration(seconds: 2),
       ),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xFF486253),
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      duration: const Duration(seconds: 2),
-    ),
-  );
-}
+    );
+  }
 
-DateTime _getBanUntil(Duration duration) {
-  return DateTime.now().add(duration);
-}
+  DateTime _getBanUntil(Duration duration) {
+    return DateTime.now().add(duration);
+  }
 
   String _formatTanggal(DateTime date) {
     final bulan = [
@@ -426,7 +433,7 @@ DateTime _getBanUntil(Duration duration) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                   _boldText(
+                    _boldText(
                       _placeholder(
                         _ajuan.username,
                         'Data user belum tersedia',
@@ -436,10 +443,10 @@ DateTime _getBanUntil(Duration duration) {
                     _normalText('ID User: ${_ajuan.userId}'),
                     const SizedBox(height: 6),
                     _normalText(
-                    _ajuan.tanggalGabung != null
-                        ? 'Bergabung sejak ${_formatTanggal(_ajuan.tanggalGabung!)}'
-                        : 'Tanggal bergabung tidak tersedia',
-                  ),
+                      _ajuan.tanggalGabung != null
+                          ? 'Bergabung sejak ${_formatTanggal(_ajuan.tanggalGabung!)}'
+                          : 'Tanggal bergabung tidak tersedia',
+                    ),
                   ],
                 ),
               ),
@@ -461,18 +468,18 @@ DateTime _getBanUntil(Duration duration) {
           _buildInfoRow('Jenis', 'Chat Anonim'),
           const SizedBox(height: 18),
           _buildInfoRow(
-  'Tanggal',
-  _formatTanggal(_ajuan.tanggal),
-),
+            'Tanggal',
+            _formatTanggal(_ajuan.tanggal),
+          ),
           const SizedBox(height: 16),
           _buildInfoRow(
             'Konten',
             null,
             child: _pinkBox(
               text: '“${_placeholder(
-              _ajuan.isiPesan,
-              'Isi pesan tidak tersedia',
-            )}”',
+                _ajuan.isiPesan,
+                'Isi pesan tidak tersedia',
+              )}”',
               width: 140,
               height: 50,
               light: true,
@@ -517,9 +524,9 @@ DateTime _getBanUntil(Duration duration) {
             ),
             child: Text(
               '“${_placeholder(
-  _ajuan.alasanBanding,
-  'Alasan banding belum diajukan',
-)}”',
+                _ajuan.alasanBanding,
+                'Alasan banding belum diajukan',
+              )}”',
               style: GoogleFonts.openSans(
                 fontSize: 10,
                 height: 1.8,
@@ -595,11 +602,11 @@ DateTime _getBanUntil(Duration duration) {
             icon: Icons.cancel_rounded,
             color: const Color(0xFFFF7474),
             onTap: () async {
-  final confirm = await _showConfirmDialog('Tolak banding ini?');
-  if (!confirm) return;
+              final confirm = await _showConfirmDialog('Tolak banding ini?');
+              if (!confirm) return;
 
-  _ubahStatus(AjuanBandingStatus.ditolak);
-},
+              await _ubahStatus(AjuanBandingStatus.ditolak);
+            },
           ),
           const SizedBox(height: 12),
           _buildActionButton(
@@ -641,31 +648,32 @@ DateTime _getBanUntil(Duration duration) {
   }
 
   Widget _buildAvatar(String avatarUrl) {
-  return Container(
-    width: 50,
-    height: 50,
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      color: Color(0xFFC8FFE3),
-    ),
-    child: ClipOval(
-      child: avatarUrl.isNotEmpty
-          ? Image.network(
-              avatarUrl,
-              fit: BoxFit.cover,
-            )
-          : const Center(
-              child: Text(
-                '✧',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFFC8FFE3),
+      ),
+      child: ClipOval(
+        child: avatarUrl.isNotEmpty
+            ? Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+              )
+            : const Center(
+                child: Text(
+                  '✧',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-    ),
-  );
-}
+      ),
+    );
+  }
+
   Widget _buildInfoRow(String label, String? value, {Widget? child}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -738,9 +746,11 @@ DateTime _getBanUntil(Duration duration) {
       ),
     );
   }
-String _placeholder(String value, String placeholder) {
-  return value.trim().isEmpty ? placeholder : value;
-}
+
+  String _placeholder(String value, String placeholder) {
+    return value.trim().isEmpty ? placeholder : value;
+  }
+
   Widget _buildActionButton({
     required String label,
     required Color color,

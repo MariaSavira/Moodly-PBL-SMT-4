@@ -12,7 +12,12 @@ import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 const String _prefLanguageKey = 'moodly_settings_language_code';
 
 class MatchingPage extends StatefulWidget {
-  const MatchingPage({super.key});
+  final String preferredGender;
+
+  const MatchingPage({
+    super.key,
+    this.preferredGender = 'all',
+  });
 
   @override
   State<MatchingPage> createState() => _MatchingPageState();
@@ -23,8 +28,10 @@ class _MatchingPageState extends State<MatchingPage>
   final ChatService _chatService = ChatService();
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _matchSubscription;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _onlineUsersSubscription;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchingUsersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _onlineUsersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _matchingUsersSubscription;
 
   late final AnimationController _pulseController;
 
@@ -41,15 +48,16 @@ class _MatchingPageState extends State<MatchingPage>
 
   String myNickname = 'Kamu';
   String myAvatar = 'assets/profile_pic/PP.png';
+  String? myGender;
 
   String partnerNickname = 'Teman Baru';
   String partnerAvatar = 'assets/profile_pic/PP_default.jpg';
   String? partnerUid;
+  String? partnerGender;
 
   static const Color _bgColor = Color(0xFFF3FADC);
   static const Color _greenMain = Color(0xFF84C76A);
   static const Color _greenSoft = Color(0xFFBFE3AF);
-  static const Color _greenDark = Color(0xFF5FA84D);
   static const Color _pinkSoft = Color(0xFFF8BDC0);
   static const Color _pinkLight = Color(0xFFFFE6EA);
   static const Color _cardColor = Color(0xFFFFFDF9);
@@ -72,8 +80,12 @@ class _MatchingPageState extends State<MatchingPage>
       'startChat': 'Mulai ngobrol',
       'online': 'online',
       'matching': 'matching',
-      'helperOnline': 'users online',
-      'helperMatching': 'in queue',
+      'male': 'Laki-laki',
+      'female': 'Perempuan',
+      'genderUnknown': 'Belum diatur',
+      'prefMale': 'Preferensi laki-laki',
+      'prefFemale': 'Preferensi perempuan',
+      'prefAll': 'Semua gender',
     },
     'en': {
       'you': 'You',
@@ -90,8 +102,12 @@ class _MatchingPageState extends State<MatchingPage>
       'startChat': 'Start chatting',
       'online': 'online',
       'matching': 'matching',
-      'helperOnline': 'users online',
-      'helperMatching': 'in queue',
+      'male': 'Male',
+      'female': 'Female',
+      'genderUnknown': 'Not set',
+      'prefMale': 'Male preference',
+      'prefFemale': 'Female preference',
+      'prefAll': 'All genders',
     },
   };
 
@@ -106,13 +122,81 @@ class _MatchingPageState extends State<MatchingPage>
 
   String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
 
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _genderLabel(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return _t('male');
+    if (normalized == 'female') return _t('female');
+    return _t('genderUnknown');
+  }
+
+  Color _genderBg(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFFEAF6FF);
+    if (normalized == 'female') return const Color(0xFFFFEEF3);
+    return const Color(0xFFF1F4EC);
+  }
+
+  Color _genderText(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFF57A9DA);
+    if (normalized == 'female') return const Color(0xFFD86D88);
+    return const Color(0xFF7B8671);
+  }
+
+  IconData _genderIcon(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return Icons.male_rounded;
+    if (normalized == 'female') return Icons.female_rounded;
+    return Icons.help_outline_rounded;
+  }
+
+  bool _isRecentTimestamp(
+    dynamic value, {
+    Duration window = const Duration(minutes: 3),
+  }) {
+    DateTime? time;
+
+    if (value is Timestamp) {
+      time = value.toDate();
+    } else if (value is String) {
+      time = DateTime.tryParse(value);
+    }
+
+    if (time == null) return false;
+
+    return DateTime.now().difference(time) <= window;
+  }
+
   bool _shouldCountAsOnline(Map<String, dynamic> data) {
     final role = (data['role'] ?? 'user').toString();
     final status = (data['status'] ?? '').toString();
 
     if (role == 'admin') return false;
+    if (!['idle', 'matching', 'chatting'].contains(status)) return false;
 
-    return status == 'matching' || status == 'chatting';
+    return _isRecentTimestamp(data['updatedAt']);
   }
 
   @override
@@ -149,9 +233,8 @@ class _MatchingPageState extends State<MatchingPage>
         .listen((snapshot) {
       if (!mounted) return;
 
-      final count = snapshot.docs
-          .where((doc) => _shouldCountAsOnline(doc.data()))
-          .length;
+      final count =
+          snapshot.docs.where((doc) => _shouldCountAsOnline(doc.data())).length;
 
       setState(() {
         _onlineUsersCount = count;
@@ -166,8 +249,9 @@ class _MatchingPageState extends State<MatchingPage>
 
       final count = snapshot.docs.where((doc) {
         final data = doc.data();
-        final status = (data['status'] ?? 'matching').toString();
-        return status == 'matching';
+        return _isRecentTimestamp(
+          data['updatedAt'] ?? data['createdAt'] ?? data['joinedAt'],
+        );
       }).length;
 
       setState(() {
@@ -179,16 +263,23 @@ class _MatchingPageState extends State<MatchingPage>
   Future<void> startMatching() async {
     await _loadCurrentUserProfile();
 
-    final roomId = await _chatService.findMatch();
+    try {
+      final roomId = await _chatService.findMatch(
+        preferredGender: widget.preferredGender,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (roomId != null) {
-      await _prepareMatchFound(roomId);
-      return;
+      if (roomId != null) {
+        await _prepareMatchFound(roomId);
+        return;
+      }
+
+      _listenForMatch();
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pop(context);
     }
-
-    _listenForMatch();
   }
 
   void _listenForMatch() {
@@ -231,6 +322,7 @@ class _MatchingPageState extends State<MatchingPage>
       myAvatar = (data?['avatarId'] as String?)?.trim().isNotEmpty == true
           ? data!['avatarId'] as String
           : 'assets/profile_pic/PP.png';
+      myGender = _normalizeGender(data?['gender']);
     });
   }
 
@@ -280,6 +372,8 @@ class _MatchingPageState extends State<MatchingPage>
             (otherData?['avatarId'] as String?)?.trim().isNotEmpty == true
                 ? otherData!['avatarId'] as String
                 : 'assets/profile_pic/PP_default.jpg';
+
+        partnerGender = _normalizeGender(otherData?['gender']);
       }
 
       if (!mounted) return;
@@ -320,9 +414,7 @@ class _MatchingPageState extends State<MatchingPage>
 
     try {
       await firestore.collection('waiting_users').doc(uid).delete();
-    } catch (_) {
-      // diabaikan
-    }
+    } catch (_) {}
 
     try {
       final snap = await userRef.get();
@@ -339,9 +431,7 @@ class _MatchingPageState extends State<MatchingPage>
           SetOptions(merge: true),
         );
       }
-    } catch (_) {
-      // diabaikan
-    }
+    } catch (_) {}
   }
 
   Future<bool> _handleBack() async {
@@ -428,39 +518,74 @@ class _MatchingPageState extends State<MatchingPage>
     );
   }
 
+  Widget _buildGenderBadge(String? gender) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _genderBg(gender),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _genderText(gender).withOpacity(0.20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _genderIcon(gender),
+            size: 13,
+            color: _genderText(gender),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            _genderLabel(gender),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: _genderText(gender),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAvatar(
     String assetPath, {
     double size = 84,
     String? uid,
   }) {
-    return MoodlyInventoryFrameAvatar(
-      uid: uid,
-      size: size,
-      innerPadding: 3.5,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _pinkLight,
-          boxShadow: _softShadow,
-          border: Border.all(
-            color: const Color(0xFFF0D2D6),
-            width: 4,
+    final double frameSize = size + 12;
+
+    return SizedBox(
+      width: frameSize,
+      height: frameSize,
+      child: MoodlyInventoryFrameAvatar(
+        uid: uid,
+        size: frameSize,
+        innerPadding: 4,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: _softShadow,
           ),
-        ),
-        child: ClipOval(
-          child: Image.asset(
-            assetPath,
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-            errorBuilder: (_, __, ___) {
-              return Image.asset(
-                'assets/profile_pic/PP_default.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              );
-            },
+          child: ClipOval(
+            child: Image.asset(
+              assetPath,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              errorBuilder: (_, __, ___) {
+                return Image.asset(
+                  'assets/profile_pic/PP_default.jpg',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -596,6 +721,7 @@ class _MatchingPageState extends State<MatchingPage>
                   name: myNickname,
                   avatar: myAvatar,
                   uid: FirebaseAuth.instance.currentUser?.uid,
+                  gender: myGender,
                 ),
               ),
               const SizedBox(width: 14),
@@ -619,6 +745,7 @@ class _MatchingPageState extends State<MatchingPage>
                   name: partnerNickname,
                   avatar: partnerAvatar,
                   uid: partnerUid,
+                  gender: partnerGender,
                 ),
               ),
             ],
@@ -665,6 +792,7 @@ class _MatchingPageState extends State<MatchingPage>
     required String title,
     required String name,
     required String avatar,
+    required String? gender,
     String? uid,
   }) {
     return Container(
@@ -701,6 +829,7 @@ class _MatchingPageState extends State<MatchingPage>
                   fontWeight: FontWeight.w800,
                 ),
           ),
+          _buildGenderBadge(gender),
         ],
       ),
     );
@@ -760,7 +889,8 @@ class _MatchingPageState extends State<MatchingPage>
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: index.isEven ? _greenMain : const Color(0xFFE798A7),
+                      color:
+                          index.isEven ? _greenMain : const Color(0xFFE798A7),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -813,9 +943,14 @@ class _MatchingPageState extends State<MatchingPage>
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _isFound ? _t('foundTitle') : _t('searchingTitle'),
+                            _isFound
+                                ? _t('foundTitle')
+                                : _t('searchingTitle'),
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
                                   fontSize: 26,
                                   color: _textDark,
                                 ),
@@ -847,11 +982,11 @@ class _MatchingPageState extends State<MatchingPage>
                       },
                       child: _isFound
                           ? KeyedSubtree(
-                              key: const ValueKey('found'),
+                              key: const ValueKey('found_card'),
                               child: _buildFoundCard(),
                             )
                           : KeyedSubtree(
-                              key: const ValueKey('searching'),
+                              key: const ValueKey('search_card'),
                               child: _buildSearchingCard(),
                             ),
                     ),

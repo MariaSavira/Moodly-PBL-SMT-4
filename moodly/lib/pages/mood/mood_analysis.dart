@@ -215,6 +215,74 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
         color: const Color(0xFF1F1F1F),
       );
 
+  Widget _buildPageHeader({VoidCallback? onRefresh}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF1F1F1F),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('title'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: const Color(0xFF1F1F1F),
+                  ),
+            ),
+          ),
+          if (onRefresh != null)
+            GestureDetector(
+              onTap: onRefresh,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.88),
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.10),
+                      offset: Offset(0, 6),
+                      blurRadius: 18,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.refresh_rounded,
+                  color: Color(0xFFA04CA2),
+                  size: 20,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   List<String> get _monthNames => [
         _t('month1'),
         _t('month2'),
@@ -862,19 +930,18 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFFF4F8EA),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(_t('title'), style: _headline),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPageHeader(),
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -882,23 +949,6 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8EA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(_t('title'), style: _headline),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFA04CA2)),
-            tooltip: _t('refresh'),
-            onPressed: _loadEverything,
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           Positioned(
@@ -930,6 +980,7 @@ class _MoodAnalysisState extends State<MoodAnalysis> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
             child: Column(
               children: [
+                _buildPageHeader(onRefresh: _loadEverything),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),

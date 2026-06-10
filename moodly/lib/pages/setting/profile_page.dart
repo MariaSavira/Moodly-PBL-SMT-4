@@ -611,30 +611,38 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: Icon(Icons.arrow_back, color: palette.greenDark, size: 22),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: palette.greenDark,
-            fontSize: 17,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onBack,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: palette.shadow,
+              ),
+              child: Icon(
+                Icons.arrow_back_rounded,
+                color: palette.textDark,
+                size: 22,
+              ),
+            ),
           ),
-        ),
-        const Spacer(),
-        Text(
-          'Moodly',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-            color: palette.brand,
-            fontSize: 32,
-            letterSpacing: -1,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: palette.textDark,
+                  ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -844,16 +852,18 @@ class _ProfileAvatar extends StatelessWidget {
     }
 
     return SizedBox(
-      width: 132,
-      height: 132,
+      width: activeFrameId == null ? 132 : 148,
+      height: activeFrameId == null ? 132 : 148,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           MoodlyRewardFrameAvatar(
             frameId: activeFrameId,
-            size: 132,
-            innerPadding: activeFrameId == null ? 0 : 6,
+            size: activeFrameId == null ? 132 : 148,
+            innerPadding: activeFrameId == null ? 0 : 8,
             child: Container(
+              width: 132,
+              height: 132,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: palette.card,

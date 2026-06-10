@@ -11,6 +11,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:moodly/core/services/streak_service.dart';
+import 'package:moodly/core/services/premium_service.dart';
 import 'package:moodly/pages/afirmasi/afirmasi_favorit_page.dart';
 import 'package:moodly/pages/afirmasi/pengaturan_widget_page.dart';
 import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
@@ -105,6 +106,9 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       'motivation': 'Motivasi',
       'mental': 'Kesehatan Mental',
       'selfLove': 'Cinta Diri',
+      'unlockExtraTitle': 'Afirmasi tambahan terbuka',
+      'unlockExtraBody':
+          '5 afirmasi tambahan berhasil dibuka. Kamu bisa lanjut baca sekarang.',
     },
     'en': {
       'defaultCategory': 'Affirmation',
@@ -164,6 +168,9 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
       'motivation': 'Motivation',
       'mental': 'Mental Health',
       'selfLove': 'Self Love',
+      'unlockExtraTitle': 'Extra affirmations unlocked',
+      'unlockExtraBody':
+          '5 additional affirmations have been unlocked. You can continue reading now.',
     },
   };
 
@@ -268,11 +275,22 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      isPremiumUser = prefs.getBool('isPremium') ?? false;
-    });
+    try {
+      await PremiumService.instance.refreshPremiumStatus();
+      final access = await PremiumService.instance.getAccess();
+
+      if (!mounted) return;
+      setState(() {
+        isPremiumUser = access.hasPremiumAccess;
+      });
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (!mounted) return;
+      setState(() {
+        isPremiumUser = prefs.getBool('isPremium') ?? false;
+      });
+    }
   }
 
   void _goBackToHomepage() {
@@ -483,6 +501,12 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
     return hasLockPage ? _unlockedSlidesCount + 1 : _unlockedSlidesCount;
   }
 
+  int get _pageIndicatorCount {
+    if (_afirmasiList.isEmpty) return 0;
+    if (isPremiumUser) return _afirmasiList.length;
+    return _unlockedSlidesCount;
+  }
+
   bool _isLockPage(int index) {
     if (isPremiumUser) return false;
     return _remainingLockedSlides > 0 && index == _unlockedSlidesCount;
@@ -659,8 +683,8 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
         if (_watchedAdsCount == 0) {
           showCuteTopPopup(
             context,
-            title: _t('slideOpenedTitle'),
-            message: _t('slideOpenedBody'),
+            title: _t('unlockExtraTitle'),
+            message: _t('unlockExtraBody'),
             type: CutePopupType.success,
           );
 
@@ -1092,17 +1116,21 @@ class _DetailAfirmasiPageState extends State<DetailAfirmasiPage> {
   }
 
   Widget _buildDots() {
-    final totalVisible =
-        _pageViewItemCount > freeSlideLimit ? freeSlideLimit : _pageViewItemCount;
+    final totalVisible = _pageIndicatorCount;
+
+    if (totalVisible <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    final activeIndex = _isLockPage(_currentIndex)
+        ? (totalVisible - 1).clamp(0, totalVisible - 1)
+        : _currentIndex.clamp(0, totalVisible - 1);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
         totalVisible,
         (index) {
-          final activeIndex =
-              _currentIndex >= totalVisible ? totalVisible - 1 : _currentIndex;
-
           final bool isActive = index == activeIndex;
 
           return AnimatedContainer(

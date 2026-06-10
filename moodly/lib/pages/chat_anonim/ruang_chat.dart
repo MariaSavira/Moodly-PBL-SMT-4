@@ -33,6 +33,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   String chatPartnerName = 'Teman Chat';
   String chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
   String? chatPartnerUid;
+  String? chatPartnerGender;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _roomSubscription;
   bool _hasForcedExit = false;
@@ -134,6 +135,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'reportTag6': 'Lainnya',
       'reportReason6':
           'Konten bermasalah lain yang tidak masuk kategori di atas.',
+      'male': '',
+      'female': '',
+      'genderUnknown': 'Belum diatur',
     },
     'en': {
       'chatPartner': 'Chat Partner',
@@ -213,10 +217,84 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       'reportTag6': 'Other',
       'reportReason6':
           'Other problematic content that does not fit the categories above.',
+      'male': '',
+      'female': '',
+      'genderUnknown': 'Not set',
     },
   };
 
   String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
+
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _genderLabel(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return _t('male');
+    if (normalized == 'female') return _t('female');
+    return _t('genderUnknown');
+  }
+
+  Color _genderBg(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFFEAF8FF);
+    if (normalized == 'female') return const Color(0xFFFFEEF3);
+    return const Color(0xFFF1F4EC);
+  }
+
+  Color _genderText(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFF57A9DA);
+    if (normalized == 'female') return const Color(0xFFD86D88);
+    return const Color(0xFF7B8671);
+  }
+
+  IconData _genderIcon(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return Icons.male_rounded;
+    if (normalized == 'female') return Icons.female_rounded;
+    return Icons.help_outline_rounded;
+  }
+
+  Widget _buildHeaderGenderBadge(String? gender) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: _genderBg(gender),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: _genderText(gender).withOpacity(0.18),
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          _genderIcon(gender),
+          size: 18,
+          color: _genderText(gender),
+        ),
+      ),
+    );
+  }
 
   List<Map<String, String>> get _reportOptions => [
         {
@@ -282,21 +360,18 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     if (_isShowingReportSuccessFlow || !mounted) return;
     _isShowingReportSuccessFlow = true;
 
-    _showTopInfo(
-      title: _t('reportSent'),
-      message: _t('reportSentDesc'),
-      type: CutePopupType.warning,
-    );
+    try {
+      _showTopInfo(
+        title: _t('reportSent'),
+        message: _t('reportSentDesc'),
+        type: CutePopupType.success,
+      );
 
-    await Future.delayed(const Duration(milliseconds: 450));
-    if (!mounted) {
-      _isShowingReportSuccessFlow = false;
-      return;
-    }
+      await Future.delayed(const Duration(milliseconds: 220));
+      if (!mounted) return;
 
-    await _showAfterReportSheet();
-
-    if (mounted) {
+      await _showAfterReportSheet();
+    } finally {
       _isShowingReportSuccessFlow = false;
     }
   }
@@ -382,19 +457,24 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final textTheme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Center(
         child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 8,
+            horizontal: 16,
+            vertical: 9,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8BDC0),
-            borderRadius: BorderRadius.circular(18),
+            color: const Color(0xFFFFD7E0),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: const Color(0xFFF5BCC9),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFF8BDC0).withOpacity(0.24),
+                color: const Color(0xFFF6B8C6).withOpacity(0.18),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -406,7 +486,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
               style: textTheme.bodySmall?.copyWith(
                 fontSize: 12,
                 color: Colors.white,
-                height: 1.45,
+                height: 1.35,
               ),
               children: [
                 TextSpan(text: prefix),
@@ -431,25 +511,33 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final textTheme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
+            horizontal: 16,
             vertical: 8,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.82),
-            borderRadius: BorderRadius.circular(18),
+            color: Colors.white.withOpacity(0.92),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: const Color(0xFFF1D5DA),
+              color: const Color(0xFFF0D6DC),
+              width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Text(
             text,
             style: textTheme.bodySmall?.copyWith(
               fontSize: 12,
-              color: const Color(0xFF8E7081),
+              color: const Color(0xFF8B7381),
             ),
           ),
         ),
@@ -503,42 +591,86 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     );
   }
 
+  BoxDecoration _bubbleDecoration({
+    required bool isMe,
+    required bool isSelected,
+    required bool isEditing,
+  }) {
+    final Color fillColor;
+    final Color borderColor;
+
+    if (isSelected) {
+      fillColor = const Color(0xFFFFEEF1);
+      borderColor = const Color(0xFFF2BBC6);
+    } else if (isEditing) {
+      fillColor = const Color(0xFFFFF6F8);
+      borderColor = const Color(0xFFF4C7D0);
+    } else if (isMe) {
+      fillColor = const Color(0xFFF6FFF1);
+      borderColor = const Color(0xFFDCEFD1);
+    } else {
+      fillColor = Colors.white.withOpacity(0.96);
+      borderColor = const Color(0xFFF1D8DE);
+    }
+
+    return BoxDecoration(
+      color: fillColor,
+      border: Border.all(
+        color: borderColor,
+        width: 1.2,
+      ),
+      borderRadius: BorderRadius.only(
+        topLeft: const Radius.circular(22),
+        topRight: const Radius.circular(22),
+        bottomLeft: Radius.circular(isMe ? 22 : 8),
+        bottomRight: Radius.circular(isMe ? 8 : 22),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.055),
+          blurRadius: 12,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDecorativeBackground() {
     return Stack(
       children: [
         Positioned(
-          top: -30,
-          right: -40,
+          top: -50,
+          right: -30,
           child: Container(
-            width: 180,
-            height: 180,
-            decoration: const BoxDecoration(
+            width: 190,
+            height: 190,
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFE0F0CB),
+              color: const Color(0xFFFFF0F3).withOpacity(0.52),
             ),
           ),
         ),
         Positioned(
-          top: 140,
-          left: -80,
+          top: 210,
+          left: -65,
           child: Container(
-            width: 200,
-            height: 200,
-            decoration: const BoxDecoration(
+            width: 170,
+            height: 170,
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFF4E6DB),
+              color: const Color(0xFFEEF7E6).withOpacity(0.75),
             ),
           ),
         ),
         Positioned(
-          bottom: 180,
+          bottom: 120,
           right: -70,
           child: Container(
-            width: 210,
-            height: 210,
-            decoration: const BoxDecoration(
+            width: 230,
+            height: 230,
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFE0F1C8),
+              color: const Color(0xFFDDEFCF).withOpacity(0.55),
             ),
           ),
         ),
@@ -631,6 +763,9 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       _selectedReportReason = null;
     });
 
+    await Future.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+
     await _showReportSuccessFeedbackFlow();
   }
 
@@ -699,29 +834,35 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     if (roomData == null) return;
 
     final participants = roomData['participants'];
+    final participantGenders = roomData['participantGenders'];
 
     if (participants is! List || participants.isEmpty) {
       setState(() {
         chatPartnerName = _t('chatPartner');
         chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
+        chatPartnerGender = null;
       });
       return;
     }
 
-    final otherUid = participants.firstWhere(
-      (uid) => uid != currentUser.uid,
-      orElse: () => null,
-    );
+    String? otherUid;
+    for (final uid in participants) {
+      if (uid is String && uid != currentUser.uid) {
+        otherUid = uid;
+        break;
+      }
+    }
 
     if (otherUid == null) {
       setState(() {
         chatPartnerName = _t('waitingFriend');
         chatPartnerAvatar = 'assets/profile_pic/PP_default.jpg';
+        chatPartnerGender = null;
       });
       return;
     }
 
-    chatPartnerUid = otherUid.toString();
+    chatPartnerUid = otherUid;
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -730,10 +871,15 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     final userData = userDoc.data();
 
+    final roomGender = participantGenders is Map
+        ? _normalizeGender(participantGenders[otherUid])
+        : null;
+
     setState(() {
       chatPartnerName = userData?['nickname'] ?? _t('chatPartner');
       chatPartnerAvatar =
           userData?['avatarId'] ?? 'assets/profile_pic/PP_default.jpg';
+      chatPartnerGender = roomGender ?? _normalizeGender(userData?['gender']);
     });
   }
 
@@ -1151,13 +1297,24 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     final textTheme = Theme.of(context).textTheme;
 
     if (type == 'deleted') {
-      return Text(
-        _t('messageDeleted'),
-        style: textTheme.bodyMedium?.copyWith(
-          fontStyle: FontStyle.italic,
-          color: Colors.grey,
-          fontSize: 14,
-        ),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.block_rounded,
+            size: 15,
+            color: Color(0xFFB5A9AE),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _t('messageDeleted'),
+            style: textTheme.bodyMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: const Color(0xFFB5A9AE),
+              fontSize: 14,
+            ),
+          ),
+        ],
       );
     }
 
@@ -1172,13 +1329,21 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             data: data,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Image.network(
-              data['imageUrl'],
-              width: 180,
-              height: 180,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xFFF0DADF),
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Image.network(
+                data['imageUrl'],
+                width: 190,
+                height: 190,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
             ),
           ),
         );
@@ -1192,27 +1357,30 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                 )
             : null,
         child: Container(
-          width: 140,
-          height: 90,
+          width: 150,
+          height: 96,
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
+            color: const Color(0xFFF8F7F4),
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFFE8E2DA),
+            ),
           ),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  canOpen ? Icons.refresh_rounded : Icons.lock_rounded,
+                  canOpen ? Icons.visibility_rounded : Icons.lock_rounded,
                   size: 22,
-                  color: Colors.black54,
+                  color: const Color(0xFF8F8A84),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   canOpen ? _t('photo') : _t('photoSeen'),
                   style: textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    color: Colors.black54,
+                    fontSize: 13,
+                    color: const Color(0xFF8F8A84),
                   ),
                 ),
               ],
@@ -1228,10 +1396,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
       children: [
         if (data['replyTo'] != null)
           Container(
-            margin: const EdgeInsets.only(bottom: 6),
+            margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7E8EB),
+              color: const Color(0xFFF8E7EB),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -1240,7 +1408,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
               overflow: TextOverflow.ellipsis,
               style: textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                color: const Color(0xFF7B6670),
+                color: const Color(0xFF7D6670),
               ),
             ),
           ),
@@ -1249,7 +1417,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
           style: textTheme.bodyMedium?.copyWith(
             fontSize: 16,
             color: Colors.black87,
-            height: 1.35,
+            height: 1.38,
           ),
         ),
       ],
@@ -1261,9 +1429,6 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     final picker = ImagePicker();
 
-    final mode = await _showImageModePicker();
-    if (mode == null) return;
-
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 75,
@@ -1272,6 +1437,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
     if (pickedFile == null) return;
 
     final imageFile = File(pickedFile.path);
+
+    if (!mounted) return;
 
     await Navigator.push(
       context,
@@ -1290,6 +1457,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
@@ -1473,6 +1641,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   Future<bool> _showReportConfirmSheet() async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
@@ -1568,6 +1737,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
   Future<void> _showAfterReportSheet() async {
     await showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
@@ -1679,12 +1850,13 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFFE8EFCF);
+    const bgColor = Color(0xFFF5F8EC);
     const greenButton = Color(0xFF84C76A);
     const inputBg = Color(0xFFFFFFFF);
     const shadowColor = Color(0x22000000);
 
     final textTheme = Theme.of(context).textTheme;
+    final double stopButtonWidth = _languageCode == 'en' ? 86 : 110;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -1695,19 +1867,19 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
             Column(
               children: [
                 Container(
-                  height: 82,
+                  height: 84,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: bgColor.withOpacity(0.92),
+                    color: bgColor.withOpacity(0.94),
                     border: const Border(
                       bottom: BorderSide(
-                        color: Color(0x22000000),
+                        color: Color(0x1A000000),
                         width: 1,
                       ),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withOpacity(0.025),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -1716,21 +1888,77 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                   child: Row(
                     children: [
                       const SizedBox(width: 42),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Center(
-                          child: Text(
-                            chatPartnerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.headlineLarge?.copyWith(
-                              fontSize: 24,
-                            ),
+                          child: Stack(
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildHeaderGenderBadge(chatPartnerGender),
+                                    const SizedBox(width: 8),
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 190),
+                                      child: Text(
+                                        chatPartnerName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: textTheme.headlineLarge?.copyWith(
+                                          fontSize: 23,
+                                          color: const Color(0xFF171717),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.55),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: MoodlyInventoryFrameAvatar(
+                                    uid: chatPartnerUid,
+                                    size: 46,
+                                    innerPadding: 2.5,
+                                    child: Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xFFA8F0D6),
+                                      ),
+                                      child: ClipOval(
+                                        child: Image.asset(
+                                          chatPartnerAvatar,
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.center,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Image.asset(
+                                              'assets/profile_pic/PP_default.jpg',
+                                              fit: BoxFit.cover,
+                                              alignment: Alignment.center,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.55),
                           shape: BoxShape.circle,
@@ -1895,61 +2123,10 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                                     horizontal: 16,
                                                     vertical: 12,
                                                   ),
-                                                  decoration: BoxDecoration(
-                                                    color: selectedReportMessageIds
-                                                            .contains(doc.id)
-                                                        ? const Color(
-                                                            0xFFFFD6D6)
-                                                        : editingMessageId ==
-                                                                doc.id
-                                                            ? const Color(
-                                                                0xFFFFF1F3)
-                                                            : isMe
-                                                                ? const Color(
-                                                                    0xFFF5FFF0)
-                                                                : Colors.white
-                                                                    .withOpacity(
-                                                                        0.95),
-                                                    border: Border.all(
-                                                      color: selectedReportMessageIds
-                                                              .contains(doc.id)
-                                                          ? const Color(
-                                                              0xFFF0A8A8)
-                                                          : editingMessageId ==
-                                                                  doc.id
-                                                              ? const Color(
-                                                                  0xFFF4B7C1)
-                                                              : isMe
-                                                                  ? const Color(
-                                                                      0xFFD8EECC)
-                                                                  : const Color(
-                                                                      0xFFF1D5DB),
-                                                      width: 1.2,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.only(
-                                                      topLeft:
-                                                          const Radius.circular(
-                                                              20),
-                                                      topRight:
-                                                          const Radius.circular(
-                                                              20),
-                                                      bottomLeft:
-                                                          Radius.circular(
-                                                              isMe ? 20 : 8),
-                                                      bottomRight:
-                                                          Radius.circular(
-                                                              isMe ? 8 : 20),
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.06),
-                                                        blurRadius: 12,
-                                                        offset:
-                                                            const Offset(0, 5),
-                                                      ),
-                                                    ],
+                                                  decoration: _bubbleDecoration(
+                                                    isMe: isMe,
+                                                    isSelected: selectedReportMessageIds.contains(doc.id),
+                                                    isEditing: editingMessageId == doc.id,
                                                   ),
                                                   child: _buildMessageContent(
                                                     doc.reference,
@@ -2226,10 +2403,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      _messageController.text.isNotEmpty
-                                          ? _messageController.text
-                                          : (editingOriginalText ??
-                                              _t('editMessage')),
+                                      editingOriginalText ?? _t('editMessage'),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
@@ -2265,14 +2439,14 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 ),
                               ],
                             ),
-                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 GestureDetector(
                                   onTap: _handleEndChat,
                                   child: Container(
-                                    width: 110,
+                                    width: stopButtonWidth,
                                     height: 48,
                                     decoration: BoxDecoration(
                                       color: greenButton,
@@ -2300,7 +2474,7 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                 Expanded(
                                   child: Container(
                                     constraints: const BoxConstraints(
-                                      minHeight: 48,
+                                      minHeight: 50,
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -2408,8 +2582,8 @@ class _ChatAnonimPageState extends State<ChatAnonimPage> {
                                             duration: const Duration(
                                                 milliseconds: 180),
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 9,
+                                              horizontal: 13,
+                                              vertical: 10,
                                             ),
                                             decoration: BoxDecoration(
                                               color: editingMessageId != null

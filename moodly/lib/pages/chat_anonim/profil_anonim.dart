@@ -243,25 +243,48 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
               child: Stack(
                 children: [
                   Positioned(
-                    top: 12,
-                    left: 20,
-                    right: 20,
-                    child: Stack(
-                      alignment: Alignment.center,
+                    top: 10,
+                    left: 18,
+                    right: 18,
+                    child: Row(
                       children: [
-                        Text(
-                          _t('header'),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                        const SizedBox(
+                          width: 40,
+                          height: 40,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _t('header'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                ),
                           ),
                         ),
-                        Positioned(
-                          right: 0,
-                          child: _TopCircleButton(
-                            icon: Icons.close_rounded,
-                            onTap: () => Navigator.of(context).pop(),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8ED96D),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.16),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF5D6B55),
+                              size: 20,
+                            ),
                           ),
                         ),
                       ],
@@ -331,32 +354,36 @@ class _ProfileOverlayPageState extends State<ProfileOverlayPage> {
                   ),
                 ),
               ),
-              MoodlyInventoryFrameAvatar(
-                uid: FirebaseAuth.instance.currentUser?.uid,
-                size: 116,
-                explicitFrameId: null,
-                innerPadding: 4,
-                child: Container(
-                  width: 116,
-                  height: 116,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x22000000),
-                        blurRadius: 16,
-                        offset: Offset(0, 6),
+              SizedBox(
+                width: 128,
+                height: 128,
+                child: MoodlyInventoryFrameAvatar(
+                  uid: FirebaseAuth.instance.currentUser?.uid,
+                  size: 128,
+                  explicitFrameId: null,
+                  innerPadding: 5,
+                  child: Container(
+                    width: 116,
+                    height: 116,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        selectedProfileImage,
+                        fit: BoxFit.cover,
                       ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      selectedProfileImage,
-                      fit: BoxFit.cover,
                     ),
                   ),
-                ),
+                )
               ),
               Positioned(
                 right: 8,

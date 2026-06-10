@@ -9,7 +9,9 @@ void showCuteTopPopup(
   CutePopupType type = CutePopupType.info,
   Duration duration = const Duration(seconds: 2),
 }) {
-  final overlay = Overlay.of(context);
+  final overlay = Overlay.of(context, rootOverlay: true);
+  if (overlay == null) return;
+
   late OverlayEntry entry;
 
   entry = OverlayEntry(

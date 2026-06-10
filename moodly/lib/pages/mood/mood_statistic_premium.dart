@@ -325,6 +325,87 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
   TextStyle? get _bodyAlt => _theme.textTheme.bodySmall?.copyWith(
         color: const Color(0xFF1F1F1F),
       );
+  
+  Widget _buildPageHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF1F1F1F),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('title'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: const Color(0xFF1F1F1F),
+                  ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              final access = await PremiumService.instance.getAccess();
+              if (!mounted) return;
+
+              showCuteTopPopup(
+                context,
+                title: _t('premiumOn'),
+                message: access.hasPremiumAccess
+                    ? _t('premiumOnDesc')
+                    : _t('detailCta'),
+                type: access.hasPremiumAccess
+                    ? CutePopupType.success
+                    : CutePopupType.info,
+              );
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Color(0xFFE29F22),
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   List<String> get _monthNames => [
         _t('month1'),
@@ -1011,39 +1092,6 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8EA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(_t('title'), style: _headline),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.workspace_premium_rounded,
-              color: Color(0xFFE29F22),
-            ),
-            onPressed: () async {
-              final access = await PremiumService.instance.getAccess();
-              if (!mounted) return;
-
-              showCuteTopPopup(
-                context,
-                title: _t('premiumOn'),
-                message: access.hasPremiumAccess
-                    ? _t('premiumOnDesc')
-                    : _t('detailCta'),
-                type: access.hasPremiumAccess
-                    ? CutePopupType.success
-                    : CutePopupType.info,
-              );
-            },
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           Positioned(
@@ -1075,6 +1123,7 @@ class _MoodStatisticPremiumState extends State<MoodStatisticPremium> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
             child: Column(
               children: [
+                _buildPageHeader(),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),

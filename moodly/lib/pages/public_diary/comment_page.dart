@@ -226,6 +226,42 @@ class _CommentPageState extends State<CommentPage> {
           offset: Offset(0, 8),
         ),
       ];
+  
+  Widget _buildPageHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: _softShadow,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _textDark,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('pageTitle'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: _textDark,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   List<String> get _reportCategories =>
       _languageCode == 'en' ? _reportCategoriesEn : _reportCategoriesId;
@@ -2001,24 +2037,6 @@ class _CommentPageState extends State<CommentPage> {
 
         return Scaffold(
           backgroundColor: _bg,
-          appBar: AppBar(
-            backgroundColor: _bg,
-            elevation: 0,
-            surfaceTintColor: Colors.transparent,
-            leading: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: _textDark,
-              ),
-            ),
-            title: Text(
-              _t('pageTitle'),
-              style: _text.headlineLarge?.copyWith(
-                color: _textDark,
-              ),
-            ),
-          ),
           body: Stack(
             children: [
               Positioned(
@@ -2048,6 +2066,7 @@ class _CommentPageState extends State<CommentPage> {
               SafeArea(
                 child: Column(
                   children: [
+                    _buildPageHeader(),
                     Expanded(
                       child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: CommentService.getComments(diary.id),

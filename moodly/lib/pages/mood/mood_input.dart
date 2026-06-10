@@ -13,11 +13,7 @@ class MoodInput extends StatefulWidget {
   final DateTime? selectedDate;
   final String? initialMood;
 
-  const MoodInput({
-    super.key,
-    this.selectedDate,
-    this.initialMood,
-  });
+  const MoodInput({super.key, this.selectedDate, this.initialMood});
 
   @override
   State<MoodInput> createState() => _MoodInputState();
@@ -144,7 +140,8 @@ class _MoodInputState extends State<MoodInput> {
       'title': 'Mood Entry',
       'loading': 'Saving...',
       'chooseFirstTitle': 'Choose a mood first',
-      'chooseFirstDesc': 'So the system does not awkwardly guess your feelings today.',
+      'chooseFirstDesc':
+          'So the system does not awkwardly guess your feelings today.',
       'savedTitle': 'Mood saved',
       'savedDesc': 'Mood "{mood}" has been saved.',
       'savedWithDiaryTitle': 'Mood and diary saved',
@@ -189,12 +186,48 @@ class _MoodInputState extends State<MoodInput> {
   TextTheme get _text => Theme.of(context).textTheme;
 
   List<BoxShadow> get _softShadow => const [
-        BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.08),
-          blurRadius: 18,
-          offset: Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: Color.fromRGBO(0, 0, 0, 0.08),
+      blurRadius: 18,
+      offset: Offset(0, 8),
+    ),
+  ];
+
+  Widget _buildPageHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: _softShadow,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _textDark,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('title'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineLarge?.copyWith(color: _textDark),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -208,18 +241,17 @@ class _MoodInputState extends State<MoodInput> {
     _previewIndex = initialIndex;
     _pageValue = initialIndex.toDouble();
 
-    _pageController = PageController(
-      initialPage: initialIndex,
-      viewportFraction: 0.70,
-    )..addListener(() {
-        if (!_pageController.hasClients) return;
-        final value = _pageController.page ?? initialIndex.toDouble();
-        if (!mounted) return;
-        setState(() {
-          _pageValue = value;
-          _previewIndex = value.round().clamp(0, _moods.length - 1);
-        });
-      });
+    _pageController =
+        PageController(initialPage: initialIndex, viewportFraction: 0.70)
+          ..addListener(() {
+            if (!_pageController.hasClients) return;
+            final value = _pageController.page ?? initialIndex.toDouble();
+            if (!mounted) return;
+            setState(() {
+              _pageValue = value;
+              _previewIndex = value.round().clamp(0, _moods.length - 1);
+            });
+          });
 
     MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     _hydrateLanguage();
@@ -338,19 +370,15 @@ class _MoodInputState extends State<MoodInput> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_moodPrefKey(uid, dateKey), mood.storageValue);
 
-      await _moodDoc(uid).set(
-        {
-          'uid': uid,
-          'entries': {
-            dateKey: mood.storageValue,
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await _moodDoc(uid).set({
+        'uid': uid,
+        'entries': {dateKey: mood.storageValue},
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       final now = DateTime.now();
-      final isToday = _selectedDate.year == now.year &&
+      final isToday =
+          _selectedDate.year == now.year &&
           _selectedDate.month == now.month &&
           _selectedDate.day == now.day;
 
@@ -364,7 +392,9 @@ class _MoodInputState extends State<MoodInput> {
         showCuteTopPopup(
           context,
           title: _t('savedTitle'),
-          message: _t('savedDesc').replaceAll('{mood}', mood.label(_languageCode)),
+          message: _t(
+            'savedDesc',
+          ).replaceAll('{mood}', mood.label(_languageCode)),
           type: CutePopupType.success,
         );
       }
@@ -418,10 +448,9 @@ class _MoodInputState extends State<MoodInput> {
       showCuteTopPopup(
         context,
         title: _t('savedWithDiaryTitle'),
-        message: _t('savedWithDiaryDesc').replaceAll(
-          '{mood}',
-          mood.label(_languageCode),
-        ),
+        message: _t(
+          'savedWithDiaryDesc',
+        ).replaceAll('{mood}', mood.label(_languageCode)),
         type: CutePopupType.success,
       );
 
@@ -488,10 +517,7 @@ class _MoodInputState extends State<MoodInput> {
           Container(
             width: 112,
             height: 112,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: mood.bg,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: mood.bg),
             alignment: Alignment.center,
             child: Container(
               width: 84,
@@ -530,10 +556,7 @@ class _MoodInputState extends State<MoodInput> {
           Container(
             width: 96,
             height: 96,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: mood.bg,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: mood.bg),
             alignment: Alignment.center,
             child: Container(
               width: 72,
@@ -612,10 +635,7 @@ class _MoodInputState extends State<MoodInput> {
               boxShadow: _softShadow,
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 22,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -765,10 +785,7 @@ class _MoodInputState extends State<MoodInput> {
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              child: Text(
-                _t('storyYes'),
-                style: _text.labelLarge,
-              ),
+              child: Text(_t('storyYes'), style: _text.labelLarge),
             ),
           ),
           const SizedBox(height: 14),
@@ -786,9 +803,7 @@ class _MoodInputState extends State<MoodInput> {
               ),
               child: Text(
                 _isSaving ? _t('loading') : _t('storyNo'),
-                style: _text.titleMedium?.copyWith(
-                  color: _textDark,
-                ),
+                style: _text.titleMedium?.copyWith(color: _textDark),
               ),
             ),
           ),
@@ -801,34 +816,25 @@ class _MoodInputState extends State<MoodInput> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _bg,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: _textDark,
-          ),
-        ),
-        title: Text(
-          _t('title'),
-          style: _text.headlineLarge?.copyWith(
-            color: _textDark,
-          ),
-        ),
-      ),
       body: _isSaving
-          ? Center(
+          ? SafeArea(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(_greenDark),
+                  _buildPageHeader(),
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation(_greenDark),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(_t('loading'), style: _text.bodyMedium),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(_t('loading'), style: _text.bodyMedium),
                 ],
               ),
             )
@@ -863,6 +869,8 @@ class _MoodInputState extends State<MoodInput> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
                     children: [
+                      _buildPageHeader(),
+                      const SizedBox(height: 6),
                       _heroCard(),
                       const SizedBox(height: 16),
                       _selectedMoodCard(),

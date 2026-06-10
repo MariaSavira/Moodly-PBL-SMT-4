@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../setting/moodly_settings_support.dart';
+
 class StreakDetailPage extends StatelessWidget {
   final int currentStreak;
   final bool freezeEnabled;
@@ -20,7 +22,6 @@ class StreakDetailPage extends StatelessWidget {
   static const Color _greenSoft = Color(0xFFEAF6DA);
   static const Color _pink = Color(0xFFF6BDC4);
   static const Color _pinkSoft = Color(0xFFFFEEF1);
-  static const Color _mintSoft = Color(0xFFEFFAF7);
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6F7A67);
 
@@ -28,25 +29,57 @@ class StreakDetailPage extends StatelessWidget {
     'id': {
       'header': 'Detail Streak',
       'activeStreak': 'Streak aktif',
+      'heroBody':
+          'Kamu sedang menjaga ritme yang baik. Tidak sempurna, tapi konsisten.',
+      'weekProgress': 'Progress Minggu Ini',
+      'weekProgressBody': 'Lihat ritme harianmu selama 7 hari terakhir.',
       'freezeTitle': 'Freeze Streak',
+      'freezeActive': 'Proteksi aktif',
+      'freezeInactive': 'Proteksi tidak aktif',
+      'freezeRemaining': 'Sisa {owned} dari {max} freeze',
       'badgeTitle': 'Milestone Badge',
       'todayHistory': 'Riwayat Hari Ini',
-      'notUnlocked': 'Belum terbuka',
       'days': 'hari',
+      'notUnlocked': 'Belum terbuka',
+      'historyMood': 'Mood hari ini selesai',
+      'historyCombo': 'Bonus combo harian',
+      'historyAffirmation': 'Afirmasi dibaca',
     },
     'en': {
       'header': 'Streak Detail',
       'activeStreak': 'Active streak',
+      'heroBody':
+          'You are maintaining a good rhythm. Not perfect, but consistent.',
+      'weekProgress': 'This Week\'s Progress',
+      'weekProgressBody': 'See your daily rhythm over the last 7 days.',
       'freezeTitle': 'Streak Freeze',
+      'freezeActive': 'Protection active',
+      'freezeInactive': 'Protection inactive',
+      'freezeRemaining': '{owned} of {max} freezes left',
       'badgeTitle': 'Milestone Badge',
       'todayHistory': 'Today\'s History',
-      'notUnlocked': 'Locked',
       'days': 'days',
+      'notUnlocked': 'Locked',
+      'historyMood': 'Today\'s mood completed',
+      'historyCombo': 'Daily combo bonus',
+      'historyAffirmation': 'Affirmation read',
     },
   };
 
   String _t(String languageCode, String key) =>
       _copy[languageCode]?[key] ?? key;
+
+  String _template(
+    String languageCode,
+    String key,
+    Map<String, String> vars,
+  ) {
+    var text = _t(languageCode, key);
+    vars.forEach((k, v) {
+      text = text.replaceAll('{$k}', v);
+    });
+    return text;
+  }
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
@@ -57,125 +90,168 @@ class StreakDetailPage extends StatelessWidget {
         ),
       ];
 
-  List<_DayProgress> get _days => const [
-        _DayProgress(label: 'Sen', isDone: true),
-        _DayProgress(label: 'Sel', isDone: true),
-        _DayProgress(label: 'Rab', isDone: true),
-        _DayProgress(label: 'Kam', isDone: false, isFreezeUsed: true),
-        _DayProgress(label: 'Jum', isDone: true),
-        _DayProgress(label: 'Sab', isDone: true),
-        _DayProgress(label: 'Min', isToday: true),
+  List<_DayProgress> _days(String languageCode) => [
+        _DayProgress(label: _dayLabel(languageCode, 0), isDone: true),
+        _DayProgress(label: _dayLabel(languageCode, 1), isDone: true),
+        _DayProgress(label: _dayLabel(languageCode, 2), isDone: true),
+        _DayProgress(
+          label: _dayLabel(languageCode, 3),
+          isDone: false,
+          isFreezeUsed: true,
+        ),
+        _DayProgress(label: _dayLabel(languageCode, 4), isDone: true),
+        _DayProgress(label: _dayLabel(languageCode, 5), isDone: true),
+        _DayProgress(label: _dayLabel(languageCode, 6), isToday: true),
       ];
 
-  List<_HistoryItem> get _history => const [
+  List<_HistoryItem> _history(String languageCode) => [
         _HistoryItem(
-          title: 'Mood hari ini selesai',
-          subtitle: '+10 poin',
+          title: _t(languageCode, 'historyMood'),
+          subtitle:
+              languageCode == 'en' ? '+10 points' : '+10 poin',
           icon: Icons.sentiment_satisfied_alt_rounded,
-          accent: Color(0xFFF8D3D9),
-          iconColor: Color(0xFFE58696),
+          accent: const Color(0xFFF8D3D9),
+          iconColor: const Color(0xFFE58696),
         ),
         _HistoryItem(
-          title: 'Bonus combo harian',
-          subtitle: '+5 poin',
+          title: _t(languageCode, 'historyCombo'),
+          subtitle:
+              languageCode == 'en' ? '+5 points' : '+5 poin',
           icon: Icons.auto_awesome_rounded,
-          accent: Color(0xFFFFEEF1),
-          iconColor: Color(0xFFE58696),
+          accent: const Color(0xFFFFEEF1),
+          iconColor: const Color(0xFFE58696),
         ),
         _HistoryItem(
-          title: 'Afirmasi dibaca',
-          subtitle: '+5 poin',
+          title: _t(languageCode, 'historyAffirmation'),
+          subtitle:
+              languageCode == 'en' ? '+5 points' : '+5 poin',
           icon: Icons.local_florist_rounded,
-          accent: Color(0xFFDFF3ED),
-          iconColor: Color(0xFF63B8A2),
+          accent: const Color(0xFFDFF3ED),
+          iconColor: const Color(0xFF63B8A2),
         ),
       ];
+
+  String _dayLabel(String languageCode, int index) {
+    const id = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    const en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return languageCode == 'en' ? en[index] : id[index];
+  }
+
+  String _badgeTitle(String languageCode, int day) {
+    switch (day) {
+      case 3:
+        return languageCode == 'en'
+            ? 'Starting to Be Consistent'
+            : 'Mulai Konsisten';
+      case 7:
+        return languageCode == 'en'
+            ? 'A Friend to Yourself'
+            : 'Teman Diri Sendiri';
+      case 14:
+        return languageCode == 'en'
+            ? 'Growing Slowly'
+            : 'Tumbuh Pelan-Pelan';
+      case 30:
+        return languageCode == 'en'
+            ? 'Caring for Yourself Faithfully'
+            : 'Menjaga Diri dengan Setia';
+      case 120:
+        return languageCode == 'en'
+            ? 'Growing Calmly'
+            : 'Tumbuh dengan Tenang';
+      default:
+        return _t(languageCode, 'notUnlocked');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: 180,
-              right: -70,
-              child: Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _greenSoft.withOpacity(0.28),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -80,
-              left: -70,
-              child: Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _pinkSoft.withOpacity(0.35),
-                ),
-              ),
-            ),
-            CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-                    child: _buildHeader(context),
+    return ValueListenableBuilder<String>(
+      valueListenable: MoodlySettingsPrefs.languageNotifier,
+      builder: (context, languageCode, _) {
+        return Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 180,
+                  right: -70,
+                  child: Container(
+                    width: 190,
+                    height: 190,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _greenSoft.withOpacity(0.28),
+                    ),
                   ),
                 ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _buildHeroCard(context),
+                Positioned(
+                  bottom: -80,
+                  left: -70,
+                  child: Container(
+                    width: 190,
+                    height: 190,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _pinkSoft.withOpacity(0.35),
+                    ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _buildWeekProgressCard(context),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _buildFreezeCard(context),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: _buildBadgeCard(context),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
-                    child: _buildHistoryCard(context),
-                  ),
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                        child: _buildHeader(context, languageCode),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildHeroCard(context, languageCode),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildWeekProgressCard(context, languageCode),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildFreezeCard(context, languageCode),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: _buildBadgeCard(context, languageCode),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
+                        child: _buildHistoryCard(context, languageCode),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
 
     return Row(
@@ -200,7 +276,7 @@ class StreakDetailPage extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Detail Streak',
+            _t(languageCode, 'header'),
             style: textTheme.headlineLarge?.copyWith(
               fontSize: 28,
               color: _textDark,
@@ -211,7 +287,7 @@ class StreakDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeroCard(BuildContext context) {
+  Widget _buildHeroCard(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
@@ -242,7 +318,7 @@ class StreakDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Streak aktif',
+                  _t(languageCode, 'activeStreak'),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: _textSoft,
@@ -251,7 +327,7 @@ class StreakDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$currentStreak hari',
+                  '$currentStreak ${_t(languageCode, 'days')}',
                   style: textTheme.headlineLarge?.copyWith(
                     fontSize: 34,
                     color: _textDark,
@@ -259,7 +335,7 @@ class StreakDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Kamu sedang menjaga ritme yang baik. Tidak sempurna, tapi konsisten.',
+                  _t(languageCode, 'heroBody'),
                   style: textTheme.bodyMedium?.copyWith(
                     fontSize: 12,
                     height: 1.45,
@@ -275,8 +351,9 @@ class StreakDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWeekProgressCard(BuildContext context) {
+  Widget _buildWeekProgressCard(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
+    final days = _days(languageCode);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -289,7 +366,7 @@ class StreakDetailPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Progress Minggu Ini',
+            _t(languageCode, 'weekProgress'),
             style: textTheme.titleMedium?.copyWith(
               fontSize: 18,
               color: _textDark,
@@ -298,7 +375,7 @@ class StreakDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Lihat ritme harianmu selama 7 hari terakhir.',
+            _t(languageCode, 'weekProgressBody'),
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 12,
               height: 1.45,
@@ -309,7 +386,7 @@ class StreakDetailPage extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: _days.map((day) => _buildDayDot(context, day)).toList(),
+            children: days.map((day) => _buildDayDot(context, day)).toList(),
           ),
         ],
       ),
@@ -368,7 +445,7 @@ class StreakDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildFreezeCard(BuildContext context) {
+  Widget _buildFreezeCard(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
@@ -382,7 +459,7 @@ class StreakDetailPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Freeze Streak',
+            _t(languageCode, 'freezeTitle'),
             style: textTheme.titleMedium?.copyWith(
               fontSize: 18,
               color: _textDark,
@@ -418,7 +495,7 @@ class StreakDetailPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Proteksi aktif',
+                        _t(languageCode, 'freezeActive'),
                         style: textTheme.bodyMedium?.copyWith(
                           fontSize: 13,
                           color: _textDark,
@@ -427,7 +504,14 @@ class StreakDetailPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Sisa $freezeOwned dari $freezeMax freeze',
+                        _template(
+                          languageCode,
+                          'freezeRemaining',
+                          {
+                            'owned': '$freezeOwned',
+                            'max': '$freezeMax',
+                          },
+                        ),
                         style: textTheme.bodySmall?.copyWith(
                           fontSize: 11,
                           color: _textSoft,
@@ -438,7 +522,7 @@ class StreakDetailPage extends StatelessWidget {
                   ),
                 ),
                 Switch.adaptive(
-                  value: true,
+                  value: freezeEnabled,
                   activeColor: _green,
                   onChanged: (_) {},
                 ),
@@ -447,7 +531,9 @@ class StreakDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            freezeEnabled ? 'Proteksi aktif' : 'Proteksi tidak aktif',
+            freezeEnabled
+                ? _t(languageCode, 'freezeActive')
+                : _t(languageCode, 'freezeInactive'),
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 12,
               height: 1.45,
@@ -460,7 +546,7 @@ class StreakDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBadgeCard(BuildContext context) {
+  Widget _buildBadgeCard(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
@@ -474,7 +560,7 @@ class StreakDetailPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Milestone Badge',
+            _t(languageCode, 'badgeTitle'),
             style: textTheme.titleMedium?.copyWith(
               fontSize: 18,
               color: _textDark,
@@ -486,11 +572,36 @@ class StreakDetailPage extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MiniBadge(label: '3 hari', title: 'Mulai Konsisten', unlocked: currentStreak >= 3),
-              _MiniBadge(label: '7 hari', title: 'Teman Diri Sendiri', unlocked: currentStreak >= 7),
-              _MiniBadge(label: '14 hari', title: 'Tumbuh Pelan-Pelan', unlocked: currentStreak >= 14),
-              _MiniBadge(label: '30 hari', title: 'Menjaga Diri dengan Setia', unlocked: currentStreak >= 30),
-              _MiniBadge(label: '120 hari', title: 'Tumbuh dengan Tenang', unlocked: currentStreak >= 120),
+              _MiniBadge(
+                label: '3 ${_t(languageCode, 'days')}',
+                title: _badgeTitle(languageCode, 3),
+                unlocked: currentStreak >= 3,
+                lockedLabel: _t(languageCode, 'notUnlocked'),
+              ),
+              _MiniBadge(
+                label: '7 ${_t(languageCode, 'days')}',
+                title: _badgeTitle(languageCode, 7),
+                unlocked: currentStreak >= 7,
+                lockedLabel: _t(languageCode, 'notUnlocked'),
+              ),
+              _MiniBadge(
+                label: '14 ${_t(languageCode, 'days')}',
+                title: _badgeTitle(languageCode, 14),
+                unlocked: currentStreak >= 14,
+                lockedLabel: _t(languageCode, 'notUnlocked'),
+              ),
+              _MiniBadge(
+                label: '30 ${_t(languageCode, 'days')}',
+                title: _badgeTitle(languageCode, 30),
+                unlocked: currentStreak >= 30,
+                lockedLabel: _t(languageCode, 'notUnlocked'),
+              ),
+              _MiniBadge(
+                label: '120 ${_t(languageCode, 'days')}',
+                title: _badgeTitle(languageCode, 120),
+                unlocked: currentStreak >= 120,
+                lockedLabel: _t(languageCode, 'notUnlocked'),
+              ),
             ],
           ),
         ],
@@ -498,8 +609,9 @@ class StreakDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryCard(BuildContext context) {
+  Widget _buildHistoryCard(BuildContext context, String languageCode) {
     final textTheme = Theme.of(context).textTheme;
+    final history = _history(languageCode);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -512,7 +624,7 @@ class StreakDetailPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Riwayat Hari Ini',
+            _t(languageCode, 'todayHistory'),
             style: textTheme.titleMedium?.copyWith(
               fontSize: 18,
               color: _textDark,
@@ -520,10 +632,10 @@ class StreakDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          ..._history.map(
+          ...history.map(
             (item) => Padding(
               padding: EdgeInsets.only(
-                bottom: item == _history.last ? 0 : 10,
+                bottom: item == history.last ? 0 : 10,
               ),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
@@ -615,11 +727,13 @@ class _MiniBadge extends StatelessWidget {
   final String label;
   final String title;
   final bool unlocked;
+  final String lockedLabel;
 
   const _MiniBadge({
     required this.label,
     required this.title,
     required this.unlocked,
+    required this.lockedLabel,
   });
 
   @override
@@ -633,7 +747,10 @@ class _MiniBadge extends StatelessWidget {
         color: unlocked ? const Color(0xFFFFF0F4) : const Color(0xFFF1F1F1),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: unlocked ? const Color(0xFFF3B6BF) : const Color(0xFFD9D9D9),
+          color: unlocked
+              ? const Color(0xFFF5C6D0)
+              : const Color(0xFFE1E1E1),
+          width: 1.1,
         ),
       ),
       child: Column(
@@ -643,31 +760,18 @@ class _MiniBadge extends StatelessWidget {
             label,
             style: textTheme.bodySmall?.copyWith(
               fontSize: 11,
-              color: unlocked ? const Color(0xFFE58696) : const Color(0xFF9C9C9C),
+              color: const Color(0xFF6F7A67),
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: unlocked ? const Color(0xFFFFD8DF) : const Color(0xFFE0E0E0),
-            ),
-            child: Icon(
-              unlocked ? Icons.workspace_premium_rounded : Icons.question_mark_rounded,
-              color: unlocked ? const Color(0xFFE58696) : const Color(0xFF9C9C9C),
-              size: 18,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            unlocked ? title : 'Belum terbuka',
+            unlocked ? title : lockedLabel,
             style: textTheme.bodyMedium?.copyWith(
-              fontSize: 12,
-              color: unlocked ? const Color(0xFF2A2A2A) : const Color(0xFF9C9C9C),
+              fontSize: 13,
+              color: const Color(0xFF222222),
               fontWeight: FontWeight.w800,
+              height: 1.35,
             ),
           ),
         ],

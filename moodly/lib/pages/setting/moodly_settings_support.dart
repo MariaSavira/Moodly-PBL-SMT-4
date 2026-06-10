@@ -210,35 +210,44 @@ class MoodlySettingsHeader extends StatelessWidget {
     required this.onBack,
   });
 
+  List<BoxShadow> get _softShadow => const [
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, 0.10),
+          offset: Offset(0, 6),
+          blurRadius: 18,
+          spreadRadius: 0,
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         GestureDetector(
           onTap: onBack,
-          child: Icon(
-            Icons.arrow_back_rounded,
-            color: palette.greenDark,
-            size: 26,
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              shape: BoxShape.circle,
+              boxShadow: _softShadow,
+            ),
+            child: Icon(
+              Icons.arrow_back_rounded,
+              color: palette.textDark,
+              size: 22,
+            ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: palette.greenDark,
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: palette.textDark,
                 ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Moodly',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                color: palette.brand,
-              ),
         ),
       ],
     );

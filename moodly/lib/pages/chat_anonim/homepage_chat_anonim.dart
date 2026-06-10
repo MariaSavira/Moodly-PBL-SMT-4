@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../premium/premium_page.dart';
 import '../premium/premium_catalog.dart';
+import '../../core/services/premium_service.dart';
 import '../../widgets/moodly_bottom_navbar.dart';
 import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
@@ -47,6 +48,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   bool _isMatchingPageOpen = false;
 
   String _languageCode = 'id';
+
+  bool _hasPremiumAccess = false;
+  String? _userGender;
 
   int selectedGenderIndex = 1;
   int selectedNavIndex = 3;
@@ -105,7 +109,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       'header': 'Ruang Curhat',
       'heroChip': 'Chat anonim',
       'heroTitle': 'Temukan teman cerita yang lembut',
-      'heroSubtitle': 'Mulai obrolan hangat tanpa ribet.',
+      'heroSubtitle': 'Mulai obrolan hangat hari ini!',
       'editProfile': 'Atur Profil',
       'genderFilter': 'Filter Gender',
       'male': 'Laki-laki',
@@ -128,12 +132,22 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       'chatEndedMessage': 'Teman chat telah mengakhiri percakapan atau room sudah ditutup.',
       'noticeFallback': 'Room chat telah selesai.',
       'profileFallback': 'Spaghetti Unyu',
+      'genderQuestionTitle': 'Kenalan dulu yuk',
+      'genderQuestionDesc': 'Sebelum mulai matching, pilih gender kamu dulu ya.',
+      'continueMatching': 'Lanjut Matching',
+      'selectGenderFirst': 'Pilih gender dulu yaa',
+      'genderSavedTitle': 'Gender tersimpan',
+      'genderSavedDesc': 'Sekarang kamu sudah bisa mulai matching.',
+      'premiumGenderTitle': 'Filter gender premium',
+      'premiumGenderDesc': 'Pilih preferensi gender matching khusus untuk pengguna premium.',
+      'myGender': 'Gender Kamu',
+      'genderNotSet': 'Belum diatur',
     },
     'en': {
       'header': 'Chat Space',
       'heroChip': 'Anonymous chat',
       'heroTitle': 'Find a gentle space to talk',
-      'heroSubtitle': 'Start a warm conversation without the clutter.',
+      'heroSubtitle': 'Start a warm conversation today!',
       'editProfile': 'Edit Profile',
       'genderFilter': 'Gender Filter',
       'male': 'Male',
@@ -156,6 +170,16 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       'chatEndedMessage': 'Your chat partner ended the conversation or the room was closed.',
       'noticeFallback': 'The chat room has ended.',
       'profileFallback': 'Spaghetti Unyu',
+      'genderQuestionTitle': 'Let’s get to know you first',
+      'genderQuestionDesc': 'Before matching, choose your gender first.',
+      'continueMatching': 'Continue Matching',
+      'selectGenderFirst': 'Please choose your gender first',
+      'genderSavedTitle': 'Gender saved',
+      'genderSavedDesc': 'You can start matching now.',
+      'premiumGenderTitle': 'Premium gender filter',
+      'premiumGenderDesc': 'Choose your matching gender preference as a premium user.',
+      'myGender': 'Your Gender',
+      'genderNotSet': 'Not set',
     },
   };
 
@@ -202,6 +226,342 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
   String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
 
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _preferredGenderValueFromIndex() {
+    switch (selectedGenderIndex) {
+      case 0:
+        return 'male';
+      case 2:
+        return 'female';
+      default:
+        return 'all';
+    }
+  }
+
+  Future<void> _loadPremiumAccess() async {
+    final hasPremium = await PremiumService.instance.hasActivePremium();
+
+    if (!mounted) return;
+    setState(() {
+      _hasPremiumAccess = hasPremium;
+      if (!_hasPremiumAccess && selectedGenderIndex != 1) {
+        selectedGenderIndex = 1;
+      }
+    });
+  }
+
+  Future<void> _loadUserGenderFromFirestore() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final snap =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = snap.data() ?? {};
+
+    if (!mounted) return;
+    setState(() {
+      _userGender = _normalizeGender(data['gender']);
+    });
+  }
+
+  Future<String?> _showGenderQuestionDialog() async {
+    String? pickedGender;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.42),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Widget genderCard({
+              required String value,
+              required String label,
+              required IconData icon,
+              required Color fill,
+              required Color border,
+              required Color iconColor,
+            }) {
+              final isSelected = pickedGender == value;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setModalState(() {
+                      pickedGender = value;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: fill,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: isSelected ? border : border.withOpacity(0.55),
+                        width: isSelected ? 2.3 : 1.4,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: border.withOpacity(0.18),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.92),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: iconColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 14,
+                                color: const Color(0xFF243021),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFDF9),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 22,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFFFEEF3),
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Color(0xFFE58696),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _t('genderQuestionTitle'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontSize: 22,
+                            color: const Color(0xFF1F1F1F),
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t('genderQuestionDesc'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: const Color(0xFF6B7763),
+                          ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        genderCard(
+                          value: 'male',
+                          label: _t('male'),
+                          icon: Icons.male_rounded,
+                          fill: const Color(0xFFEAF8FF),
+                          border: const Color(0xFF7EC9F4),
+                          iconColor: const Color(0xFF57A9DA),
+                        ),
+                        const SizedBox(width: 10),
+                        genderCard(
+                          value: 'female',
+                          label: _t('female'),
+                          icon: Icons.female_rounded,
+                          fill: const Color(0xFFFFF1F4),
+                          border: const Color(0xFFF09AAC),
+                          iconColor: const Color(0xFFD86D88),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: pickedGender == null
+                            ? null
+                            : () => Navigator.pop(context, pickedGender),
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: const Color(0xFF84C76A),
+                          disabledBackgroundColor: const Color(0xFFD5E8C6),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Text(
+                          _t('continueMatching'),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _ensureUserGenderBeforeMatching() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final snap = await userRef.get();
+    final data = snap.data() ?? {};
+
+    final existingGender = _normalizeGender(data['gender']);
+    if (existingGender != null) {
+      if (mounted) {
+        setState(() {
+          _userGender = existingGender;
+        });
+      }
+      return true;
+    }
+
+    final pickedGender = await _showGenderQuestionDialog();
+    if (pickedGender == null) return false;
+
+    await userRef.set({
+      'gender': pickedGender,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    if (!mounted) return false;
+
+    setState(() {
+      _userGender = pickedGender;
+    });
+
+    showCuteTopPopup(
+      context,
+      title: _t('genderSavedTitle'),
+      message: _t('genderSavedDesc'),
+      type: CutePopupType.success,
+    );
+
+    return true;
+  }
+
+  Widget _buildPageHeader() {
+    const textDark = Color(0xFF1F1F1F);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: textDark,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('header'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: textDark,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<String> get unlockedProfileAvatars {
     final lockedRewardAssets = <String>{
       ..._oranyeImutPack,
@@ -241,6 +601,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
     await _loadRewardInventory();
     await loadProfileFromFirestoreOrLocal();
+    await _loadPremiumAccess();
+    await _loadUserGenderFromFirestore();
 
     if (!mounted) return;
 
@@ -411,6 +773,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
             ? profileName
             : generateRandomNickname(),
         'avatarId': selectedProfileImage,
+        'gender': _userGender,
         'status': currentData['status'] ?? 'idle',
         'currentRoomId': currentData['currentRoomId'],
         'updatedAt': FieldValue.serverTimestamp(),
@@ -672,13 +1035,29 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   }
 
   Future<void> _startMatchingFlow() async {
+    await _loadPremiumAccess();
+
+    final hasGender = await _ensureUserGenderBeforeMatching();
+    if (!hasGender) return;
+
+    final preferredGender =
+        _hasPremiumAccess ? _preferredGenderValueFromIndex() : 'all';
+
+    if (!_hasPremiumAccess && selectedGenderIndex != 1) {
+      setState(() {
+        selectedGenderIndex = 1;
+      });
+    }
+
     setState(() {
       _isMatchingPageOpen = true;
     });
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const MatchingPage(),
+        builder: (_) => MatchingPage(
+          preferredGender: preferredGender,
+        ),
       ),
     );
 
@@ -816,7 +1195,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
+                    _buildPageHeader(),
                     const SizedBox(height: 18),
                     _buildHeroCard(),
                     const SizedBox(height: 16),
@@ -839,35 +1218,6 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
           outerBackgroundColor: const Color(0xFFF7FAEE),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Row(
-      children: [
-        _RoundIconButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const Homepage(),
-              ),
-              (route) => false,
-            );
-          },
-        ),
-        const SizedBox(width: 12),
-        Text(
-          _t('header'),
-          style: textTheme.headlineLarge?.copyWith(
-            fontSize: 20,
-            color: const Color(0xFF181818),
-          ),
-        ),
-      ],
     );
   }
 
@@ -984,8 +1334,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                   ),
                   MoodlyInventoryFrameAvatar(
                     uid: FirebaseAuth.instance.currentUser?.uid,
-                    size: 116,
-                    innerPadding: 4,
+                    size: 128,
+                    innerPadding: 5,
                     child: Container(
                       width: 116,
                       height: 116,
@@ -1161,7 +1511,9 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                   pressedGenderIndex = null;
                 });
 
-                if (index == 0 || index == 2) {
+                final needPremium = index == 0 || index == 2;
+
+                if (needPremium && !_hasPremiumAccess) {
                   openMoodlyPremiumPage(
                     context,
                     source: PremiumEntrySource.chatGender,
@@ -1243,7 +1595,7 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
                           ),
                         ),
                       ),
-                      if (option.showCrown)
+                      if (option.showCrown && !_hasPremiumAccess)
                         Positioned(
                           top: -6,
                           right: -2,

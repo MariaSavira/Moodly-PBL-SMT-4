@@ -81,6 +81,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   String? _photoUrl;
   String? _avatarAsset;
+  String? _activeFrameId;
 
   File? _pickedImageFile;
   Uint8List? _pickedImageBytes;
@@ -180,6 +181,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
           : _photoUrl;
 
       _avatarAsset = data?['avatarId']?.toString();
+
+      final inventoryDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('reward_inventory')
+          .doc('main')
+          .get();
+
+      _activeFrameId = MoodlyRewardFrameAvatar.normalizeFrameId(
+        (inventoryDoc.data()?['activeFrameId'] as String?)?.trim(),
+      );
     } catch (e, st) {
       debugPrint('EDIT PROFILE LOAD ERROR: $e');
       debugPrintStack(stackTrace: st);
@@ -287,6 +299,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final pageWidth = _pageWidth(context);
+    final hasCustomFrame = _activeFrameId != null;
 
     return Scaffold(
       backgroundColor: _editBg,
@@ -319,20 +332,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               children: [
                                 MoodlyInventoryFrameAvatar(
                                   uid: FirebaseAuth.instance.currentUser?.uid,
-                                  size: 132,
-                                  innerPadding: 5,
+                                  size: hasCustomFrame ? 146 : 132,
+                                  innerPadding: hasCustomFrame ? 6 : 0,
                                   child: Container(
                                     width: 132,
                                     height: 132,
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: const BoxDecoration(
+                                    padding: EdgeInsets.all(hasCustomFrame ? 0 : 5),
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Color(0xFF92D373),
-                                          Color(0xFFD9EDC5),
-                                        ],
-                                      ),
+                                      gradient: hasCustomFrame
+                                          ? null
+                                          : const LinearGradient(
+                                              colors: [
+                                                Color(0xFF92D373),
+                                                Color(0xFFD9EDC5),
+                                              ],
+                                            ),
+                                      color: hasCustomFrame ? Colors.white : null,
                                     ),
                                     child: Container(
                                       decoration: const BoxDecoration(
@@ -343,8 +359,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                         child: Image(
                                           image: _buildPreviewImage(),
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const Icon(
+                                          errorBuilder: (_, __, ___) => const Icon(
                                             Icons.person_rounded,
                                             size: 76,
                                             color: _editTextDark,
@@ -442,30 +457,39 @@ class _EditHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: const Icon(
-            Icons.arrow_back,
-            color: _editGreenDark,
-            size: 22,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onBack,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: _editShadow,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _editTextDark,
+                size: 22,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: _editTitle(context, color: _editGreenDark, fontSize: 17),
-        ),
-        const Spacer(),
-        Text(
-          'Moodly',
-          style: _editHeadline(context, color: _editBrand, fontSize: 32)
-              ?.copyWith(
-            letterSpacing: -1,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: _editHeadline(
+                context,
+                color: _editTextDark,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

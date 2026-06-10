@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../models/admin/laporan_user_model.dart';
 import '../../services/admin/laporan_user_service.dart';
 
@@ -28,25 +29,25 @@ class _TinjauLaporanUserAdminPageState
   void initState() {
     super.initState();
 
-   _laporan = widget.laporan ??
-    LaporanUserModel(
-      documentId: '',
-      id: 'LP-0005',
-      tipeKonten: 'Chat Anonim',
-      namaPelapor: 'Admin',
-      namaTerlapor: 'UserXyz',
-      avatarTerlapor: '',
-      reportedUid: '',
-      kategoriLaporan: 'Kata-kata tidak pantas',
-      alasanLaporan: '',
-      tanggal: DateTime(2026, 4, 9),
-      status: LaporanStatus.pending,
-      isiLaporan:
-          'aku ngerasa hidup ini berat banget...',
-      catatanAdmin: '',
-      diaryId: '',
-      imageUrls: const [],
-    );
+    _laporan = widget.laporan ??
+        LaporanUserModel(
+          documentId: '',
+          id: 'LP-0005',
+          tipeKonten: 'Chat Anonim',
+          namaPelapor: 'Admin',
+          namaTerlapor: 'UserXyz',
+          avatarTerlapor: '',
+          reportedUid: '',
+          kategoriLaporan: 'Kata-kata tidak pantas',
+          alasanLaporan: '',
+          tanggal: DateTime(2026, 4, 9),
+          status: LaporanStatus.pending,
+          isiLaporan: 'aku ngerasa hidup ini berat banget...',
+          catatanAdmin: '',
+          diaryId: '',
+          imageUrls: const [],
+        );
+
     _catatanController.text = _laporan.catatanAdmin;
 
     _catatanController.addListener(() {
@@ -74,75 +75,295 @@ class _TinjauLaporanUserAdminPageState
     return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month]} ${date.year}';
   }
 
-  Future<void> _ubahStatus(LaporanStatus status) async {
+  Future<void> _ubahStatus(
+    LaporanStatus status, {
+    String? tindakanDipilih,
+    DateTime? banUntil,
+  }) async {
     if (_laporan.documentId.isEmpty) {
       _showMessage('Data laporan belum terhubung ke Firebase');
       return;
     }
 
-  await _laporanService.updateStatusLaporan(
-  documentId: _laporan.documentId,
-  status: status,
-  catatanAdmin: _catatanController.text.trim(),
-);
+    await _laporanService.updateStatusLaporan(
+      documentId: _laporan.documentId,
+      status: status,
+      catatanAdmin: _catatanController.text.trim(),
+      tindakanDipilih: tindakanDipilih,
+      banUntil: banUntil,
+      alasanTindakan: _laporan.alasanLaporan.trim().isNotEmpty
+          ? _laporan.alasanLaporan.trim()
+          : _laporan.kategoriLaporan,
+    );
 
-if (!mounted) return;
+    if (!mounted) return;
 
-_showMessage('Status laporan berhasil diperbarui');
+    String message;
+    switch (status) {
+      case LaporanStatus.pending:
+        message = 'Status laporan diubah ke Pending';
+        break;
+      case LaporanStatus.diproses:
+        message = 'Laporan berhasil ditandai sedang diproses';
+        break;
+      case LaporanStatus.selesai:
+        if (tindakanDipilih == 'banSementara') {
+          message = 'Laporan selesai. User kena ban sementara.';
+        } else if (tindakanDipilih == 'banPermanen') {
+          message = 'Laporan selesai. User kena ban permanen.';
+        } else if (tindakanDipilih == 'batasiUser') {
+          message = 'Laporan selesai. Akun user dibatasi.';
+        } else if (tindakanDipilih == 'cabutTindakan') {
+          message = 'Laporan selesai. Tindakan pada user dicabut.';
+        } else {
+          message = 'Laporan berhasil diselesaikan.';
+        }
+        break;
+      case LaporanStatus.ditolak:
+        message = 'Laporan berhasil ditolak';
+        break;
+    }
 
-await Future.delayed(const Duration(milliseconds: 600));
+    _showMessage(message);
 
-if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
 
-Navigator.of(context).pop(true);
+    Navigator.of(context).pop(true);
   }
-Future<void> _hapusPostinganDiary() async {
-  if (_laporan.diaryId.isEmpty) {
-  _showMessage('ID diary tidak ditemukan');
-    return;
-  }
 
-  try {
-    final docRef = FirebaseFirestore.instance
-        .collection('diaries')
-        .doc(_laporan.diaryId);
-
-    final snapshot = await docRef.get();
-
-    if (!snapshot.exists) {
-      _showMessage('Postingan diary tidak ditemukan');
+  Future<void> _hapusPostinganDiary() async {
+    if (_laporan.diaryId.isEmpty) {
+      _showMessage('ID diary tidak ditemukan');
       return;
     }
 
-    await docRef.delete();
+    try {
+      final docRef =
+          FirebaseFirestore.instance.collection('diaries').doc(_laporan.diaryId);
 
-    _showMessage('Postingan diary berhasil dihapus permanen');
-  } catch (e) {
-    _showMessage('Gagal hapus postingan: $e');
-  }
-}
-Future<void> _hapusKomentar() async {
-  try {
-    final commentRef = FirebaseFirestore.instance
-        .collection('diaries')
-        .doc(_laporan.diaryId)
-        .collection('comments')
-        .doc(_laporan.id);
+      final snapshot = await docRef.get();
 
-    final snapshot = await commentRef.get();
+      if (!snapshot.exists) {
+        _showMessage('Postingan diary tidak ditemukan');
+        return;
+      }
 
-    if (!snapshot.exists) {
-      _showMessage('Komentar tidak ditemukan');
-      return;
+      await docRef.delete();
+
+      _showMessage('Postingan diary berhasil dihapus permanen');
+    } catch (e) {
+      _showMessage('Gagal hapus postingan: $e');
     }
-
-    await commentRef.delete();
-
-    _showMessage('Komentar berhasil dihapus');
-  } catch (e) {
-    _showMessage('Gagal hapus komentar: $e');
   }
-}
+
+  Future<void> _hapusKomentar() async {
+    try {
+      final commentRef = FirebaseFirestore.instance
+          .collection('diaries')
+          .doc(_laporan.diaryId)
+          .collection('comments')
+          .doc(_laporan.id);
+
+      final snapshot = await commentRef.get();
+
+      if (!snapshot.exists) {
+        _showMessage('Komentar tidak ditemukan');
+        return;
+      }
+
+      await commentRef.delete();
+
+      _showMessage('Komentar berhasil dihapus');
+    } catch (e) {
+      _showMessage('Gagal hapus komentar: $e');
+    }
+  }
+
+  Future<bool> _showConfirmDialog(String title) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: const Text('Tindakan ini akan menyimpan keputusan admin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  void _showPilihTindakanSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pilih Tindakan Akhir',
+                style: GoogleFonts.fredoka(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF486253),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _tindakanOption(
+                value: 'batasiUser',
+                label: 'Batasi User',
+                color: const Color(0xFFFFF1F1),
+              ),
+              _tindakanOption(
+                value: 'banSementara',
+                label: 'Ban Sementara',
+                color: const Color(0xFFFFF1F1),
+              ),
+              _tindakanOption(
+                value: 'banPermanen',
+                label: 'Ban Permanen',
+                color: const Color(0xFFFFF1F1),
+              ),
+              _tindakanOption(
+                value: 'cabutTindakan',
+                label: 'Cabut Tindakan',
+                color: const Color(0xFFD9FFD0),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPilihDurasiBanSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pilih Durasi Ban Sementara',
+                style: GoogleFonts.fredoka(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF486253),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _durasiOption('1 Jam', const Duration(hours: 1)),
+              _durasiOption('6 Jam', const Duration(hours: 6)),
+              _durasiOption('12 Jam', const Duration(hours: 12)),
+              _durasiOption('1 Hari', const Duration(days: 1)),
+              _durasiOption('3 Hari', const Duration(days: 3)),
+              _durasiOption('7 Hari', const Duration(days: 7)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tindakanOption({
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        if (value == 'banSementara') {
+          Navigator.pop(context);
+          _showPilihDurasiBanSheet();
+          return;
+        }
+
+        Navigator.pop(context);
+
+        final confirm = await _showConfirmDialog(
+          'Selesaikan laporan dengan tindakan $label?',
+        );
+
+        if (!confirm) return;
+
+        await _ubahStatus(
+          LaporanStatus.selesai,
+          tindakanDipilih: value,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.fredoka(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0C0E0C),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _durasiOption(String label, Duration duration) {
+    return ListTile(
+      title: Text(label),
+      onTap: () async {
+        Navigator.pop(context);
+
+        final confirm = await _showConfirmDialog(
+          'Selesaikan laporan dengan Ban Sementara selama $label?',
+        );
+
+        if (!confirm) return;
+
+        await _ubahStatus(
+          LaporanStatus.selesai,
+          tindakanDipilih: 'banSementara',
+          banUntil: _getBanUntil(duration),
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
+    );
+  }
+
+  DateTime _getBanUntil(Duration duration) {
+    return DateTime.now().add(duration);
+  }
+
   String _statusLabel() {
     switch (_laporan.status) {
       case LaporanStatus.pending:
@@ -180,12 +401,6 @@ Future<void> _hapusKomentar() async {
       case LaporanStatus.ditolak:
         return const Color(0xFFFF0000);
     }
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
-    );
   }
 
   @override
@@ -281,7 +496,7 @@ Future<void> _hapusKomentar() async {
                 ),
                 TextSpan(
                   text:
-                  '  •  Dilaporkan ${_formatTanggal(_laporan.tanggal)}  •  14:32 WIB',
+                      '  •  Dilaporkan ${_formatTanggal(_laporan.tanggal)}  •  14:32 WIB',
                   style: GoogleFonts.openSans(
                     fontSize: 12,
                     color: const Color(0xFF0C0E0C),
@@ -341,10 +556,10 @@ Future<void> _hapusKomentar() async {
                     ),
                     const SizedBox(height: 18),
                     _infoItem(
-  Icons.flag_outlined,
-  'Kategori Laporan',
-  _laporan.kategoriLaporan,
-),
+                      Icons.flag_outlined,
+                      'Kategori Laporan',
+                      _laporan.kategoriLaporan,
+                    ),
                   ],
                 ),
               ),
@@ -439,7 +654,7 @@ Future<void> _hapusKomentar() async {
                   if (_laporan.isiLaporan.trim().isNotEmpty)
                     const SizedBox(height: 12),
                   ..._laporan.imageUrls.map(
-                        (url) => Padding(
+                    (url) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -486,8 +701,7 @@ Future<void> _hapusKomentar() async {
                         ),
                       ),
                     ),
-
-                  )
+                  ),
                 ],
               ],
             ),
@@ -513,9 +727,9 @@ Future<void> _hapusKomentar() async {
               border: Border.all(color: const Color(0xFFFFB9B9)),
             ),
             child: Text(
- 'Alasan laporan: ${_laporan.alasanLaporan}',
-  style: GoogleFonts.openSans(fontSize: 12, height: 1.6),
-),
+              'Alasan laporan: ${_laporan.alasanLaporan}',
+              style: GoogleFonts.openSans(fontSize: 12, height: 1.6),
+            ),
           ),
         ],
       ),
@@ -601,7 +815,12 @@ Future<void> _hapusKomentar() async {
                 color: const Color(0xFF1C8C4A),
                 bg: const Color(0xFFEFFFF0),
                 border: const Color(0xFF8ECD86),
-                onTap: () => _ubahStatus(LaporanStatus.diproses),
+                onTap: () async {
+                  final confirm =
+                      await _showConfirmDialog('Tandai laporan sebagai diproses?');
+                  if (!confirm) return;
+                  await _ubahStatus(LaporanStatus.diproses);
+                },
               ),
             ),
             const SizedBox(width: 8),
@@ -609,54 +828,56 @@ Future<void> _hapusKomentar() async {
               child: _actionButton(
                 icon: Icons.check_circle_outline_rounded,
                 title: 'Selesaikan Laporan',
-                subtitle: 'Tandai laporan selesai',
+                subtitle: 'Pilih tindakan untuk user',
                 color: const Color(0xFF1C8C4A),
                 bg: const Color(0xFFEFFFF0),
                 border: const Color(0xFF8ECD86),
-                onTap: () => _ubahStatus(LaporanStatus.selesai),
+                onTap: _showPilihTindakanSheet,
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         _actionButton(
-  icon: Icons.shield_outlined,
-  title: 'Tolak Laporan',
-  subtitle: 'Laporan tidak valid',
-  color: const Color(0xFFFF3B3B),
-  bg: const Color(0xFFFFF1F1),
-  border: const Color(0xFFFF8A8A),
-  onTap: () => _ubahStatus(LaporanStatus.ditolak),
-),
-
-if (_laporan.tipeKonten == 'Diary Online') ...[
-  const SizedBox(height: 8),
-  _actionButton(
-    icon: Icons.delete_outline_rounded,
-    title: 'Hapus Postingan',
-    subtitle: 'Sembunyikan diary yang dilaporkan',
-    color: const Color(0xFFFF3B3B),
-    bg: const Color(0xFFFFF1F1),
-    border: const Color(0xFFFF8A8A),
-    onTap: _hapusPostinganDiary,
-  ),
-],
-
-if (_laporan.tipeKonten == 'Comment') ...[
-  const SizedBox(height: 8),
-  _actionButton(
-    icon: Icons.delete_outline_rounded,
-    title: 'Hapus Komentar',
-    subtitle: 'Hapus komentar yang dilaporkan',
-    color: const Color(0xFFFF3B3B),
-    bg: const Color(0xFFFFF1F1),
-    border: const Color(0xFFFF8A8A),
-    onTap: _hapusKomentar,
-  ),
-],
+          icon: Icons.shield_outlined,
+          title: 'Tolak Laporan',
+          subtitle: 'Laporan tidak valid',
+          color: const Color(0xFFFF3B3B),
+          bg: const Color(0xFFFFF1F1),
+          border: const Color(0xFFFF8A8A),
+          onTap: () async {
+            final confirm = await _showConfirmDialog('Tolak laporan ini?');
+            if (!confirm) return;
+            await _ubahStatus(LaporanStatus.ditolak);
+          },
+        ),
+        if (_laporan.tipeKonten == 'Diary Online') ...[
+          const SizedBox(height: 8),
+          _actionButton(
+            icon: Icons.delete_outline_rounded,
+            title: 'Hapus Postingan',
+            subtitle: 'Sembunyikan diary yang dilaporkan',
+            color: const Color(0xFFFF3B3B),
+            bg: const Color(0xFFFFF1F1),
+            border: const Color(0xFFFF8A8A),
+            onTap: _hapusPostinganDiary,
+          ),
+        ],
+        if (_laporan.tipeKonten == 'Comment') ...[
+          const SizedBox(height: 8),
+          _actionButton(
+            icon: Icons.delete_outline_rounded,
+            title: 'Hapus Komentar',
+            subtitle: 'Hapus komentar yang dilaporkan',
+            color: const Color(0xFFFF3B3B),
+            bg: const Color(0xFFFFF1F1),
+            border: const Color(0xFFFF8A8A),
+            onTap: _hapusKomentar,
+          ),
+        ],
       ],
     );
-  } 
+  }
 
   Widget _buildBackButton(BuildContext context) {
     return GestureDetector(

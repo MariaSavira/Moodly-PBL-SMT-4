@@ -1,3 +1,4 @@
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,7 +72,6 @@ class AfirmasiPage extends StatefulWidget {
 }
 
 class _AfirmasiPageState extends State<AfirmasiPage> {
-
   static const Color _bg = Color(0xFFF3F7E8);
   static const Color _card = Colors.white;
   static const Color _green = Color(0xFF96D47E);
@@ -199,23 +199,6 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
         return _t(languageCode, 'selfLove');
       default:
         return raw;
-    }
-  }
-
-  String _categoryDesc(String languageCode, String raw) {
-    switch (raw) {
-      case 'Rasa Syukur':
-        return _t(languageCode, 'gratitudeDesc');
-      case 'Meredakan Kecemasan':
-        return _t(languageCode, 'anxietyDesc');
-      case 'Motivasi':
-        return _t(languageCode, 'motivationDesc');
-      case 'Kesehatan Mental':
-        return _t(languageCode, 'mentalDesc');
-      case 'Cinta Diri':
-        return _t(languageCode, 'selfLoveDesc');
-      default:
-        return '';
     }
   }
 
@@ -358,22 +341,8 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    child: Image.asset(
-                      'assets/icon/images/plant_bottom.png',
-                      width: double.infinity,
-                      height: 210,
-                      fit: BoxFit.fill,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
                 SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 14, 22, 130),
+                  padding: const EdgeInsets.fromLTRB(22, 14, 22, 148),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -462,7 +431,7 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 14,
                           mainAxisSpacing: 14,
-                          childAspectRatio: 0.95,
+                          childAspectRatio: 1.04,
                         ),
                         itemBuilder: (context, index) {
                           final item = _categories[index];
@@ -473,7 +442,6 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
 
                           return _CategoryMoodlyCard(
                             title: _categoryLabel(languageCode, raw),
-                            desc: _categoryDesc(languageCode, raw),
                             color: color,
                             icon: icon,
                             iconColor: iconColor,
@@ -487,34 +455,53 @@ class _AfirmasiPageState extends State<AfirmasiPage> {
                   ),
                 ),
                 Positioned(
-                  left: 22,
-                  right: 22,
-                  bottom: 22,
-                  child: SafeArea(
-                    top: false,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _card.withOpacity(0.94),
-                        borderRadius: BorderRadius.circular(26),
-                        boxShadow: _softShadow,
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: () => _goToDetailPage(languageCode),
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: _green,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              _bg.withOpacity(0.02),
+                              _bg.withOpacity(0.62),
+                              _bg.withOpacity(0.96),
+                            ],
                           ),
-                          child: Text(
-                            _t(languageCode, 'continue'),
-                            style: textTheme.labelLarge,
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _card.withOpacity(0.88),
+                              borderRadius: BorderRadius.circular(26),
+                              boxShadow: _softShadow,
+                            ),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: () => _goToDetailPage(languageCode),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: _green,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                                child: Text(
+                                  _t(languageCode, 'continue'),
+                                  style: textTheme.labelLarge,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -563,7 +550,6 @@ class _TopBar extends StatelessWidget {
 
 class _CategoryMoodlyCard extends StatelessWidget {
   final String title;
-  final String desc;
   final Color color;
   final IconData icon;
   final Color iconColor;
@@ -573,7 +559,6 @@ class _CategoryMoodlyCard extends StatelessWidget {
 
   const _CategoryMoodlyCard({
     required this.title,
-    required this.desc,
     required this.color,
     required this.icon,
     required this.iconColor,
@@ -617,66 +602,71 @@ class _CategoryMoodlyCard extends StatelessWidget {
                     ),
                   ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(isSelected ? 0.86 : 1),
-                      shape: BoxShape.circle,
+              if (isSelected)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
-                    child: Icon(
-                      icon,
-                      color: iconColor,
-                      size: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      selectedLabel,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: iconColor,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 180),
-                    opacity: isSelected ? 1 : 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.88),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        selectedLabel,
-                        style: textTheme.bodySmall?.copyWith(
+                ),
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: isSelected ? 10 : 0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(isSelected ? 0.88 : 1),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: iconColor.withOpacity(0.10),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          icon,
                           color: iconColor,
+                          size: 32,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleMedium?.copyWith(
+                          color: _AfirmasiPageState._textDark,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(
-                  color: _AfirmasiPageState._textDark,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                desc,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: _AfirmasiPageState._textSoft,
-                  fontSize: 12.5,
-                  height: 1.45,
                 ),
               ),
             ],

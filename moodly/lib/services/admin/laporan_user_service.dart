@@ -6,10 +6,7 @@ class LaporanUserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<List<LaporanUserModel>> getLaporanUser() async {
-    final snapshot = await _firestore
-    .collection('reports')
-    .get();
-
+    final snapshot = await _firestore.collection('reports').get();
     return snapshot.docs.map(_fromReport).toList();
   }
 
@@ -18,43 +15,45 @@ class LaporanUserService {
   ) {
     final data = doc.data();
 
-final type = data['type'];
+    final type = data['type'];
 
-if (data['reportedMessages'] != null) {
-  return _fromChatReport(doc);
-}
+    if (data['reportedMessages'] != null) {
+      return _fromChatReport(doc);
+    }
 
-if (type == 'comment') {
-  return _fromCommentReport(doc);
-}
+    if (type == 'comment') {
+      return _fromCommentReport(doc);
+    }
 
-return _fromDiaryReport(doc);
+    return _fromDiaryReport(doc);
   }
-LaporanUserModel _fromCommentReport(
-  QueryDocumentSnapshot<Map<String, dynamic>> doc,
-) {
-  final data = doc.data();
 
-  return LaporanUserModel(
-    documentId: doc.id,
-    id: data['comment_id'] ?? data['reportId'] ?? doc.id,
-    tipeKonten: 'Comment',
-    namaPelapor: data['reported_by_username'] ?? '-',
-    namaTerlapor: data['reported_user'] ?? '-',
-    avatarTerlapor: data['reported_profile'] ?? '',
-    reportedUid: data['reported_uid'] ?? '',
-    kategoriLaporan: data['report_category'] ?? 'Tidak ada kategori',
-    alasanLaporan: data['report_reason'] ?? '',
-    isiLaporan: data['content_text'] ?? 'Komentar tidak tersedia',
-    tanggal: data['created_at'] is Timestamp
-        ? (data['created_at'] as Timestamp).toDate()
-        : DateTime.now(),
-    status: laporanStatusFromString(data['status'] ?? 'pending'),
-    catatanAdmin: data['catatanAdmin'] ?? '',
-    diaryId: data['diary_id'] ?? '',
-    imageUrls: const [],
-  );
-}
+  LaporanUserModel _fromCommentReport(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    return LaporanUserModel(
+      documentId: doc.id,
+      id: data['comment_id'] ?? data['reportId'] ?? doc.id,
+      tipeKonten: 'Comment',
+      namaPelapor: data['reported_by_username'] ?? '-',
+      namaTerlapor: data['reported_user'] ?? '-',
+      avatarTerlapor: data['reported_profile'] ?? '',
+      reportedUid: data['reported_uid'] ?? '',
+      kategoriLaporan: data['report_category'] ?? 'Tidak ada kategori',
+      alasanLaporan: data['report_reason'] ?? '',
+      isiLaporan: data['content_text'] ?? 'Komentar tidak tersedia',
+      tanggal: data['created_at'] is Timestamp
+          ? (data['created_at'] as Timestamp).toDate()
+          : DateTime.now(),
+      status: laporanStatusFromString(data['status'] ?? 'pending'),
+      catatanAdmin: data['catatanAdmin'] ?? '',
+      diaryId: data['diary_id'] ?? '',
+      imageUrls: const [],
+    );
+  }
+
   LaporanUserModel _fromChatReport(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -73,8 +72,7 @@ LaporanUserModel _fromCommentReport(
       avatarTerlapor: _getAvatar(reportedUserInfo),
       reportedUid: data['reportedUid'] ?? '',
       kategoriLaporan: data['reportCategory'] ?? 'Kata-kata tidak pantas',
-      alasanLaporan:
-      data['report_reason'] ?? '',
+      alasanLaporan: data['report_reason'] ?? '',
       tanggal: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -87,53 +85,31 @@ LaporanUserModel _fromCommentReport(
   }
 
   LaporanUserModel _fromDiaryReport(
-  QueryDocumentSnapshot<Map<String, dynamic>> doc,
-) {
-  final data = doc.data();
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
 
-  return LaporanUserModel(
-  documentId: doc.id,
-  id: data['diary_id'] ?? data['reportId'] ?? doc.id,
-  tipeKonten: 'Diary Online',
-
-  namaPelapor:
-      data['reported_by_username'] ?? '-',
-
-  namaTerlapor:
-      data['reported_user'] ?? '-',
-
-  avatarTerlapor:
-      data['reported_profile'] ?? '',
-
-  reportedUid:
-      data['reported_uid'] ?? '',
-
-  kategoriLaporan:
-      data['report_category'] ?? 'Tidak ada kategori',
-
-  alasanLaporan:
-      data['report_reason'] ?? '',
-
-  isiLaporan:
-      data['content_text'] ?? 'Diary tidak tersedia',
-
-  tanggal: data['created_at'] is Timestamp
-      ? (data['created_at'] as Timestamp).toDate()
-      : DateTime.now(),
-
-  status: laporanStatusFromString(
-    data['status'] ?? 'pending',
-  ),
-
-  catatanAdmin:
-      data['catatanAdmin'] ?? '',
-
-  diaryId:
-      data['diary_id'] ?? '',
-
-  imageUrls: const [],
-);
+    return LaporanUserModel(
+      documentId: doc.id,
+      id: data['diary_id'] ?? data['reportId'] ?? doc.id,
+      tipeKonten: 'Diary Online',
+      namaPelapor: data['reported_by_username'] ?? '-',
+      namaTerlapor: data['reported_user'] ?? '-',
+      avatarTerlapor: data['reported_profile'] ?? '',
+      reportedUid: data['reported_uid'] ?? '',
+      kategoriLaporan: data['report_category'] ?? 'Tidak ada kategori',
+      alasanLaporan: data['report_reason'] ?? '',
+      isiLaporan: data['content_text'] ?? 'Diary tidak tersedia',
+      tanggal: data['created_at'] is Timestamp
+          ? (data['created_at'] as Timestamp).toDate()
+          : DateTime.now(),
+      status: laporanStatusFromString(data['status'] ?? 'pending'),
+      catatanAdmin: data['catatanAdmin'] ?? '',
+      diaryId: data['diary_id'] ?? '',
+      imageUrls: const [],
+    );
   }
+
   String _getName(dynamic info) {
     if (info is Map<String, dynamic>) {
       final userData = info['userData'];
@@ -214,14 +190,82 @@ LaporanUserModel _fromCommentReport(
     return urls;
   }
 
+  String _normalizeTindakan(String raw) {
+    final value = raw.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+
+    switch (value) {
+      case 'batasiuser':
+      case 'restrictuser':
+      case 'warning':
+      case 'warnuser':
+        return 'batasiUser';
+
+      case 'bansementara':
+      case 'temporaryban':
+      case 'tempsuspend':
+      case 'suspenduser':
+        return 'banSementara';
+
+      case 'banpermanen':
+      case 'permanentban':
+      case 'permban':
+        return 'banPermanen';
+
+      case 'cabuttindakan':
+      case 'revokeaction':
+      case 'revoke':
+      case 'clearaction':
+        return 'cabutTindakan';
+
+      default:
+        return raw.trim();
+    }
+  }
+
+  bool _isBanSementara(String? tindakan) {
+    return _normalizeTindakan(tindakan ?? '') == 'banSementara';
+  }
+
   Future<void> updateStatusLaporan({
     required String documentId,
     required LaporanStatus status,
     String? catatanAdmin,
+    String? tindakanDipilih,
+    DateTime? banUntil,
+    String? alasanTindakan,
   }) async {
-    await _firestore.collection('reports').doc(documentId).update({
+    final normalizedTindakan = (tindakanDipilih == null ||
+            tindakanDipilih.trim().isEmpty)
+        ? null
+        : _normalizeTindakan(tindakanDipilih);
+
+    final payload = <String, dynamic>{
       'status': status.value,
-      if (catatanAdmin != null) 'catatanAdmin': catatanAdmin,
-    });
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (catatanAdmin != null) {
+      payload['catatanAdmin'] = catatanAdmin;
+    }
+
+    if (alasanTindakan != null) {
+      payload['alasanTindakan'] = alasanTindakan;
+    }
+
+    if (normalizedTindakan != null) {
+      payload['tindakanDipilih'] = normalizedTindakan;
+      payload['tindakanSaatIni'] = normalizedTindakan;
+      payload['actionUpdatedAt'] = FieldValue.serverTimestamp();
+    }
+
+    if (_isBanSementara(normalizedTindakan)) {
+      if (banUntil != null) {
+        payload['banUntil'] = Timestamp.fromDate(banUntil);
+      }
+    } else if (normalizedTindakan != null) {
+      payload['banUntil'] = FieldValue.delete();
+    }
+
+    await _firestore.collection('reports').doc(documentId).update(payload);
   }
 }

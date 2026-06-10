@@ -5,10 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../afirmasi/widgets/cute_top_popup.dart';
 import '../pages.dart';
+import '../../core/services/premium_service.dart';
 import '../setting/moodly_settings_support.dart';
-import 'mood_analysis.dart';
-import 'mood_input.dart';
-import 'mood_year_calendar.dart';
 
 class MoodCalendar extends StatefulWidget {
   final int initialYear;
@@ -26,6 +24,7 @@ class MoodCalendar extends StatefulWidget {
 
 class _MoodCalendarState extends State<MoodCalendar> {
   late DateTime _focusedDate;
+  DateTime? _lastSelectedDate;
   bool _isLoading = true;
   Map<String, String> _moodDatabase = {};
   Map<String, String> _noteDatabase = {};
@@ -181,6 +180,49 @@ class _MoodCalendarState extends State<MoodCalendar> {
         color: const Color(0xFF1F1F1F),
         fontSize: 22,
       );
+  
+  Widget _buildPageHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _popWithSelectedDate,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Color(0xFF1F1F1F),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('title'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: const Color(0xFF1F1F1F),
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   TextStyle? get _title => _theme.textTheme.titleMedium?.copyWith(
         color: const Color(0xFF1F1F1F),
@@ -316,6 +358,65 @@ class _MoodCalendarState extends State<MoodCalendar> {
     return FirebaseFirestore.instance.collection('moods').doc(uid);
   }
 
+  CollectionReference<Map<String, dynamic>> get _diaryRef =>
+      FirebaseFirestore.instance.collection('diaries');
+
+  int _monthNumberFromCode(String code) {
+    switch (code.trim().toUpperCase()) {
+      case 'JAN':
+        return 1;
+      case 'FEB':
+        return 2;
+      case 'MAR':
+        return 3;
+      case 'APR':
+        return 4;
+      case 'MEI':
+        return 5;
+      case 'JUN':
+        return 6;
+      case 'JUL':
+        return 7;
+      case 'AGS':
+        return 8;
+      case 'SEP':
+        return 9;
+      case 'OKT':
+        return 10;
+      case 'NOV':
+        return 11;
+      case 'DES':
+        return 12;
+      default:
+        return 1;
+    }
+  }
+
+  String _canonicalMoodValue(String? raw) {
+    switch ((raw ?? '').trim().toLowerCase()) {
+      case 'happy':
+      case 'senang':
+        return 'Senang';
+      case 'neutral':
+      case 'netral':
+        return 'Netral';
+      case 'sad':
+      case 'sedih':
+        return 'Sedih';
+      case 'angry':
+      case 'marah':
+        return 'Marah';
+      default:
+        return '';
+    }
+  }
+
+  DateTime _readStoredDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
   Future<void> _loadMoods() async {
     final moods = <String, String>{};
     final notes = <String, String>{};
@@ -375,6 +476,85 @@ class _MoodCalendarState extends State<MoodCalendar> {
           }
         });
       }
+
+      final diarySnapshot = await _diaryRef.where('uid', isEqualTo: uid).get();
+
+      final diaryDocs = diarySnapshot.docs.toList()
+        ..sort((a, b) {
+          final aData = a.data();
+          final bData = b.data();
+
+          final aTime = _readStoredDate(
+            aData['updatedAt'] ??
+                aData['createdAt'] ??
+                aData['updated_at'] ??
+                aData['created_at'],
+          );
+
+          final bTime = _readStoredDate(
+            bData['updatedAt'] ??
+                bData['createdAt'] ??
+                bData['updated_at'] ??
+                bData['created_at'],
+          );
+
+          return bTime.compareTo(aTime);
+        });
+
+      final backfillEntries = <String, String>{};
+      final backfillNotes = <String, String>{};
+
+      for (final diaryDoc in diaryDocs) {
+        final data = diaryDoc.data();
+
+        final year = int.tryParse('${data['year'] ?? ''}');
+        final date = int.tryParse('${data['date'] ?? ''}');
+        final monthCode = (data['month'] ?? '').toString().trim();
+
+        if (year == null || date == null || monthCode.isEmpty) continue;
+
+        final monthNumber = _monthNumberFromCode(monthCode);
+        final dateKey =
+            '$year-${monthNumber.toString().padLeft(2, '0')}-${date.toString().padLeft(2, '0')}';
+
+        final mood = _canonicalMoodValue(data['mood']?.toString());
+        final note = (data['content'] ?? '').toString().trim();
+
+        if (mood.isNotEmpty && !moods.containsKey(dateKey)) {
+          moods[dateKey] = mood;
+          backfillEntries[dateKey] = mood;
+        }
+
+        if (note.isNotEmpty && !notes.containsKey(dateKey)) {
+          notes[dateKey] = note;
+          backfillNotes[dateKey] = note;
+        }
+      }
+
+      if (backfillEntries.isNotEmpty || backfillNotes.isNotEmpty) {
+        final payload = <String, dynamic>{
+          'uid': uid,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        if (backfillEntries.isNotEmpty) {
+          payload['entries'] = backfillEntries;
+        }
+
+        if (backfillNotes.isNotEmpty) {
+          payload['notes'] = backfillNotes;
+        }
+
+        await _moodDoc(uid).set(payload, SetOptions(merge: true));
+
+        for (final entry in backfillEntries.entries) {
+          await prefs.setString('$moodPrefix${entry.key}', entry.value);
+        }
+
+        for (final entry in backfillNotes.entries) {
+          await prefs.setString('$notePrefix${entry.key}', entry.value);
+        }
+      }
     } catch (_) {
       if (mounted) {
         showCuteTopPopup(
@@ -396,6 +576,14 @@ class _MoodCalendarState extends State<MoodCalendar> {
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  void _setLastSelectedDate(DateTime date) {
+    _lastSelectedDate = DateTime(date.year, date.month, date.day);
+  }
+
+  void _popWithSelectedDate() {
+    Navigator.pop(context, _lastSelectedDate);
   }
 
   int _countEntriesInFocusedMonth() {
@@ -432,16 +620,32 @@ class _MoodCalendarState extends State<MoodCalendar> {
   }
 
   Future<void> _openAnalysis() async {
+    Widget targetPage = const MoodAnalysis();
+
+    try {
+      await PremiumService.instance.refreshPremiumStatus();
+      final access = await PremiumService.instance.getAccess();
+
+      if (access.hasPremiumAccess) {
+        targetPage = const MoodStatisticPremium();
+      }
+    } catch (_) {
+      targetPage = const MoodAnalysis();
+    }
+
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const MoodAnalysis()),
+      MaterialPageRoute(builder: (_) => targetPage),
     );
+
     if (mounted) {
       await _loadMoods();
     }
   }
 
   Future<void> _openMoodInputForDate(DateTime date) async {
+    _setLastSelectedDate(date);
+
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -451,29 +655,31 @@ class _MoodCalendarState extends State<MoodCalendar> {
         ),
       ),
     );
+
     if (!mounted) return;
     await _loadMoods();
   }
 
   Future<void> _openDiaryForDate(DateTime date, {String? mood}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final dateKey = _getDateKey(date);
-    await prefs.setString('draft_diary_date', dateKey);
-    if (mood != null && mood.trim().isNotEmpty) {
-      await prefs.setString('draft_diary_mood', mood);
-    }
-
     if (!mounted) return;
+
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddDiaryPage()),
+      MaterialPageRoute(
+        builder: (_) => AddDiaryPage(
+          initialDate: date,
+          initialMood: mood,
+        ),
+      ),
     );
+
     if (mounted) {
       await _loadMoods();
     }
   }
 
   Future<void> _handleDateTap(DateTime date) async {
+    _setLastSelectedDate(date);
     final todayOnly = DateTime.now();
     final today = DateTime(todayOnly.year, todayOnly.month, todayOnly.day);
     final target = DateTime(date.year, date.month, date.day);
@@ -828,44 +1034,31 @@ class _MoodCalendarState extends State<MoodCalendar> {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFFF4F8EA),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(_t('title'), style: _headline),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPageHeader(),
+              Expanded(
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Color(0xFF75B85E)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F8EA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F1F1F)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(_t('title'), style: _headline),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF1F1F1F)),
-            tooltip: _t('refresh'),
-            onPressed: _loadMoods,
-          ),
-        ],
-      ),
-      body: Stack(
+    return WillPopScope(
+      onWillPop: () async {
+        _popWithSelectedDate();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF4F8EA),
+        body: Stack(
         children: [
           Positioned(
             top: -30,
@@ -897,6 +1090,17 @@ class _MoodCalendarState extends State<MoodCalendar> {
               padding: const EdgeInsets.fromLTRB(18, 8, 18, 26),
               child: Column(
                 children: [
+                  _buildPageHeader(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _t('subtitle'),
+                        style: _body,
+                      ),
+                    ),
+                  ),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -914,10 +1118,7 @@ class _MoodCalendarState extends State<MoodCalendar> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_t('title'), style: _headline),
-                        const SizedBox(height: 6),
-                        Text(_t('subtitle'), style: _body),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 2),
                         Row(
                           children: [
                             _navCircle(
@@ -1138,6 +1339,7 @@ class _MoodCalendarState extends State<MoodCalendar> {
           ),
         ],
       ),
+      )
     );
   }
 }

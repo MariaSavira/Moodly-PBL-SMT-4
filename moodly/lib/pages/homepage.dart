@@ -668,6 +668,10 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  String _homepageAffirmationCacheKey(String suffix) {
+    return 'homepage_afirmasi_${_languageCode}_$suffix';
+  }
+
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
   String _moodPrefKey(String uid, String dateKey) => 'mood_${uid}_$dateKey';
@@ -878,9 +882,15 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       final todayKey = _dateKey(DateTime.now());
 
-      final cachedDate = prefs.getString('homepage_afirmasi_date');
-      final cachedText = prefs.getString('homepage_afirmasi_text');
-      final cachedCategory = prefs.getString('homepage_afirmasi_category');
+      final cachedDate = prefs.getString(
+        _homepageAffirmationCacheKey('date'),
+      );
+      final cachedText = prefs.getString(
+        _homepageAffirmationCacheKey('text'),
+      );
+      final cachedCategoryKey = prefs.getString(
+        _homepageAffirmationCacheKey('category_key'),
+      );
 
       if (cachedDate == todayKey &&
           cachedText != null &&
@@ -889,7 +899,7 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
         setState(() {
           _affirmationPreview = cachedText;
           _affirmationCategory = _localizedAffirmationCategory(
-            cachedCategory ?? _t('todayAffirmation'),
+            cachedCategoryKey ?? _t('todayAffirmation'),
           );
         });
         return;
@@ -897,6 +907,7 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
 
       final items = await AfirmasiService.getAfirmasiByCategories(
         _homepageAfirmasiCategories,
+        languageCode: _languageCode,
       );
 
       if (items.isEmpty) {
@@ -912,17 +923,22 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
       final picked = items.first;
 
       final text = (picked['teks'] ?? '').trim();
-      final category = (picked['kategori'] ?? _t('todayAffirmation')).trim();
+      final categoryKey =
+          (picked['kategori_key'] ?? picked['kategori'] ?? _t('todayAffirmation'))
+              .trim();
 
-      await prefs.setString('homepage_afirmasi_date', todayKey);
-      await prefs.setString('homepage_afirmasi_text', text);
-      await prefs.setString('homepage_afirmasi_category', category);
+      await prefs.setString(_homepageAffirmationCacheKey('date'), todayKey);
+      await prefs.setString(_homepageAffirmationCacheKey('text'), text);
+      await prefs.setString(
+        _homepageAffirmationCacheKey('category_key'),
+        categoryKey,
+      );
 
       if (!mounted) return;
       setState(() {
         _affirmationPreview =
             text.isNotEmpty ? text : _t('affirmationFallback');
-        _affirmationCategory = _localizedAffirmationCategory(category);
+        _affirmationCategory = _localizedAffirmationCategory(categoryKey);
       });
     } catch (_) {
       if (!mounted) return;
@@ -1151,29 +1167,33 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
           Positioned(
             right: 0,
             top: 0,
-            child: MoodlyInventoryFrameAvatar(
-              uid: FirebaseAuth.instance.currentUser?.uid,
-              size: 80,
-              innerPadding: 4,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: ClipOval(
-                  child: MoodlyUserAvatar(
-                    uid: FirebaseAuth.instance.currentUser?.uid,
-                    radius: 36,
-                    backgroundColor: Colors.transparent,
-                    borderWidth: 0,
-                    borderColor: Colors.transparent,
-                    placeholderAsset: 'assets/profile_pic/PP_default.jpg',
+            child: SizedBox(
+                width: 88,
+                height: 88,
+                child: MoodlyInventoryFrameAvatar(
+                  uid: FirebaseAuth.instance.currentUser?.uid,
+                  size: 88,
+                  innerPadding: 4.5,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: ClipOval(
+                    child: MoodlyUserAvatar(
+                      uid: FirebaseAuth.instance.currentUser?.uid,
+                      radius: 36,
+                      backgroundColor: Colors.transparent,
+                      borderWidth: 0,
+                      borderColor: Colors.transparent,
+                      placeholderAsset: 'assets/profile_pic/PP_default.jpg',
+                    ),
                   ),
                 ),
               ),
-            ),
+            )
           ),
           if (badgeAsset != null)
             Positioned(
@@ -2105,7 +2125,11 @@ class _HomepageState extends State<Homepage> with WidgetsBindingObserver {
           return;
         }
 
-        _goToPage(const MoodAnalysis());
+        _goToPage(
+          _isPremiumUser
+              ? const MoodStatisticPremium()
+              : const MoodAnalysis(),
+        );
       },
       child: Container(
         height: 156,

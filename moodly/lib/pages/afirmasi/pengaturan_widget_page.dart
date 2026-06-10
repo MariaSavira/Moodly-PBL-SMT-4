@@ -418,53 +418,66 @@ class _PengaturanWidgetPageState extends State<PengaturanWidgetPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
           children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: _card.withOpacity(0.95),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _showCaraPasangWidget,
                 borderRadius: BorderRadius.circular(28),
-                boxShadow: _softShadow,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: const BoxDecoration(
-                      color: _pinkSoft,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.widgets_rounded,
-                      color: Color(0xFFC97C86),
-                      size: 26,
-                    ),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: _card.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: _softShadow,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _t('helpTitle'),
-                          style: textTheme.titleMedium?.copyWith(
-                            color: _textDark,
-                          ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: const BoxDecoration(
+                          color: _pinkSoft,
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _t('helpBody'),
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: _textSoft,
-                            fontSize: 12.5,
-                            height: 1.45,
-                          ),
+                        child: const Icon(
+                          Icons.widgets_rounded,
+                          color: Color(0xFFC97C86),
+                          size: 26,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _t('helpTitle'),
+                              style: textTheme.titleMedium?.copyWith(
+                                color: _textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _t('helpBody'),
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: _textSoft,
+                                fontSize: 12.5,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.open_in_new_rounded,
+                        color: _textSoft,
+                        size: 20,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
             _sectionTitle(context, _t('widgetSection')),

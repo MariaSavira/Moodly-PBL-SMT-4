@@ -23,6 +23,95 @@ class ChatService {
     };
   }
 
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _normalizePreference(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return 'all';
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    if (value is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  bool _hasActivePremiumFromMap(Map<String, dynamic>? data) {
+    if (data == null) return false;
+
+    final legacyPremium = data['isPremium'] == true;
+    final premiumTier = (data['premiumTier'] ?? '').toString().trim();
+    final premiumStatus = (data['premiumStatus'] ?? '').toString().trim();
+    final premiumExpiresAt = _parseDate(data['premiumExpiresAt']);
+
+    final expired =
+        premiumExpiresAt != null && DateTime.now().isAfter(premiumExpiresAt);
+
+    if (expired) return false;
+
+    if (legacyPremium) return true;
+
+    final isTierPremium = premiumTier == 'premium' || premiumTier == 'student';
+    return isTierPremium && premiumStatus == 'active';
+  }
+
+  bool _isGenderCompatible({
+    required String selfGender,
+    required String selfPreference,
+    required String otherGender,
+    required String otherPreference,
+  }) {
+    final selfAccepts =
+        selfPreference == 'all' || selfPreference == otherGender;
+    final otherAccepts =
+        otherPreference == 'all' || otherPreference == selfGender;
+
+    return selfAccepts && otherAccepts;
+  }
+
   Future<String> ensureDebugRoom() async {
     const String roomId = 'debug_room_1';
     final user = _auth.currentUser;
@@ -35,8 +124,7 @@ class ChatService {
       'status': 'active',
       'lastActivityAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
-      if (user != null)
-        'participants': FieldValue.arrayUnion([user.uid]),
+      if (user != null) 'participants': FieldValue.arrayUnion([user.uid]),
     }, SetOptions(merge: true));
 
     if (user != null) {
@@ -180,7 +268,6 @@ class ChatService {
       if (senderId == user.uid) continue;
 
       final seenBy = data['seenBy'];
-
       if (seenBy is List && seenBy.contains(user.uid)) continue;
 
       batch.update(doc.reference, {
@@ -331,7 +418,6 @@ class ChatService {
     final participants = data?['participants'];
 
     final messagesSnapshot = await roomRef.collection('messages').get();
-
     final batch = _firestore.batch();
 
     for (final doc in messagesSnapshot.docs) {
@@ -341,7 +427,6 @@ class ChatService {
     if (participants is List) {
       for (final uid in participants) {
         final userRef = _firestore.collection('users').doc(uid);
-
         final isInitiator = uid == user.uid;
 
         batch.set(
@@ -364,11 +449,12 @@ class ChatService {
     }
 
     batch.delete(roomRef);
-
     await batch.commit();
   }
 
-  Future<String?> findMatch() async {
+  Future<String?> findMatch({
+    String preferredGender = 'all',
+  }) async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
@@ -377,40 +463,72 @@ class ChatService {
     final selfWaitingRef = waitingRef.doc(user.uid);
 
     try {
-      // selalu set status matching dulu
+      final selfUserSnap = await userRef.get();
+      final selfUserData = selfUserSnap.data() ?? {};
+
+      final selfGender = _normalizeGender(selfUserData['gender']);
+      if (selfGender == null) {
+        await userRef.set({
+          'status': 'idle',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        throw Exception('Gender user belum diisi.');
+      }
+
+      final selfHasPremium = _hasActivePremiumFromMap(selfUserData);
+      final effectivePreference =
+          selfHasPremium ? _normalizePreference(preferredGender) : 'all';
+
       await userRef.set(
         {
           'status': 'matching',
           'currentRoomId': null,
+          'gender': selfGender,
+          'preferredMatchGender': effectivePreference,
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
       );
 
-      // selalu masuk queue dulu
       await selfWaitingRef.set(
         {
           'uid': user.uid,
           'status': 'matching',
+          'userGender': selfGender,
+          'preferredPartnerGender': effectivePreference,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
       );
 
-      // baru cari partner
-      final snapshot = await waitingRef.orderBy('createdAt').limit(10).get();
+      final snapshot = await waitingRef.orderBy('createdAt').limit(20).get();
 
       QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
 
       for (final doc in snapshot.docs) {
-        if (doc.id != user.uid) {
+        if (doc.id == user.uid) continue;
+
+        final otherData = doc.data();
+        final otherGender = _normalizeGender(otherData['userGender']);
+        final otherPreference =
+            _normalizePreference(otherData['preferredPartnerGender']);
+
+        if (otherGender == null) continue;
+
+        final compatible = _isGenderCompatible(
+          selfGender: selfGender,
+          selfPreference: effectivePreference,
+          otherGender: otherGender,
+          otherPreference: otherPreference,
+        );
+
+        if (compatible) {
           otherUserDoc = doc;
           break;
         }
       }
 
-      // belum ada partner, tetap tunggu di queue
       if (otherUserDoc == null) {
         return null;
       }
@@ -425,28 +543,67 @@ class ChatService {
       await _firestore.runTransaction((tx) async {
         final selfWaitSnap = await tx.get(selfWaitingRef);
         final otherWaitSnap = await tx.get(otherWaitingRef);
-        final selfUserSnap = await tx.get(userRef);
+        final selfUserSnapTx = await tx.get(userRef);
         final otherUserSnap = await tx.get(otherUserRef);
 
-        final selfCurrentRoom =
-            (selfUserSnap.data()?['currentRoomId'] ?? '').toString().trim();
-        final otherCurrentRoom =
-            (otherUserSnap.data()?['currentRoomId'] ?? '').toString().trim();
+        final selfUserDataTx = selfUserSnapTx.data() ?? {};
+        final otherUserData = otherUserSnap.data() ?? {};
+        final selfWaitData = selfWaitSnap.data() ?? {};
+        final otherWaitData = otherWaitSnap.data() ?? {};
 
-        // kalau user ini ternyata sudah punya room, pakai room itu
+        final selfCurrentRoom =
+            (selfUserDataTx['currentRoomId'] ?? '').toString().trim();
+        final otherCurrentRoom =
+            (otherUserData['currentRoomId'] ?? '').toString().trim();
+
         if (selfCurrentRoom.isNotEmpty) {
           resolvedRoomId = selfCurrentRoom;
           tx.delete(selfWaitingRef);
           return;
         }
 
-        // kalau partner sudah lebih dulu matched sama orang lain, biarkan user ini tetap nunggu
         if (otherCurrentRoom.isNotEmpty) {
           return;
         }
 
-        // kalau salah satu waiting doc sudah hilang, batalkan match
         if (!selfWaitSnap.exists || !otherWaitSnap.exists) {
+          return;
+        }
+
+        final safeSelfGender =
+            _normalizeGender(selfWaitData['userGender'] ?? selfUserDataTx['gender']);
+        final safeOtherGender =
+            _normalizeGender(otherWaitData['userGender'] ?? otherUserData['gender']);
+
+        if (safeSelfGender == null || safeOtherGender == null) {
+          return;
+        }
+
+        final safeSelfHasPremium = _hasActivePremiumFromMap(selfUserDataTx);
+        final safeOtherHasPremium = _hasActivePremiumFromMap(otherUserData);
+
+        final safeSelfPreference = safeSelfHasPremium
+            ? _normalizePreference(
+                selfWaitData['preferredPartnerGender'] ??
+                    selfUserDataTx['preferredMatchGender'],
+              )
+            : 'all';
+
+        final safeOtherPreference = safeOtherHasPremium
+            ? _normalizePreference(
+                otherWaitData['preferredPartnerGender'] ??
+                    otherUserData['preferredMatchGender'],
+              )
+            : 'all';
+
+        final compatible = _isGenderCompatible(
+          selfGender: safeSelfGender,
+          selfPreference: safeSelfPreference,
+          otherGender: safeOtherGender,
+          otherPreference: safeOtherPreference,
+        );
+
+        if (!compatible) {
           return;
         }
 
@@ -455,6 +612,10 @@ class ChatService {
         tx.set(roomRef, {
           'roomId': roomRef.id,
           'participants': [user.uid, otherUid],
+          'participantGenders': {
+            user.uid: safeSelfGender,
+            otherUid: safeOtherGender,
+          },
           'status': 'active',
           'createdAt': FieldValue.serverTimestamp(),
           'lastActivityAt': FieldValue.serverTimestamp(),
@@ -465,6 +626,8 @@ class ChatService {
           {
             'currentRoomId': roomRef.id,
             'status': 'chatting',
+            'gender': safeSelfGender,
+            'preferredMatchGender': safeSelfPreference,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
@@ -475,6 +638,8 @@ class ChatService {
           {
             'currentRoomId': roomRef.id,
             'status': 'chatting',
+            'gender': safeOtherGender,
+            'preferredMatchGender': safeOtherPreference,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
@@ -543,7 +708,6 @@ class ChatService {
     });
 
     final messagesSnapshot = await roomRef.collection('messages').get();
-
     final batch = _firestore.batch();
 
     for (final message in messagesSnapshot.docs) {
@@ -574,11 +738,15 @@ class ChatService {
         for (final uid in participants) {
           final userRef = _firestore.collection('users').doc(uid);
 
-          batch.set(userRef, {
-            'currentRoomId': null,
-            'status': 'idle',
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          batch.set(
+            userRef,
+            {
+              'currentRoomId': null,
+              'status': 'idle',
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
         }
 
         final messages = await roomDoc.reference.collection('messages').get();

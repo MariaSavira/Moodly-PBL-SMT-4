@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/auth_result.dart';
 import '../models/user_model.dart';
+import 'user_appeal_service.dart';
 
 class AuthService {
   AuthService._();
@@ -48,6 +49,58 @@ class AuthService {
       debugPrintStack(stackTrace: st);
       return 'user';
     }
+  }
+
+  Future<UserModel?> getCurrentUserModel() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      return await _safeGetUserModel(
+        user,
+        fallbackPhoneNumber: user.phoneNumber,
+      );
+    } catch (e, st) {
+      debugPrint('GET CURRENT USER MODEL ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getCurrentRestrictionAction() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      return await UserAppealService.instance.getLatestRestrictionAction();
+    } catch (e, st) {
+      debugPrint('GET CURRENT RESTRICTION ACTION ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      return null;
+    }
+  }
+
+  Future<bool> hasActiveRestriction() async {
+    final action = await getCurrentRestrictionAction();
+    if (action == null) return false;
+
+    return UserAppealService.instance.isRestrictionActive(action);
+  }
+
+  Future<bool> isCurrentUserTemporarilyRestricted() async {
+    final action = await getCurrentRestrictionAction();
+    if (action == null) return false;
+
+    return UserAppealService.instance.isTemporaryBan(action) &&
+        UserAppealService.instance.isRestrictionActive(action);
+  }
+
+  Future<bool> isCurrentUserPermanentlyRestricted() async {
+    final action = await getCurrentRestrictionAction();
+    if (action == null) return false;
+
+    return UserAppealService.instance.isPermanentBan(action) &&
+        UserAppealService.instance.isRestrictionActive(action);
   }
 
   Future<AuthResult> signIn({

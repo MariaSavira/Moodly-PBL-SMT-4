@@ -1,4 +1,4 @@
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:moodly/pages/afirmasi/widgets/cute_top_popup.dart';
 import 'package:moodly/pages/setting/moodly_settings_support.dart';
@@ -109,15 +109,22 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
     super.initState();
     _initializePage();
     _searchController.addListener(_filterItems);
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
+  }
+
+  void _onLanguageChanged() {
+    _reloadItems(MoodlySettingsPrefs.currentLanguageCode);
+    _filterItems();
   }
 
   Future<void> _initializePage() async {
     await AfirmasiService.loadFavoritesFromLocal();
-    _reloadItems();
+    _reloadItems(MoodlySettingsPrefs.currentLanguageCode);
   }
 
   @override
   void dispose() {
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -150,8 +157,13 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
         ),
       ];
 
-  void _reloadItems() {
-    _allItems = AfirmasiService.getFavoritItems();
+  void _reloadItems([String? languageCode]) {
+    final activeLanguage =
+        languageCode ?? MoodlySettingsPrefs.currentLanguageCode;
+
+    _allItems = AfirmasiService.getFavoritItems(
+      languageCode: activeLanguage,
+    );
     _filteredItems = List<Map<String, String>>.from(_allItems);
 
     if (!mounted) return;
@@ -168,11 +180,11 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
       } else {
         _filteredItems = _allItems.where((item) {
           final teks = (item['teks'] ?? '').toLowerCase();
-          final kategoriRaw = (item['kategori'] ?? '').toLowerCase();
-          final kategoriLocalized = _categoryLabel(
-            languageCode,
-            item['kategori'] ?? '',
-          ).toLowerCase();
+          final kategoriKey =
+              (item['kategori_key'] ?? item['kategori'] ?? '').trim();
+          final kategoriRaw = kategoriKey.toLowerCase();
+          final kategoriLocalized =
+              _categoryLabel(languageCode, kategoriKey).toLowerCase();
 
           return teks.contains(query) ||
               kategoriRaw.contains(query) ||
@@ -413,26 +425,55 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                             Row(
                               children: [
                                 Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: const BoxDecoration(
-                                    color: _pinkSoft,
+                                  width: 74,
+                                  height: 74,
+                                  decoration: BoxDecoration(
                                     shape: BoxShape.circle,
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFFFFDCE4),
+                                        Color(0xFFFFEEF3),
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2.2,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color.fromRGBO(245, 178, 188, 0.30),
+                                        blurRadius: 18,
+                                        offset: Offset(0, 8),
+                                      ),
+                                    ],
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(10),
-                                    child: Image.asset(
-                                      'assets/icon/images/maskot_favorit.png',
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) =>
-                                          const Icon(
-                                        Icons.favorite_rounded,
-                                        color: _pinkStrong,
+                                  child: Center(
+                                    child: Container(
+                                      width: 58,
+                                      height: 58,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(6),
+                                        child: Image.asset(
+                                          'assets/icon/images/maskot_favorit.png',
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(
+                                            Icons.favorite_rounded,
+                                            color: _pinkStrong,
+                                            size: 28,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -444,16 +485,14 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                                           '{count}',
                                           '${_allItems.length}',
                                         ),
-                                        style:
-                                            textTheme.titleMedium?.copyWith(
+                                        style: textTheme.titleMedium?.copyWith(
                                           color: _textDark,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         _t(languageCode, 'savedBody'),
-                                        style:
-                                            textTheme.bodyMedium?.copyWith(
+                                        style: textTheme.bodyMedium?.copyWith(
                                           color: _textSoft,
                                           fontSize: 12.5,
                                           height: 1.45,
@@ -466,6 +505,7 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                             ),
                             const SizedBox(height: 16),
                             Container(
+                              height: 58,
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 14),
                               decoration: BoxDecoration(
@@ -475,24 +515,37 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                                   color: const Color(0xFFE8EDD8),
                                 ),
                               ),
-                              child: TextField(
-                                controller: _searchController,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: _textDark,
-                                  fontSize: 13,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: _t(languageCode, 'searchHint'),
-                                  hintStyle:
-                                      textTheme.bodyMedium?.copyWith(
-                                    color: _textSoft,
+                              child: Center(
+                                child: TextField(
+                                  controller: _searchController,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: _textDark,
                                     fontSize: 13,
+                                    height: 1.2,
                                   ),
-                                  prefixIcon: const Icon(
-                                    Icons.search_rounded,
-                                    color: _textSoft,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 14),
+                                    hintText: _t(languageCode, 'searchHint'),
+                                    hintStyle: textTheme.bodyMedium?.copyWith(
+                                      color: _textSoft,
+                                      fontSize: 13,
+                                      height: 1.2,
+                                    ),
+                                    prefixIcon: const Padding(
+                                      padding: EdgeInsets.only(right: 8),
+                                      child: Icon(
+                                        Icons.search_rounded,
+                                        color: _textSoft,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    prefixIconConstraints:
+                                        const BoxConstraints(minWidth: 32),
+                                    border: InputBorder.none,
                                   ),
-                                  border: InputBorder.none,
                                 ),
                               ),
                             ),
@@ -529,9 +582,8 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                       child: _filteredItems.isEmpty
                           ? Center(
                               child: Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 26,
-                                ),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 26),
                                 padding: const EdgeInsets.all(22),
                                 decoration: BoxDecoration(
                                   color: _card.withOpacity(0.94),
@@ -583,22 +635,24 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final item = _filteredItems[index];
-                                final kategori =
-                                    item['kategori'] ?? '';
-                                final color = _categoryColor(kategori);
+                                final kategoriKey =
+                                    (item['kategori_key'] ??
+                                            item['kategori'] ??
+                                            '')
+                                        .trim();
+                                final color = _categoryColor(kategoriKey);
                                 final isSelected =
                                     _selectedIndexes.contains(index);
 
                                 return _FavoriteCard(
                                   color: color,
                                   category:
-                                      _categoryLabel(languageCode, kategori),
+                                      _categoryLabel(languageCode, kategoriKey),
                                   text: item['teks'] ?? '',
                                   isEditMode: _isEditMode,
                                   isSelected: isSelected,
-                                  icon: _categoryIcon(kategori),
-                                  onToggleSelected: () =>
-                                      _toggleSelected(index),
+                                  icon: _categoryIcon(kategoriKey),
+                                  onToggleSelected: () => _toggleSelected(index),
                                 );
                               },
                             ),
@@ -607,51 +661,70 @@ class _AfirmasiFavoritPageState extends State<AfirmasiFavoritPage> {
                 ),
                 if (_allItems.isNotEmpty)
                   Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom: 18,
-                    child: SafeArea(
-                      top: false,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _card.withOpacity(0.96),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: _softShadow,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _DockButton(
-                                label: _isEditMode
-                                    ? _t(languageCode, 'done')
-                                    : _t(languageCode, 'edit'),
-                                icon: _isEditMode
-                                    ? Icons.check_rounded
-                                    : Icons.edit_outlined,
-                                color: _green,
-                                onTap: () => _toggleEditMode(languageCode),
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                _bg.withOpacity(0.02),
+                                _bg.withOpacity(0.62),
+                                _bg.withOpacity(0.96),
+                              ],
+                            ),
+                          ),
+                          child: SafeArea(
+                            top: false,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _card.withOpacity(0.96),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: _softShadow,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _DockButton(
+                                      label: _isEditMode
+                                          ? _t(languageCode, 'done')
+                                          : _t(languageCode, 'edit'),
+                                      icon: _isEditMode
+                                          ? Icons.check_rounded
+                                          : Icons.edit_outlined,
+                                      color: _green,
+                                      onTap: () => _toggleEditMode(languageCode),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _DockButton(
+                                      label: _t(languageCode, 'selectAll'),
+                                      icon: Icons.done_all_rounded,
+                                      color: _greenDark,
+                                      onTap: () => _selectAll(languageCode),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _DockButton(
+                                      label: _t(languageCode, 'delete'),
+                                      icon: Icons.delete_outline_rounded,
+                                      color: _danger,
+                                      onTap: () => _deleteSelected(languageCode),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DockButton(
-                                label: _t(languageCode, 'selectAll'),
-                                icon: Icons.done_all_rounded,
-                                color: _greenDark,
-                                onTap: () => _selectAll(languageCode),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DockButton(
-                                label: _t(languageCode, 'delete'),
-                                icon: Icons.delete_outline_rounded,
-                                color: _danger,
-                                onTap: () => _deleteSelected(languageCode),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -823,12 +896,10 @@ class _FavoriteCard extends StatelessWidget {
                             child: Text(
                               category,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: const Color(0xFF414141),
-                                  ),
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: const Color(0xFF414141),
+                                      ),
                             ),
                           ),
                         ],
@@ -839,8 +910,9 @@ class _FavoriteCard extends StatelessWidget {
                       text,
                       style: textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF212121),
-                        fontSize: 20,
-                        height: 1.45,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 1.5,
                       ),
                     ),
                   ],

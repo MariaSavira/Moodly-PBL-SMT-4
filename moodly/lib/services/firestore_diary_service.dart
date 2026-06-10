@@ -83,6 +83,148 @@ class FirestoreDiaryService {
     return _publicDiaryRef.doc(diaryId);
   }
 
+    DocumentReference<Map<String, dynamic>> _moodDoc(String uid) {
+      return _db.collection('moods').doc(uid);
+    }
+
+    String _dateKeyFromParts({
+      required int year,
+      required String month,
+      required int date,
+    }) {
+      final monthNumber = _monthNumber(month);
+      return '$year-${monthNumber.toString().padLeft(2, '0')}-${date.toString().padLeft(2, '0')}';
+    }
+
+    String _canonicalMoodValue(String raw) {
+      switch (raw.trim().toLowerCase()) {
+        case 'happy':
+        case 'senang':
+          return 'Senang';
+        case 'neutral':
+        case 'netral':
+          return 'Netral';
+        case 'sad':
+        case 'sedih':
+          return 'Sedih';
+        case 'angry':
+        case 'marah':
+          return 'Marah';
+        default:
+          return 'Netral';
+      }
+    }
+
+    String _previewNote(String raw) => raw.trim();
+
+    Future<void> _syncMoodMirrorFromDiary({
+      required String uid,
+      required int year,
+      required String month,
+      required int date,
+      required String mood,
+      required String note,
+    }) async {
+      final dateKey = _dateKeyFromParts(
+        year: year,
+        month: month,
+        date: date,
+      );
+
+      final cleanNote = _previewNote(note);
+
+      final payload = <String, dynamic>{
+        'uid': uid,
+        'entries': {dateKey: _canonicalMoodValue(mood)},
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (cleanNote.isNotEmpty) {
+        payload['notes'] = {dateKey: cleanNote};
+      }
+
+      await _moodDoc(uid).set(payload, SetOptions(merge: true));
+
+      if (cleanNote.isEmpty) {
+        try {
+          await _moodDoc(uid).update({
+            'notes.$dateKey': FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {
+          // Abaikan kalau field notes belum ada.
+        }
+      }
+    }
+
+    Future<void> _rebuildDiaryMirrorForDate({
+      required String uid,
+      required String dateKey,
+    }) async {
+      final parts = dateKey.split('-');
+      if (parts.length != 3) return;
+
+      final year = int.tryParse(parts[0]);
+      final monthNumber = int.tryParse(parts[1]);
+      final date = int.tryParse(parts[2]);
+
+      if (year == null || monthNumber == null || date == null) return;
+
+      const monthMap = {
+        1: 'JAN',
+        2: 'FEB',
+        3: 'MAR',
+        4: 'APR',
+        5: 'MEI',
+        6: 'JUN',
+        7: 'JUL',
+        8: 'AGS',
+        9: 'SEP',
+        10: 'OKT',
+        11: 'NOV',
+        12: 'DES',
+      };
+
+      final monthCode = monthMap[monthNumber] ?? 'JAN';
+
+      final snapshot = await _diaryRef
+          .where('uid', isEqualTo: uid)
+          .where('year', isEqualTo: year)
+          .where('month', isEqualTo: monthCode)
+          .where('date', isEqualTo: date)
+          .get();
+
+      final items = snapshot.docs.map(_fromDoc).toList()
+        ..sort((a, b) {
+          final aTime = a.updatedAt ?? a.createdAt;
+          final bTime = b.updatedAt ?? b.createdAt;
+          return bTime.compareTo(aTime);
+        });
+
+      if (items.isEmpty) {
+        try {
+          await _moodDoc(uid).update({
+            'notes.$dateKey': FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {
+          // Abaikan kalau notes belum ada.
+        }
+        return;
+      }
+
+      final latest = items.first;
+
+      await _syncMoodMirrorFromDiary(
+        uid: uid,
+        year: latest.year,
+        month: latest.month,
+        date: latest.date,
+        mood: latest.mood,
+        note: latest.content,
+      );
+    }
+
   Future<void> _deletePublicMirrorWithComments(String diaryId) async {
     final publicDoc = _publicDoc(diaryId);
     final publicSnap = await publicDoc.get();
@@ -130,77 +272,87 @@ class FirestoreDiaryService {
     return DiaryModel.fromFirestore(doc.id, doc.data() ?? {});
   }
 
-  Future<String> createDiary({
-    required String title,
-    required String content,
-    required String time,
-    required int date,
-    required String month,
-    required int year,
-    required bool isPublic,
-    required String mood,
-    List<String> images = const [],
-    String imageUrl = '',
-  }) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('User belum login.');
-    }
+    Future<String> createDiary({
+      required String title,
+      required String content,
+      required String time,
+      required int date,
+      required String month,
+      required int year,
+      required bool isPublic,
+      required String mood,
+      List<String> images = const [],
+      String imageUrl = '',
+    }) async {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User belum login.');
+      }
 
-    final privateDoc = _diaryRef.doc();
-    final publicDoc = _publicDiaryRef.doc(privateDoc.id);
-    final now = DateTime.now();
+      final privateDoc = _diaryRef.doc();
+      final publicDoc = _publicDiaryRef.doc(privateDoc.id);
+      final now = DateTime.now();
 
-    final diary = DiaryModel(
-      id: privateDoc.id,
-      uid: user.uid,
-      title: title.trim(),
-      content: content.trim(),
-      time: time,
-      date: date,
-      month: _normalizeMonth(month),
-      year: year,
-      isPublic: isPublic,
-      username: user.displayName?.trim().isNotEmpty == true
-          ? user.displayName!.trim()
-          : 'Anonymous',
-      mood: mood.trim().isEmpty ? 'netral' : mood.trim(),
-      imageUrl: imageUrl.isNotEmpty
-          ? imageUrl
-          : (images.isNotEmpty ? images.first : ''),
-      profileImage: user.photoURL ?? '',
-      images: images,
-      createdAt: now,
-      updatedAt: now,
-      likedBy: const [],
-      likes: 0,
-      comments: 0,
-    );
+      final diary = DiaryModel(
+        id: privateDoc.id,
+        uid: user.uid,
+        title: title.trim(),
+        content: content.trim(),
+        time: time,
+        date: date,
+        month: _normalizeMonth(month),
+        year: year,
+        isPublic: isPublic,
+        username: user.displayName?.trim().isNotEmpty == true
+            ? user.displayName!.trim()
+            : 'Anonymous',
+        mood: mood.trim().isEmpty ? 'netral' : mood.trim(),
+        imageUrl: imageUrl.isNotEmpty
+            ? imageUrl
+            : (images.isNotEmpty ? images.first : ''),
+        profileImage: user.photoURL ?? '',
+        images: images,
+        createdAt: now,
+        updatedAt: now,
+        likedBy: const [],
+        likes: 0,
+        comments: 0,
+      );
 
-    final payload = _payloadForFirestore(diary);
-    final batch = _db.batch();
+      final payload = _payloadForFirestore(diary);
+      final batch = _db.batch();
 
-    batch.set(privateDoc, {
-      ...payload,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'created_at': FieldValue.serverTimestamp(),
-      'updated_at': FieldValue.serverTimestamp(),
-    });
-
-    if (isPublic) {
-      batch.set(publicDoc, {
+      batch.set(privateDoc, {
         ...payload,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
-    }
 
-    await batch.commit();
-    return privateDoc.id;
-  }
+      if (isPublic) {
+        batch.set(publicDoc, {
+          ...payload,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'created_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      await _syncMoodMirrorFromDiary(
+        uid: user.uid,
+        year: diary.year,
+        month: diary.month,
+        date: diary.date,
+        mood: diary.mood,
+        note: diary.content,
+      );
+
+      return privateDoc.id;
+    }
 
   Future<void> updateDiary({
     required String diaryId,
@@ -222,6 +374,11 @@ class FirestoreDiaryService {
     int comments = 0,
     List likedBy = const [],
   }) async {
+    final oldSnap = await _privateDoc(diaryId).get();
+    final oldDiary = oldSnap.exists && oldSnap.data() != null
+        ? _fromDoc(oldSnap)
+        : null;
+
     final normalizedMonth = _normalizeMonth(month);
     final privateDoc = _privateDoc(diaryId);
     final publicDoc = _publicDoc(diaryId);
@@ -262,11 +419,54 @@ class FirestoreDiaryService {
     } else {
       await _deletePublicMirrorWithComments(diaryId);
     }
+
+    await _syncMoodMirrorFromDiary(
+      uid: uid,
+      year: year,
+      month: normalizedMonth,
+      date: date,
+      mood: mood,
+      note: content,
+    );
+
+    if (oldDiary != null) {
+      final oldDateKey = _dateKeyFromParts(
+        year: oldDiary.year,
+        month: oldDiary.month,
+        date: oldDiary.date,
+      );
+
+      final newDateKey = _dateKeyFromParts(
+        year: year,
+        month: normalizedMonth,
+        date: date,
+      );
+
+      if (oldDateKey != newDateKey) {
+        await _rebuildDiaryMirrorForDate(
+          uid: uid,
+          dateKey: oldDateKey,
+        );
+      }
+    }
   }
 
   Future<void> deleteDiary(String diaryId) async {
+    final existing = await getDiaryById(diaryId);
+
     await _deletePublicMirrorWithComments(diaryId);
     await _privateDoc(diaryId).delete();
+
+    if (existing != null && existing.uid.isNotEmpty) {
+      await _rebuildDiaryMirrorForDate(
+        uid: existing.uid,
+        dateKey: _dateKeyFromParts(
+          year: existing.year,
+          month: existing.month,
+          date: existing.date,
+        ),
+      );
+    }
   }
 
   Future<void> _deletePublicCommentsOnly(String diaryId) async {

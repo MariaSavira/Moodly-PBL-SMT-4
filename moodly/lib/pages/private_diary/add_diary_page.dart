@@ -201,6 +201,42 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
         ),
       ];
 
+  Widget _buildPageHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: _softShadow,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _textDark,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: _textDark,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -900,7 +936,11 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       ];
 
       final service = FirestoreDiaryService();
-      bool shouldClaimPublicDiaryMission = false;
+      final now = DateTime.now();
+      final shouldClaimDiaryMission =
+          _selectedDate.year == now.year &&
+          _selectedDate.month == now.month &&
+          _selectedDate.day == now.day;
 
       if (_isEditMode) {
         final existing = await service.getDiaryById(widget.diaryId!);
@@ -928,9 +968,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           comments: existing.comments,
           likedBy: existing.likedBy,
         );
-        if (!existing.isPublic && _isPublic) {
-          shouldClaimPublicDiaryMission = true;
-        }
       } else {
         await service.createDiary(
           title: _titleController.text.trim(),
@@ -944,14 +981,11 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           images: allImages,
           imageUrl: allImages.isNotEmpty ? allImages.first : '',
         );
-        if (_isPublic) {
-          shouldClaimPublicDiaryMission = true;
-        }
       }
 
       if (!mounted) return;
 
-      if (shouldClaimPublicDiaryMission) {
+      if (shouldClaimDiaryMission) {
         await StreakService.instance.claimDiaryBonus();
       }
       
@@ -1436,29 +1470,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           SafeArea(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 18, 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: _textDark,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          pageTitle,
-                          style: _text.headlineLarge?.copyWith(
-                            color: _textDark,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildPageHeader(pageTitle),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),

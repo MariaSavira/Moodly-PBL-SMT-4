@@ -28,7 +28,7 @@ class _SelectedDiaryPageState extends State<SelectedDiaryPage> {
 
   static const Map<String, Map<String, String>> _copy = {
     'id': {
-      'pageTitle': 'Diary Entries',
+      'pageTitle': 'Kumpulan Diary',
       'heroTitle': 'Pilih ruang ceritamu',
       'heroDesc':
           'Simpan sendiri saat ingin tenang, atau bagikan saat ingin didengar.',
@@ -63,6 +63,46 @@ class _SelectedDiaryPageState extends State<SelectedDiaryPage> {
           offset: Offset(0, 8),
         ),
       ];
+  
+  Widget _buildPageHeader(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              shape: BoxShape.circle,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.10),
+                  offset: Offset(0, 6),
+                  blurRadius: 18,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: _textDark,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            _t('pageTitle'),
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: _textDark,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -242,13 +282,7 @@ class _SelectedDiaryPageState extends State<SelectedDiaryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _t('pageTitle'),
-                    style: _text.headlineLarge?.copyWith(
-                      color: _textDark,
-                      fontSize: 28,
-                    ),
-                  ),
+                  _buildPageHeader(context),
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,

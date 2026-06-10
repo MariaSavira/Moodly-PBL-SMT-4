@@ -52,6 +52,15 @@ class StreakPage extends StatelessWidget {
   String _t(String languageCode, String key) =>
       _copy[languageCode]?[key] ?? key;
 
+  String get _lang =>
+    MoodlySettingsPrefs.currentLanguageCode == 'en' ? 'en' : 'id';
+
+  String _text(String idText, String enText) {
+    return _lang == 'en' ? enText : idText;
+  }
+
+  String _daysWord() => _lang == 'en' ? 'days' : 'hari';
+
   static final GlobalKey _walkStreakKey = GlobalKey();
   static final GlobalKey _walkFreezeKey = GlobalKey();
   static final GlobalKey _walkMissionKey = GlobalKey();
@@ -104,41 +113,41 @@ class StreakPage extends StatelessWidget {
 
   static const List<int> _milestones = [3, 7, 14, 30, 120];
 
-  List<_RewardPreview> get _rewardPreviews => const [
+  List<_RewardPreview> get _rewardPreviews => [
         _RewardPreview(
-          title: 'Avatar Anonim',
-          subtitle: 'Mulai 120 poin',
+          title: _text('Avatar Anonim', 'Anonymous Avatar'),
+          subtitle: _text('Mulai 120 poin', 'From 120 points'),
           icon: Icons.face_rounded,
-          accent: Color(0xFFF8D3D9),
-          iconColor: Color(0xFFE58696),
+          accent: const Color(0xFFF8D3D9),
+          iconColor: const Color(0xFFE58696),
         ),
         _RewardPreview(
-          title: 'Bingkai Avatar',
-          subtitle: 'Mulai 90 poin',
+          title: _text('Bingkai Avatar', 'Avatar Frame'),
+          subtitle: _text('Mulai 90 poin', 'From 90 points'),
           icon: Icons.auto_awesome_rounded,
-          accent: Color(0xFFE5F3D7),
-          iconColor: Color(0xFF74B55F),
+          accent: const Color(0xFFE5F3D7),
+          iconColor: const Color(0xFF74B55F),
         ),
         _RewardPreview(
-          title: 'Freeze Tambahan',
-          subtitle: '180 poin',
+          title: _text('Freeze Tambahan', 'Extra Freeze'),
+          subtitle: _text('180 poin', '180 points'),
           icon: Icons.favorite_rounded,
-          accent: Color(0xFFDFF3ED),
-          iconColor: Color(0xFF63B8A2),
+          accent: const Color(0xFFDFF3ED),
+          iconColor: const Color(0xFF63B8A2),
         ),
         _RewardPreview(
-          title: 'Premium 1 Bulan',
-          subtitle: '3200 poin',
+          title: _text('Premium 1 Bulan', '1 Month Premium'),
+          subtitle: _text('3200 poin', '3200 points'),
           icon: Icons.workspace_premium_rounded,
-          accent: Color(0xFFF5EAFB),
-          iconColor: Color(0xFF9A76B3),
+          accent: const Color(0xFFF5EAFB),
+          iconColor: const Color(0xFF9A76B3),
         ),
       ];
 
   List<_MissionSection> _buildSections(StreakState state) {
     final moodDailyCompleted = state.moodDoneToday ? 1 : 0;
     final diaryCompleted = state.diaryMissionCompletedCount;
-    final affirmationCompleted = state.affirmationDoneToday ? 1 : 0;
+    final affirmationCompleted = state.affirmationMissionCompletedCount;
 
     return [
       _MissionSection(
@@ -151,12 +160,24 @@ class StreakPage extends StatelessWidget {
         chipColor: const Color(0xFFF3B6BF),
         iconBg: const Color(0xFFFFFAFB),
         icon: Icons.sentiment_satisfied_alt_rounded,
-        subtitle: 'Trigger utama streak harianmu',
+        subtitle: _text(
+          'Trigger utama streak harianmu',
+          'The main trigger for your daily streak',
+        ),
         footerLabel: state.moodDoneToday
             ? (state.moodInsightDoneThisMonth
-                ? 'Misi mood selesai • insight bulanan sudah terbuka'
-                : 'Misi mood harian selesai')
-            : 'Misi mood aktif otomatis',
+                ? _text(
+                    'Misi mood selesai • insight bulanan sudah terbuka',
+                    'Mood mission completed • monthly insight already unlocked',
+                  )
+                : _text(
+                    'Misi mood harian selesai',
+                    'Daily mood mission completed',
+                  ))
+            : _text(
+                'Misi mood aktif otomatis',
+                'Mood mission is tracked automatically',
+              ),
         footerIcon: state.moodDoneToday
             ? Icons.check_circle_rounded
             : Icons.timelapse_rounded,
@@ -164,18 +185,23 @@ class StreakPage extends StatelessWidget {
         autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Isi mood hari ini (+${StreakService.moodPoints})',
+            title: _text(
+              'Isi mood hari ini (+${StreakService.moodPoints})',
+              'Log today\'s mood (+${StreakService.moodPoints})',
+            ),
             isDone: state.moodDoneToday,
           ),
           _MissionTask(
-            title:
-                'Lihat insight bulanan (opsional, +${StreakService.moodInsightPoints})',
+            title: _text(
+              'Lihat insight bulanan (opsional, +${StreakService.moodInsightPoints})',
+              'View monthly insight (optional, +${StreakService.moodInsightPoints})',
+            ),
             isDone: state.moodInsightDoneThisMonth,
           ),
         ],
       ),
       _MissionSection(
-        title: 'Diary Online',
+        title: _text('Diary Online', 'Online Diary'),
         pointsLabel:
             '+${StreakService.diaryPoints + StreakService.diaryInteractionPoints}',
         progressLabel: '$diaryCompleted/2',
@@ -184,12 +210,24 @@ class StreakPage extends StatelessWidget {
         chipColor: const Color(0xFFA9D78D),
         iconBg: const Color(0xFFFFFEFA),
         icon: Icons.eco_rounded,
-        subtitle: 'Luapkan isi hati dengan lebih lega',
+        subtitle: _text(
+          'Luapkan isi hati dengan lebih lega',
+          'Let your feelings out more freely',
+        ),
         footerLabel: diaryCompleted == 2
-            ? 'Semua misi diary online selesai'
+            ? _text(
+                'Semua misi diary online selesai',
+                'All online diary missions are completed',
+              )
             : diaryCompleted == 1
-                ? '1 dari 2 misi diary online selesai'
-                : 'Misi diary online aktif otomatis',
+                ? _text(
+                    '1 dari 2 misi diary online selesai',
+                    '1 of 2 online diary missions completed',
+                  )
+                : _text(
+                    'Misi diary online aktif otomatis',
+                    'Online diary missions are tracked automatically',
+                  ),
         footerIcon: diaryCompleted == 2
             ? Icons.check_circle_rounded
             : Icons.timelapse_rounded,
@@ -197,41 +235,66 @@ class StreakPage extends StatelessWidget {
         autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Tulis diary (+${StreakService.diaryPoints})',
+            title: _text(
+              'Tulis diary (+${StreakService.diaryPoints})',
+              'Write a diary (+${StreakService.diaryPoints})',
+            ),
             isDone: state.diaryDoneToday,
           ),
           _MissionTask(
-            title:
-                'Berikan reaksi dan komentar pada diary publik seseorang (+${StreakService.diaryInteractionPoints})',
+            title: _text(
+              'Berikan reaksi dan komentar pada diary publik seseorang (+${StreakService.diaryInteractionPoints})',
+              'Give a reaction and comment on someone\'s public diary (+${StreakService.diaryInteractionPoints})',
+            ),
             isDone: state.publicDiaryInteractionDoneToday,
           ),
         ],
       ),
       _MissionSection(
-        title: 'Afirmasi',
+        title: _text('Afirmasi', 'Affirmation'),
         pointsLabel: '+${StreakService.affirmationPoints}',
-        progressLabel: '$affirmationCompleted/1',
+        progressLabel: '$affirmationCompleted/2',
         accent: const Color(0xFFD6F0EA),
         accentSoft: const Color(0xFFF0FBF8),
         chipColor: const Color(0xFFA7DDD1),
         iconBg: const Color(0xFFFFFEFA),
         icon: Icons.local_florist_rounded,
-        subtitle: 'Sempatkan jeda untuk menyapa dirimu',
-        footerLabel: state.affirmationDoneToday
-            ? 'Bonus afirmasi berhasil diklaim'
-            : 'Misi afirmasi aktif otomatis',
-        footerIcon: state.affirmationDoneToday
+        subtitle: _text(
+          'Sempatkan jeda untuk menyapa dirimu',
+          'Take a moment to gently check in with yourself',
+        ),
+        footerLabel: affirmationCompleted == 2
+            ? _text(
+                'Semua misi afirmasi selesai',
+                'All affirmation missions are completed',
+              )
+            : affirmationCompleted == 1
+                ? _text(
+                    '1 dari 2 misi afirmasi selesai',
+                    '1 of 2 affirmation missions completed',
+                  )
+                : _text(
+                    'Misi afirmasi aktif otomatis',
+                    'Affirmation mission is tracked automatically',
+                  ),
+        footerIcon: affirmationCompleted == 2
             ? Icons.check_circle_rounded
             : Icons.timelapse_rounded,
         action: _MissionAction.affirmation,
         autoTracked: true,
         tasks: [
           _MissionTask(
-            title: 'Baca 5 afirmasi hari ini (${state.affirmationReadProgressToday}/5)',
-            isDone: state.affirmationDoneToday,
+            title: _text(
+              'Baca 5 afirmasi hari ini (${state.affirmationReadProgressToday}/5)',
+              'Read 5 affirmations today (${state.affirmationReadProgressToday}/5)',
+            ),
+            isDone: state.affirmationReadDoneToday,
           ),
           _MissionTask(
-            title: 'Bagikan 1 afirmasi',
+            title: _text(
+              'Bagikan 1 afirmasi',
+              'Share 1 affirmation',
+            ),
             isDone: state.affirmationSharedToday,
           ),
         ],
@@ -266,34 +329,23 @@ class StreakPage extends StatelessWidget {
   }
 
   int _todayWeeklyBonus(StreakState state) {
-    final day = state.moodDoneToday
-        ? StreakService.weeklyDayForStreak(state.currentStreak)
-        : _activeWeeklyRewardDay(state);
-
+    final day = _activeWeeklyRewardDay(state);
     return StreakService.weeklyBonusForDay(day);
   }
 
   int _activeWeeklyRewardDay(StreakState state) {
-    if (state.moodDoneToday) {
-      return state.comboDoneToday
-          ? 0
-          : StreakService.weeklyDayForStreak(state.currentStreak);
-    }
+    final claimedCount = _visibleWeeklyClaimedDays(state).length;
 
-    if (state.currentStreak <= 0) return 1;
+    if (claimedCount <= 0) return 1;
+    if (claimedCount >= 7) return 1;
 
-    final lastDay = StreakService.weeklyDayForStreak(state.currentStreak);
-    return lastDay == 7 ? 1 : lastDay + 1;
+    return claimedCount + 1;
   }
 
   Set<int> _visibleWeeklyClaimedDays(StreakState state) {
-    if (!state.moodDoneToday &&
-        state.currentStreak > 0 &&
-        StreakService.weeklyDayForStreak(state.currentStreak) == 7) {
-      return <int>{};
-    }
-
-    return state.weeklyRewardClaimedDays.toSet();
+    final claimed = state.weeklyRewardClaimedDays.toSet()
+      ..removeWhere((day) => day < 1 || day > 7);
+    return claimed;
   }
 
   bool _comboReady(StreakState state) {
@@ -319,37 +371,81 @@ class StreakPage extends StatelessWidget {
   }
 
   String _currentBadgeTitleFor(int streak) {
-    if (streak >= 120) return 'Tumbuh dengan Tenang';
-    if (streak >= 30) return 'Menjaga Diri dengan Setia';
-    if (streak >= 14) return 'Tumbuh Pelan-Pelan';
-    if (streak >= 7) return 'Teman Diri Sendiri';
-    if (streak >= 3) return 'Mulai Konsisten';
-    return 'Belum ada badge';
+    if (streak >= 120) {
+      return _text('Tumbuh dengan Tenang', 'Growing Calmly');
+    }
+    if (streak >= 30) {
+      return _text(
+        'Menjaga Diri dengan Setia',
+        'Caring for Yourself Faithfully',
+      );
+    }
+    if (streak >= 14) {
+      return _text('Tumbuh Pelan-Pelan', 'Growing Slowly');
+    }
+    if (streak >= 7) {
+      return _text('Teman Diri Sendiri', 'A Friend to Yourself');
+    }
+    if (streak >= 3) {
+      return _text('Mulai Konsisten', 'Starting to Be Consistent');
+    }
+    return _t(_lang, 'noBadge');
   }
 
   String _nextBadgeTitleFor(int streak) {
-    if (streak < 3) return 'Mulai Konsisten';
-    if (streak < 7) return 'Teman Diri Sendiri';
-    if (streak < 14) return 'Tumbuh Pelan-Pelan';
-    if (streak < 30) return 'Menjaga Diri dengan Setia';
-    if (streak < 120) return 'Tumbuh dengan Tenang';
-    return 'Semua badge terbuka';
+    if (streak < 3) {
+      return _text('Mulai Konsisten', 'Starting to Be Consistent');
+    }
+    if (streak < 7) {
+      return _text('Teman Diri Sendiri', 'A Friend to Yourself');
+    }
+    if (streak < 14) {
+      return _text('Tumbuh Pelan-Pelan', 'Growing Slowly');
+    }
+    if (streak < 30) {
+      return _text(
+        'Menjaga Diri dengan Setia',
+        'Caring for Yourself Faithfully',
+      );
+    }
+    if (streak < 120) {
+      return _text('Tumbuh dengan Tenang', 'Growing Calmly');
+    }
+    return _text('Semua badge terbuka', 'All badges are unlocked');
   }
 
   String _badgeUnlockSubtitle(String badgeId) {
     switch (badgeId) {
       case 'milestone_3':
-        return 'Tiga hari pertama selalu paling berat. Kamu berhasil lewatin.';
+        return _text(
+          'Tiga hari pertama selalu paling berat. Kamu berhasil lewatin.',
+          'The first three days are usually the hardest. You made it through.',
+        );
       case 'milestone_7':
-        return 'Satu minggu hadir untuk diri sendiri. Itu bukan hal kecil.';
+        return _text(
+          'Satu minggu hadir untuk diri sendiri. Itu bukan hal kecil.',
+          'One full week of showing up for yourself. That is not a small thing.',
+        );
       case 'milestone_14':
-        return 'Dua minggu konsisten. Moodly bangga sama progresmu.';
+        return _text(
+          'Dua minggu konsisten. Moodly bangga sama progresmu.',
+          'Two weeks of consistency. Moodly is proud of your progress.',
+        );
       case 'milestone_30':
-        return 'Sebulan penuh kamu tetap kembali. Itu kuat banget.';
+        return _text(
+          'Sebulan penuh kamu tetap kembali. Itu kuat banget.',
+          'You kept coming back for a full month. That is real strength.',
+        );
       case 'milestone_120':
-        return 'Empat bulan konsisten. Ini pencapaian besar yang layak dirayakan.';
+        return _text(
+          'Empat bulan konsisten. Ini pencapaian besar yang layak dirayakan.',
+          'Four months of consistency. This is a big achievement worth celebrating.',
+        );
       default:
-        return 'Badge baru berhasil terbuka. Rayakan langkah kecilmu hari ini.';
+        return _text(
+          'Badge baru berhasil terbuka. Rayakan langkah kecilmu hari ini.',
+          'A new badge has been unlocked. Celebrate your small step today.',
+        );
     }
   }
 
@@ -419,17 +515,17 @@ class StreakPage extends StatelessWidget {
         case _MissionAction.mood:
           icon = Icons.local_fire_department_rounded;
           accent = const Color(0xFFE58696);
-          title = 'Mood berhasil dicatat';
+          title = _text('Mood berhasil dicatat', 'Mood logged successfully');
           break;
         case _MissionAction.diary:
           icon = Icons.eco_rounded;
           accent = const Color(0xFF74B55F);
-          title = 'Bonus diary berhasil';
+          title = _text('Bonus diary berhasil', 'Diary bonus claimed');
           break;
         case _MissionAction.affirmation:
           icon = Icons.local_florist_rounded;
           accent = const Color(0xFF63B8A2);
-          title = 'Bonus afirmasi berhasil';
+          title = _text('Bonus afirmasi berhasil', 'Affirmation bonus claimed');
           break;
       }
 
@@ -439,19 +535,26 @@ class StreakPage extends StatelessWidget {
         message: result.message,
         icon: icon,
         accent: accent,
-        chipLabel: '+${result.pointsAdded} poin',
+        chipLabel: _lang == 'en'
+            ? '+${result.pointsAdded} points'
+            : '+${result.pointsAdded} poin',
         secondaryChipLabel:
-            result.freezeUsed > 0 ? '-${result.freezeUsed} freeze' : null,
-        buttonLabel: 'Sip',
+            result.freezeUsed > 0
+                ? _text(
+                    '-${result.freezeUsed} freeze',
+                    '-${result.freezeUsed} freeze',
+                  )
+                : null,
+        buttonLabel: _text('Sip', 'Got it'),
       );
     } else {
       await showStreakFeedbackPopup(
         context,
-        title: 'Belum bisa diklaim',
+        title: _text('Belum bisa diklaim', 'Cannot be claimed yet'),
         message: result.message,
         icon: Icons.info_outline_rounded,
         accent: const Color(0xFF9A76B3),
-        buttonLabel: 'Mengerti',
+        buttonLabel: _text('Mengerti', 'Understood'),
       );
     }
   }
@@ -464,22 +567,30 @@ class StreakPage extends StatelessWidget {
     if (result.success) {
       await showStreakFeedbackPopup(
         context,
-        title: 'Bonus combo berhasil',
-        message: result.message,
+        title: _text('Bonus combo berhasil', 'Combo bonus claimed'),
+        message: _text(
+          'Semua syarat combo hari ini sudah terpenuhi. Bonus poin berhasil masuk.',
+          'All combo requirements for today have been completed. Bonus points have been added.',
+        ),
         icon: Icons.auto_awesome_rounded,
         accent: const Color(0xFFE58696),
-        chipLabel: '+${result.pointsAdded} poin',
-        secondaryChipLabel: 'Combo harian',
-        buttonLabel: 'Yay',
+        chipLabel: _lang == 'en'
+            ? '+${result.pointsAdded} points'
+            : '+${result.pointsAdded} poin',
+        secondaryChipLabel: _text('Combo harian', 'Daily combo'),
+        buttonLabel: _text('Yay', 'Yay'),
       );
     } else {
       await showStreakFeedbackPopup(
         context,
-        title: 'Combo belum siap',
-        message: result.message,
+        title: _text('Combo belum siap', 'Combo is not ready yet'),
+        message: _text(
+          'Combo belum siap. Selesaikan mood, diary publik, dan afirmasi dulu.',
+          'The combo is not ready yet. Complete mood, public diary, and affirmation first.',
+        ),
         icon: Icons.auto_awesome_outlined,
         accent: const Color(0xFF9A76B3),
-        buttonLabel: 'Oke',
+        buttonLabel: _text('Oke', 'Okay'),
       );
     }
   }
@@ -488,14 +599,20 @@ class StreakPage extends StatelessWidget {
     await showStreakFeedbackPopup(
       context,
       title: state.adBonusDoneToday
-          ? 'Bonus iklan sudah diklaim'
-          : 'Misi iklan bonus',
+          ? _text('Bonus iklan sudah diklaim', 'Ad bonus already claimed')
+          : _text('Misi iklan bonus', 'Bonus ad mission'),
       message: state.adBonusDoneToday
-          ? 'Hari ini kamu sudah menyelesaikan misi bonus iklan dan mendapatkan +${StreakService.adBonusPoints} poin.'
-          : 'Tonton 2 rewarded ads di fitur afirmasi untuk membuka 5 slide tambahan. Setelah 2 iklan pertama hari ini, bonus +${StreakService.adBonusPoints} poin akan masuk otomatis.',
+          ? _text(
+              'Hari ini kamu sudah menyelesaikan misi bonus iklan dan mendapatkan +${StreakService.adBonusPoints} poin.',
+              'Today you have completed the bonus ad mission and earned +${StreakService.adBonusPoints} points.',
+            )
+          : _text(
+              'Tonton 2 rewarded ads di fitur afirmasi untuk membuka 5 slide tambahan. Setelah 2 iklan pertama hari ini, bonus +${StreakService.adBonusPoints} poin akan masuk otomatis.',
+              'Watch 2 rewarded ads in the affirmation feature to unlock 5 additional slides. After the first 2 ads today, the +${StreakService.adBonusPoints} point bonus will be added automatically.',
+            ),
       icon: Icons.ondemand_video_rounded,
       accent: const Color(0xFFE29A3A),
-      buttonLabel: 'Oke',
+      buttonLabel: _text('Oke', 'Okay'),
     );
   }
 
@@ -518,12 +635,15 @@ class StreakPage extends StatelessWidget {
   void _showBadgeUnlockedCelebration(BuildContext context, String badgeId) {
     final asset = _badgeUnlockedAssets[badgeId];
     final title = switch (badgeId) {
-      'milestone_3' => 'Mulai Konsisten',
-      'milestone_7' => 'Teman Diri Sendiri',
-      'milestone_14' => 'Tumbuh Pelan-Pelan',
-      'milestone_30' => 'Menjaga Diri dengan Setia',
-      'milestone_120' => 'Tumbuh dengan Tenang',
-      _ => 'Badge Baru',
+      'milestone_3' => _text('Mulai Konsisten', 'Starting to Be Consistent'),
+      'milestone_7' => _text('Teman Diri Sendiri', 'A Friend to Yourself'),
+      'milestone_14' => _text('Tumbuh Pelan-Pelan', 'Growing Slowly'),
+      'milestone_30' => _text(
+          'Menjaga Diri dengan Setia',
+          'Caring for Yourself Faithfully',
+        ),
+      'milestone_120' => _text('Tumbuh dengan Tenang', 'Growing Calmly'),
+      _ => _text('Badge Baru', 'New Badge'),
     };
     final subtitle = _badgeUnlockSubtitle(badgeId);
     final textTheme = Theme.of(context).textTheme;
@@ -631,7 +751,7 @@ class StreakPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Milestone badge baru!',
+                          _text('Milestone badge baru!', 'New milestone badge!'),
                           textAlign: TextAlign.center,
                           style: textTheme.headlineLarge?.copyWith(
                             fontSize: 20,
@@ -641,7 +761,10 @@ class StreakPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Kamu berhasil membuka hadiah streak baru',
+                          _text(
+                            'Kamu berhasil membuka hadiah streak baru',
+                            'You have unlocked a new streak reward',
+                          ),
                           textAlign: TextAlign.center,
                           style: textTheme.bodyMedium?.copyWith(
                             fontSize: 12,
@@ -708,7 +831,7 @@ class StreakPage extends StatelessWidget {
                               size: 18,
                             ),
                             label: Text(
-                              'Lihat semua badge',
+                              _text('Lihat semua badge', 'See all badges'),
                               style: textTheme.labelLarge?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -794,23 +917,35 @@ class StreakPage extends StatelessWidget {
     final steps = [
       _SpotlightStep(
         keyTarget: _walkStreakKey,
-        title: 'Streak Aktif',
-        desc: 'Angka ini naik saat kamu isi mood harian. Ini pemicu utamanya.',
+        title: _text('Streak Aktif', 'Active Streak'),
+        desc: _text(
+          'Angka ini naik saat kamu isi mood harian. Ini pemicu utamanya.',
+          'This number goes up when you log your daily mood. It is the main trigger.',
+        ),
       ),
       _SpotlightStep(
         keyTarget: _walkFreezeKey,
-        title: 'Freeze Streak',
-        desc: 'Freeze melindungi streak saat kamu bolong, sesuai mode proteksi yang kamu pilih.',
+        title: _text('Freeze Streak', 'Streak Freeze'),
+        desc: _text(
+          'Freeze melindungi streak saat kamu bolong, sesuai mode proteksi yang kamu pilih.',
+          'Freeze protects your streak when you miss a day, based on the protection mode you choose.',
+        ),
       ),
       _SpotlightStep(
         keyTarget: _walkMissionKey,
-        title: 'Misi Harian',
-        desc: 'Mood, diary, afirmasi, dan bonus combo memberimu poin tambahan.',
+        title: _text('Misi Harian', 'Daily Missions'),
+        desc: _text(
+          'Mood, diary, afirmasi, dan bonus combo memberimu poin tambahan.',
+          'Mood, diary, affirmation, and combo bonuses give you extra points.',
+        ),
       ),
       _SpotlightStep(
         keyTarget: _walkRewardKey,
-        title: 'Poin & Hadiah',
-        desc: 'Poin bisa ditukar untuk hadiah reguler atau premium.',
+        title: _text('Poin & Hadiah', 'Points & Rewards'),
+        desc: _text(
+          'Poin bisa ditukar untuk hadiah reguler atau premium.',
+          'Points can be redeemed for regular or premium rewards.',
+        ),
       ),
     ];
 
@@ -867,7 +1002,10 @@ class StreakPage extends StatelessWidget {
                         children: [
                           Text(
                             steps[currentStep].title,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
                                   fontSize: 24,
                                   color: _textDark,
                                 ),
@@ -875,7 +1013,10 @@ class StreakPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             steps[currentStep].desc,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
                                   color: _textSoft,
                                   height: 1.5,
                                   fontWeight: FontWeight.w700,
@@ -911,7 +1052,7 @@ class StreakPage extends StatelessWidget {
                                       setDialogState,
                                       currentStep - 1,
                                     ),
-                                    child: const Text('Kembali'),
+                                    child: Text(_text('Kembali', 'Back')),
                                   ),
                                 ),
                               if (currentStep > 0) const SizedBox(width: 10),
@@ -930,12 +1071,14 @@ class StreakPage extends StatelessWidget {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(18),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
                                   ),
                                   child: Text(
                                     currentStep == steps.length - 1
-                                        ? 'Selesai'
-                                        : 'Lanjut',
+                                        ? _text('Selesai', 'Done')
+                                        : _text('Lanjut', 'Next'),
                                   ),
                                 ),
                               ),
@@ -959,11 +1102,13 @@ class StreakPage extends StatelessWidget {
     bool previewAutoUse = state.autoUseFreeze;
 
     String modalStatusLabel() {
-      if (state.moodDoneToday) return 'Hari ini aman';
-      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
-        return 'Freeze siap melindungi';
+      if (state.moodDoneToday) {
+        return _text('Hari ini aman', 'Today is safe');
       }
-      return 'Besok streak rawan putus';
+      if ((previewEnabled || previewAutoUse) && state.freezeOwned > 0) {
+        return _text('Freeze siap melindungi', 'Freeze is ready to protect');
+      }
+      return _text('Besok streak rawan putus', 'Your streak is at risk tomorrow');
     }
 
     Color modalStatusBg() {
@@ -1025,7 +1170,7 @@ class StreakPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Freeze Streak',
+                      _t(_lang, 'freezeTitle'),
                       style: textTheme.headlineLarge?.copyWith(
                         fontSize: 24,
                         color: _textDark,
@@ -1033,7 +1178,10 @@ class StreakPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Freeze melindungi streak-mu saat kamu bolong. Kamu bisa memilih mode proteksi aktif atau pakai otomatis.',
+                      _text(
+                        'Freeze melindungi streak-mu saat kamu bolong. Kamu bisa memilih mode proteksi aktif atau pakai otomatis.',
+                        'Freeze protects your streak when you miss a day. You can choose active protection mode or automatic use.',
+                      ),
                       style: textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
                         height: 1.5,
@@ -1071,8 +1219,14 @@ class StreakPage extends StatelessWidget {
                               children: [
                                 Text(
                                   previewEnabled
-                                      ? 'Proteksi sedang aktif'
-                                      : 'Proteksi belum aktif',
+                                      ? _text(
+                                          'Proteksi sedang aktif',
+                                          'Protection is active',
+                                        )
+                                      : _text(
+                                          'Proteksi belum aktif',
+                                          'Protection is inactive',
+                                        ),
                                   style: textTheme.bodyMedium?.copyWith(
                                     fontSize: 13,
                                     color: _textDark,
@@ -1081,7 +1235,10 @@ class StreakPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Sisa freeze: ${state.freezeOwned}/${state.freezeMax} hari',
+                                  _text(
+                                    'Sisa freeze: ${state.freezeOwned}/${state.freezeMax} hari',
+                                    'Remaining freeze: ${state.freezeOwned}/${state.freezeMax} days',
+                                  ),
                                   style: textTheme.bodySmall?.copyWith(
                                     fontSize: 11,
                                     color: _textSoft,
@@ -1104,7 +1261,9 @@ class StreakPage extends StatelessWidget {
 
                               await StreakService.instance.toggleFreeze(value);
                               if (!value) {
-                                await StreakService.instance.toggleAutoUseFreeze(false);
+                                await StreakService.instance.toggleAutoUseFreeze(
+                                  false,
+                                );
                               }
                             },
                           ),
@@ -1120,7 +1279,10 @@ class StreakPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Text(
-                        'Starter dapat 1 freeze. Full streak 1 bulan memberi +3 freeze. Premium memberi +2 freeze. Maksimum simpan freeze: ${state.freezeMax} hari.',
+                        _text(
+                          'Starter dapat 1 freeze. Full streak 1 bulan memberi +3 freeze. Premium memberi +2 freeze. Maksimum simpan freeze: ${state.freezeMax} hari.',
+                          'Starter gets 1 freeze. A full 1-month streak gives +3 freezes. Premium gives +2 freezes. Maximum stored freezes: ${state.freezeMax} days.',
+                        ),
                         style: textTheme.bodyMedium?.copyWith(
                           fontSize: 12,
                           height: 1.45,
@@ -1143,7 +1305,9 @@ class StreakPage extends StatelessWidget {
                                 }
                               });
 
-                              await StreakService.instance.toggleAutoUseFreeze(next);
+                              await StreakService.instance.toggleAutoUseFreeze(
+                                next,
+                              );
                               if (next) {
                                 await StreakService.instance.toggleFreeze(true);
                               }
@@ -1172,7 +1336,7 @@ class StreakPage extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Pakai Otomatis',
+                                      _text('Pakai Otomatis', 'Use Automatically'),
                                       style: textTheme.bodySmall?.copyWith(
                                         fontSize: 11,
                                         color: _textDark,
@@ -1233,12 +1397,6 @@ class StreakPage extends StatelessWidget {
 
   void _showMilestoneSheet(BuildContext context, StreakState state) {
     final textTheme = Theme.of(context).textTheme;
-    final nextMilestone = _nextMilestoneFor(state.currentStreak);
-    final currentBadge = _currentBadgeTitleFor(state.currentStreak);
-    final nextBadge = _nextBadgeTitleFor(state.currentStreak);
-    final progressValue = state.currentStreak >= _milestones.last
-        ? 1.0
-        : (state.currentStreak / nextMilestone).clamp(0.0, 1.0).toDouble();
 
     showModalBottomSheet(
       context: context,
@@ -1249,7 +1407,9 @@ class StreakPage extends StatelessWidget {
           stream: RewardService.instance.watchInventory(),
           builder: (context, snapshot) {
             final inventory = snapshot.data ?? {};
-            final claimedBadgeIds = Set<String>.from(inventory['claimedBadgeIds'] ?? []);
+            final claimedBadgeIds = Set<String>.from(
+              inventory['claimedBadgeIds'] ?? [],
+            );
             final currentBadgeId = _currentBadgeIdFor(state.currentStreak);
             final nextMilestone = _nextMilestoneFor(state.currentStreak);
             final nextBadge = _nextBadgeTitleFor(state.currentStreak);
@@ -1303,7 +1463,7 @@ class StreakPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Badge Milestone',
+                      _text('Badge Milestone', 'Milestone Badge'),
                       style: textTheme.headlineLarge?.copyWith(
                         fontSize: 24,
                         color: _textDark,
@@ -1311,7 +1471,10 @@ class StreakPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Semakin konsisten kamu hadir untuk dirimu sendiri, semakin banyak badge yang bisa dibuka.',
+                      _text(
+                        'Semakin konsisten kamu hadir untuk dirimu sendiri, semakin banyak badge yang bisa dibuka.',
+                        'The more consistently you show up for yourself, the more badges you can unlock.',
+                      ),
                       style: textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
                         height: 1.5,
@@ -1347,7 +1510,7 @@ class StreakPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Badge aktif saat ini',
+                            _text('Badge aktif saat ini', 'Current active badge'),
                             style: textTheme.bodySmall?.copyWith(
                               fontSize: 11,
                               color: _textSoft,
@@ -1357,7 +1520,7 @@ class StreakPage extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             currentBadgeId == null
-                                ? 'Belum ada badge'
+                                ? _t(_lang, 'noBadge')
                                 : _currentBadgeTitleFor(state.currentStreak),
                             style: textTheme.titleMedium?.copyWith(
                               fontSize: 18,
@@ -1368,8 +1531,14 @@ class StreakPage extends StatelessWidget {
                           const SizedBox(height: 10),
                           Text(
                             state.currentStreak >= _milestones.last
-                                ? 'Semua badge sudah terbuka'
-                                : 'Badge berikutnya: $nextBadge',
+                                ? _text(
+                                    'Semua badge sudah terbuka',
+                                    'All badges are unlocked',
+                                  )
+                                : _text(
+                                    'Badge berikutnya: $nextBadge',
+                                    'Next badge: $nextBadge',
+                                  ),
                             style: textTheme.bodyMedium?.copyWith(
                               fontSize: 12,
                               color: _textDark,
@@ -1384,8 +1553,14 @@ class StreakPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             state.currentStreak >= _milestones.last
-                                ? 'Kamu sudah menuntaskan semua milestone badge.'
-                                : '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge berikutnya',
+                                ? _text(
+                                    'Kamu sudah menuntaskan semua milestone badge.',
+                                    'You have completed all milestone badges.',
+                                  )
+                                : _text(
+                                    '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge berikutnya',
+                                    '${(nextMilestone - state.currentStreak).clamp(0, 9999)} days left to unlock the next badge',
+                                  ),
                             style: textTheme.bodySmall?.copyWith(
                               fontSize: 11,
                               color: _textSoft,
@@ -1430,7 +1605,7 @@ class StreakPage extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Streak',
+            _t(_lang, 'pageTitle'),
             style: textTheme.headlineLarge?.copyWith(
               fontSize: 28,
               color: _textDark,
@@ -1562,7 +1737,7 @@ class StreakPage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Streak aktifmu',
+                  _t(_lang, 'activeStreak'),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: _textSoft,
@@ -1572,7 +1747,7 @@ class StreakPage extends StatelessWidget {
               ),
               _buildSummaryActionButton(
                 context,
-                label: 'Hadiah',
+                label: _t(_lang, 'rewardLabel'),
                 icon: Icons.redeem_rounded,
                 onTap: () {
                   Navigator.push(
@@ -1601,7 +1776,7 @@ class StreakPage extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
-                  'hari 🔥',
+                  '${_daysWord()} 🔥',
                   style: textTheme.titleMedium?.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -1613,7 +1788,10 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Kamu sudah konsisten menjaga dirimu dengan baik. Pelan-pelan, tapi kuat.',
+            _text(
+              'Kamu sudah konsisten menjaga dirimu dengan baik. Pelan-pelan, tapi kuat.',
+              'You have been consistently taking good care of yourself. Slow, but strong.',
+            ),
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 13,
               height: 1.55,
@@ -1629,7 +1807,9 @@ class StreakPage extends StatelessWidget {
               _buildTopInfoChip(
                 context,
                 icon: Icons.stars_rounded,
-                label: '${state.totalPoints} poin',
+                label: _lang == 'en'
+                    ? '${state.totalPoints} points'
+                    : '${state.totalPoints} poin',
                 bgColor: _pinkSoft,
                 iconColor: const Color(0xFFE58696),
               ),
@@ -1641,8 +1821,14 @@ class StreakPage extends StatelessWidget {
                       ? Icons.favorite_rounded
                       : Icons.favorite_border_rounded,
                   label: state.freezeEnabled
-                      ? 'Freeze aktif ${state.freezeOwned}/${state.freezeMax}'
-                      : 'Freeze nonaktif ${state.freezeOwned}/${state.freezeMax}',
+                      ? _text(
+                          'Freeze aktif ${state.freezeOwned}/${state.freezeMax}',
+                          'Freeze active ${state.freezeOwned}/${state.freezeMax}',
+                        )
+                      : _text(
+                          'Freeze nonaktif ${state.freezeOwned}/${state.freezeMax}',
+                          'Freeze inactive ${state.freezeOwned}/${state.freezeMax}',
+                        ),
                   bgColor: _greenPastel,
                   iconColor: _green,
                   onTap: () => _showFreezeInfoSheet(context, state),
@@ -1651,7 +1837,10 @@ class StreakPage extends StatelessWidget {
               _buildTopInfoChip(
                 context,
                 icon: Icons.workspace_premium_rounded,
-                label: 'Menuju $nextMilestone hari',
+                label: _text(
+                  'Menuju $nextMilestone hari',
+                  '$nextMilestone days to go',
+                ),
                 bgColor: const Color(0xFFF4F0FA),
                 iconColor: const Color(0xFF9A76B3),
                 onTap: () => _showMilestoneSheet(context, state),
@@ -1686,7 +1875,10 @@ class StreakPage extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Progres ke milestone berikutnya',
+                        _text(
+                          'Progres ke milestone berikutnya',
+                          'Progress to the next milestone',
+                        ),
                         style: textTheme.bodySmall?.copyWith(
                           fontSize: 12,
                           color: _textSoft,
@@ -1695,7 +1887,7 @@ class StreakPage extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        '${state.currentStreak}/$nextMilestone hari',
+                        '${state.currentStreak}/$nextMilestone ${_daysWord()}',
                         style: textTheme.bodySmall?.copyWith(
                           fontSize: 12,
                           color: _textDark,
@@ -1711,7 +1903,10 @@ class StreakPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge baru',
+                    _text(
+                      '${(nextMilestone - state.currentStreak).clamp(0, 9999)} hari lagi untuk membuka badge baru',
+                      '${(nextMilestone - state.currentStreak).clamp(0, 9999)} days left to unlock a new badge',
+                    ),
                     style: textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: _textSoft,
@@ -1721,8 +1916,14 @@ class StreakPage extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     currentMilestone == 0
-                        ? 'Badge pertamamu akan terbuka di hari ke-3'
-                        : 'Badge aktif: ${_currentBadgeTitleFor(state.currentStreak)}',
+                        ? _text(
+                            'Badge pertamamu akan terbuka di hari ke-3',
+                            'Your first badge will unlock on day 3',
+                          )
+                        : _text(
+                            'Badge aktif: ${_currentBadgeTitleFor(state.currentStreak)}',
+                            'Active badge: ${_currentBadgeTitleFor(state.currentStreak)}',
+                          ),
                     style: textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: _textSoft,
@@ -1757,7 +1958,7 @@ class StreakPage extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Progres Mingguan',
+                _text('Progres Mingguan', 'Weekly Progress'),
                 style: textTheme.bodySmall?.copyWith(
                   fontSize: 12,
                   color: _textSoft,
@@ -1766,7 +1967,7 @@ class StreakPage extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '7 hari streak',
+                _text('7 hari streak', '7-day streak'),
                 style: textTheme.bodySmall?.copyWith(
                   fontSize: 11,
                   color: _textSoft,
@@ -1781,7 +1982,7 @@ class StreakPage extends StatelessWidget {
             children: List.generate(7, (index) {
               final day = index + 1;
               final isClaimed = claimedDays.contains(day);
-              final isActive = !isClaimed && activeDay == day;
+              final isActive = !isClaimed && day == activeDay;
               final rewardLabel = '+${StreakService.weeklyBonusForDay(day)}';
 
               return Expanded(
@@ -1912,10 +2113,19 @@ class StreakPage extends StatelessWidget {
             Expanded(
               child: Text(
                 state.comboDoneToday
-                    ? 'Bonus combo hari ini sudah berhasil diklaim 🌷'
+                    ? _text(
+                        'Bonus combo hari ini sudah berhasil diklaim 🌷',
+                        'Today\'s combo bonus has already been claimed 🌷',
+                      )
                     : comboReady
-                        ? 'Mood, diary, dan afirmasi sudah lengkap. Tekan untuk klaim bonus combo hari ini.'
-                        : 'Selesaikan Mood + Diary + Afirmasi untuk membuka bonus combo hari ini.',
+                        ? _text(
+                            'Mood, diary, dan afirmasi sudah lengkap. Tekan untuk klaim bonus combo hari ini.',
+                            'Mood, diary, and affirmation are complete. Tap to claim today\'s combo bonus.',
+                          )
+                        : _text(
+                            'Selesaikan Mood + Diary + Afirmasi untuk membuka bonus combo hari ini.',
+                            'Complete Mood + Diary + Affirmation to unlock today\'s combo bonus.',
+                          ),
                 style: textTheme.bodyMedium?.copyWith(
                   fontSize: 12,
                   height: 1.45,
@@ -1959,8 +2169,14 @@ class StreakPage extends StatelessWidget {
             Expanded(
               child: Text(
                 done
-                    ? 'Misi iklan bonus selesai • +${StreakService.adBonusPoints} poin sudah masuk'
-                    : 'Misi iklan bonus ${progress}/${StreakService.adBonusTargetViews} • tonton 2 iklan di afirmasi untuk bonus +${StreakService.adBonusPoints} poin',
+                    ? _text(
+                        'Misi iklan bonus selesai • +${StreakService.adBonusPoints} poin sudah masuk',
+                        'Bonus ad mission completed • +${StreakService.adBonusPoints} points have been added',
+                      )
+                    : _text(
+                        'Misi iklan bonus $progress/${StreakService.adBonusTargetViews} • tonton 2 iklan di afirmasi untuk bonus +${StreakService.adBonusPoints} poin',
+                        'Bonus ad mission $progress/${StreakService.adBonusTargetViews} • watch 2 ads in affirmation to get +${StreakService.adBonusPoints} points',
+                      ),
                 style: textTheme.bodyMedium?.copyWith(
                   fontSize: 12,
                   height: 1.45,
@@ -1996,7 +2212,7 @@ class StreakPage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Misi Hari Ini',
+                  _t(_lang, 'dailyMission'),
                   style: textTheme.headlineLarge?.copyWith(
                     fontSize: 26,
                     color: _textDark,
@@ -2010,7 +2226,7 @@ class StreakPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'Streak Harian',
+                  _t(_lang, 'dailyStreak'),
                   style: textTheme.bodyMedium?.copyWith(
                     fontSize: 12,
                     color: _textDark,
@@ -2022,7 +2238,10 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Sedikit langkah hari ini tetap berarti. Lakukan pelan-pelan, satu misi demi satu.',
+            _text(
+              'Sedikit langkah hari ini tetap berarti. Lakukan pelan-pelan, satu misi demi satu.',
+              'Even a small step today still matters. Take it slowly, one mission at a time.',
+            ),
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 13,
               height: 1.5,
@@ -2036,7 +2255,10 @@ class StreakPage extends StatelessWidget {
               Expanded(
                 child: _buildMissionInfoChip(
                   context,
-                  label: '$completed/$totalTasks selesai',
+                  label: _text(
+                    '$completed/$totalTasks selesai',
+                    '$completed/$totalTasks completed',
+                  ),
                   bgColor: _greenPastel,
                   textColor: _textDark,
                   icon: Icons.check_circle_rounded,
@@ -2046,7 +2268,9 @@ class StreakPage extends StatelessWidget {
               Expanded(
                 child: _buildMissionInfoChip(
                   context,
-                  label: '+$todayPoints poin hari ini',
+                  label: _lang == 'en'
+                      ? '+$todayPoints points today'
+                      : '+$todayPoints poin hari ini',
                   bgColor: _pinkSoft,
                   textColor: const Color(0xFFE58696),
                   icon: Icons.stars_rounded,
@@ -2059,7 +2283,7 @@ class StreakPage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Progres harian',
+                  _text('Progres harian', 'Daily progress'),
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: _textSoft,
@@ -2412,7 +2636,7 @@ class StreakPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Poin & Hadiah',
+            _t(_lang, 'pointsAndRewards'),
             style: textTheme.headlineLarge?.copyWith(
               fontSize: 24,
               color: _textDark,
@@ -2420,7 +2644,10 @@ class StreakPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Poinmu bisa ditukar untuk hadiah kecil yang menyenangkan, atau disimpan untuk hadiah besar.',
+            _text(
+              'Poinmu bisa ditukar untuk hadiah kecil yang menyenangkan, atau disimpan untuk hadiah besar.',
+              'Your points can be redeemed for small fun rewards, or saved for bigger ones.',
+            ),
             style: textTheme.bodyMedium?.copyWith(
               fontSize: 13,
               height: 1.5,
@@ -2452,7 +2679,7 @@ class StreakPage extends StatelessWidget {
               Expanded(
                 child: _buildBottomActionButton(
                   context,
-                  label: 'Tukar Premium',
+                  label: _t(_lang, 'exchangePremium'),
                   icon: Icons.workspace_premium_rounded,
                   bgColor: _green,
                   textColor: Colors.white,
@@ -2462,6 +2689,7 @@ class StreakPage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => RewardPage(
                           totalPoints: state.totalPoints,
+                          openPremiumTab: true,
                         ),
                       ),
                     );
@@ -2472,7 +2700,7 @@ class StreakPage extends StatelessWidget {
               Expanded(
                 child: _buildBottomActionButton(
                   context,
-                  label: 'Tukar Hadiah',
+                  label: _t(_lang, 'exchangeGift'),
                   icon: Icons.redeem_rounded,
                   bgColor: _pinkSoft,
                   textColor: _textDark,
@@ -2482,6 +2710,7 @@ class StreakPage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => RewardPage(
                           totalPoints: state.totalPoints,
+                          openPremiumTab: false,
                         ),
                       ),
                     );
@@ -2531,7 +2760,7 @@ class StreakPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Badge Milestonemu',
+                    _text('Badge Milestonemu', 'Your Milestone Badge'),
                     style: textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: _textSoft,
@@ -2550,8 +2779,14 @@ class StreakPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     state.currentStreak >= _milestones.last
-                        ? 'Semua badge sudah terbuka'
-                        : 'Badge berikutnya: $nextBadge',
+                        ? _text(
+                            'Semua badge sudah terbuka',
+                            'All badges are unlocked',
+                          )
+                        : _text(
+                            'Badge berikutnya: $nextBadge',
+                            'Next badge: $nextBadge',
+                          ),
                     style: textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: _textSoft,
