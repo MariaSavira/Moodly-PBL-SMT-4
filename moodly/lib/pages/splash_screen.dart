@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'setting/moodly_settings_support.dart';
 import '../core/services/auth_service.dart';
+import '../core/models/user_model.dart';
 import 'admin/moderasi_admin.dart';
 import 'homepage.dart';
 import 'onboarding_page.dart';
@@ -29,8 +30,29 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
   late final Animation<Offset> _titleSlide;
   late final Animation<double> _subtitleFade;
 
+  String _languageCode = MoodlySettingsPrefs.currentLanguageCode;
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'loading': 'Menyiapkan ruang amanmu...',
+    },
+    'en': {
+      'loading': 'Preparing your safe space...',
+    },
+  };
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    setState(() {
+      _languageCode = MoodlySettingsPrefs.languageNotifier.value;
+    });
+  }
+
   @override
   void initState() {
+    MoodlySettingsPrefs.languageNotifier.addListener(_onLanguageChanged);
     super.initState();
 
     _introController = AnimationController(
@@ -100,25 +122,42 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
   Future<void> _handleNavigation() async {
     if (!mounted) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-
+    final firebaseUser = FirebaseAuth.instance.currentUser;
     Widget nextPage = const OnboardingPage();
 
-    if (user != null) {
+    if (firebaseUser != null) {
       String role = 'user';
+      UserModel? currentUserModel;
+      bool hasRestriction = false;
 
       try {
         role = await AuthService.instance.getCurrentUserRole();
+        currentUserModel = await AuthService.instance.getCurrentUserModel();
+
+        if (role != 'admin') {
+          hasRestriction = await AuthService.instance.hasActiveRestriction();
+        }
       } catch (_) {
         role = 'user';
       }
 
       if (!mounted) return;
 
-      nextPage =
-          role == 'admin'
-              ? const ModerasiAdminPage()
-              : const Homepage();
+      if (role == 'admin') {
+        nextPage = const ModerasiAdminPage();
+      } else {
+        // Semua user biasa tetap diarahkan ke Homepage.
+        // Kalau ternyata sedang terkena tindakan, Homepage akan langsung freeze.
+        // hasRestriction sengaja dipanggil di splash untuk preload guard sejak awal.
+        nextPage = const Homepage();
+      }
+
+      debugPrint(
+        'SPLASH NAVIGATION -> uid=${firebaseUser.uid}, '
+        'role=$role, '
+        'hasRestriction=$hasRestriction, '
+        'userLoaded=${currentUserModel != null}',
+      );
     }
 
     if (!mounted) return;
@@ -140,6 +179,7 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
     _pulseController.dispose();
     _floatController.dispose();
     _sparkleController.dispose();
+    MoodlySettingsPrefs.languageNotifier.removeListener(_onLanguageChanged);
     super.dispose();
   }
 
@@ -374,8 +414,8 @@ class _SplashScreenMoodlyState extends State<SplashScreenMoodly>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Menyiapkan ruang amanmu...',
+                      Text(
+                        _t('loading'),
                         style: TextStyle(
                           fontSize: 12,
                           color: Color(0xFF8A9580),

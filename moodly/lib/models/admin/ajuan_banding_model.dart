@@ -91,8 +91,10 @@ TindakanUser tindakanUserFromString(String value) {
 }
 class AjuanBandingModel {
   final String documentId;
+  final String avatarUrl;
   final String id;
   final String username;
+  final String userId;
   final String jenisBan;
   final String alasanTindakan;
   final TindakanUser tindakanSaatIni;
@@ -100,11 +102,15 @@ class AjuanBandingModel {
   final DateTime tanggal;
   final AjuanBandingStatus status;
   final String catatanAdmin;
+  final String isiPesan;
+  final DateTime? tanggalGabung;
 
   const AjuanBandingModel({
     required this.documentId,
+    required this.avatarUrl,
     required this.id,
     required this.username,
+    required this.userId,
     required this.jenisBan,
     required this.alasanBanding,
     required this.tanggal,
@@ -112,6 +118,8 @@ class AjuanBandingModel {
     required this.catatanAdmin,
     required this.alasanTindakan,
     required this.tindakanSaatIni,
+    required this.isiPesan,
+    required this.tanggalGabung,
   });
 
   factory AjuanBandingModel.fromFirestore(
@@ -122,25 +130,64 @@ class AjuanBandingModel {
     return AjuanBandingModel(
       documentId: doc.id,
       id: data['id'] ?? doc.id,
-      username: data['username'] ?? data['reportedUserName'] ?? 'User tidak diketahui',
-      jenisBan: data['jenisBan'] ?? data['tindakanSaatIni'] ?? 'Belum ada tindakan',
+      avatarUrl:
+    data['reportedUserInfo']?['userData']?['photoUrl'] ?? '',
+   username:
+    data['reportedUserInfo']?['userData']?['nickname'] ??
+    data['reportedUserInfo']?['userData']?['fullName'] ??
+    'User tidak diketahui',
+  userId:
+    data['reportedUid'] ??
+    data['reportedUserInfo']?['uid'] ??
+    data['reportedUserInfo']?['userData']?['uid'] ??
+    '',
+   jenisBan:
+    data['tindakanDipilih'] ??
+    data['tindakanSaatIni'] ??
+    data['reportTag'] ??
+    'Belum ada tindakan',
       alasanBanding: data['alasanBanding'] ?? 'Belum ada alasan banding',
       tanggal: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
-      status: ajuanBandingStatusFromString(data['status'] ?? 'pending'),
+      status: ajuanBandingStatusFromString(
+  data['statusBanding'] ?? data['status'] ?? 'pending',
+),
       catatanAdmin: data['catatanAdmin'] ?? '',
-alasanTindakan: data['alasanTindakan'] ?? '',
+alasanTindakan: data['reportReason'] ?? '',
 tindakanSaatIni: tindakanUserFromString(
   data['tindakanSaatIni'] ?? 'batasi_user',
 ),
-    );
+
+isiPesan:
+    (data['reportedMessages'] is List &&
+            (data['reportedMessages'] as List).isNotEmpty)
+        ? data['reportedMessages'][0]['text'] ?? ''
+        : '',
+
+tanggalGabung: (() {
+  final createdAt =
+      data['reportedUserInfo']?['userData']?['createdAt'];
+
+  if (createdAt is Timestamp) {
+    return createdAt.toDate();
   }
+
+  if (createdAt is String) {
+    return DateTime.tryParse(createdAt);
+  }
+
+  return null;
+})(),
+
+    );
+  } 
 
   Map<String, dynamic> toFirestore() {
     return {
       'id': id,
       'username': username,
+      'userId': userId,
       'jenisBan': jenisBan,
       'alasanBanding': alasanBanding,
       'tanggal': Timestamp.fromDate(tanggal),

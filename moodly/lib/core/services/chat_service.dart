@@ -23,6 +23,95 @@ class ChatService {
     };
   }
 
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _normalizePreference(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return 'all';
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    if (value is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  bool _hasActivePremiumFromMap(Map<String, dynamic>? data) {
+    if (data == null) return false;
+
+    final legacyPremium = data['isPremium'] == true;
+    final premiumTier = (data['premiumTier'] ?? '').toString().trim();
+    final premiumStatus = (data['premiumStatus'] ?? '').toString().trim();
+    final premiumExpiresAt = _parseDate(data['premiumExpiresAt']);
+
+    final expired =
+        premiumExpiresAt != null && DateTime.now().isAfter(premiumExpiresAt);
+
+    if (expired) return false;
+
+    if (legacyPremium) return true;
+
+    final isTierPremium = premiumTier == 'premium' || premiumTier == 'student';
+    return isTierPremium && premiumStatus == 'active';
+  }
+
+  bool _isGenderCompatible({
+    required String selfGender,
+    required String selfPreference,
+    required String otherGender,
+    required String otherPreference,
+  }) {
+    final selfAccepts =
+        selfPreference == 'all' || selfPreference == otherGender;
+    final otherAccepts =
+        otherPreference == 'all' || otherPreference == selfGender;
+
+    return selfAccepts && otherAccepts;
+  }
+
   Future<String> ensureDebugRoom() async {
     const String roomId = 'debug_room_1';
     final user = _auth.currentUser;
@@ -35,8 +124,7 @@ class ChatService {
       'status': 'active',
       'lastActivityAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
-      if (user != null)
-        'participants': FieldValue.arrayUnion([user.uid]),
+      if (user != null) 'participants': FieldValue.arrayUnion([user.uid]),
     }, SetOptions(merge: true));
 
     if (user != null) {
@@ -180,7 +268,6 @@ class ChatService {
       if (senderId == user.uid) continue;
 
       final seenBy = data['seenBy'];
-
       if (seenBy is List && seenBy.contains(user.uid)) continue;
 
       batch.update(doc.reference, {
@@ -262,12 +349,16 @@ class ChatService {
       'status': 'pending',
     });
 
-    await _firestore.collection('users').doc(reportedUid).set({
-      'hasWarning': true,
-      'warningMessage':
-          'Percakapanmu telah dilaporkan. Harap berbicara dengan lebih sopan.',
-      'warningUpdatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await _firestore.collection('users').doc(reportedUid).set({
+        'hasWarning': true,
+        'warningMessage':
+            'Percakapanmu telah dilaporkan. Harap berbicara dengan lebih sopan.',
+        'warningUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('WARNING reportMessages warning flag failed: $e');
+    }
   }
 
   Future<void> sendImageMessage({
@@ -331,7 +422,6 @@ class ChatService {
     final participants = data?['participants'];
 
     final messagesSnapshot = await roomRef.collection('messages').get();
-
     final batch = _firestore.batch();
 
     for (final doc in messagesSnapshot.docs) {
@@ -341,7 +431,6 @@ class ChatService {
     if (participants is List) {
       for (final uid in participants) {
         final userRef = _firestore.collection('users').doc(uid);
-
         final isInitiator = uid == user.uid;
 
         batch.set(
@@ -364,77 +453,212 @@ class ChatService {
     }
 
     batch.delete(roomRef);
-
     await batch.commit();
   }
 
-  Future<String?> findMatch() async {
+  Future<String?> findMatch({
+    String preferredGender = 'all',
+  }) async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
     final waitingRef = _firestore.collection('waiting_users');
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final selfWaitingRef = waitingRef.doc(user.uid);
 
-    final snapshot = await waitingRef
-        .orderBy('createdAt')
-        .limit(10)
-        .get();
+    try {
+      final selfUserSnap = await userRef.get();
+      final selfUserData = selfUserSnap.data() ?? {};
 
-    QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
-
-    for (final doc in snapshot.docs) {
-      if (doc.id != user.uid) {
-        otherUserDoc = doc;
-        break;
+      final selfGender = _normalizeGender(selfUserData['gender']);
+      if (selfGender == null) {
+        await userRef.set({
+          'status': 'idle',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        throw Exception('Gender user belum diisi.');
       }
-    }
 
-    if (otherUserDoc != null) {
+      final selfHasPremium = _hasActivePremiumFromMap(selfUserData);
+      final effectivePreference =
+          selfHasPremium ? _normalizePreference(preferredGender) : 'all';
+
+      await userRef.set(
+        {
+          'status': 'matching',
+          'currentRoomId': null,
+          'gender': selfGender,
+          'preferredMatchGender': effectivePreference,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      await selfWaitingRef.set(
+        {
+          'uid': user.uid,
+          'status': 'matching',
+          'userGender': selfGender,
+          'preferredPartnerGender': effectivePreference,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      final snapshot = await waitingRef.orderBy('createdAt').limit(20).get();
+
+      QueryDocumentSnapshot<Map<String, dynamic>>? otherUserDoc;
+
+      for (final doc in snapshot.docs) {
+        if (doc.id == user.uid) continue;
+
+        final otherData = doc.data();
+        final otherGender = _normalizeGender(otherData['userGender']);
+        final otherPreference =
+            _normalizePreference(otherData['preferredPartnerGender']);
+
+        if (otherGender == null) continue;
+
+        final compatible = _isGenderCompatible(
+          selfGender: selfGender,
+          selfPreference: effectivePreference,
+          otherGender: otherGender,
+          otherPreference: otherPreference,
+        );
+
+        if (compatible) {
+          otherUserDoc = doc;
+          break;
+        }
+      }
+
+      if (otherUserDoc == null) {
+        return null;
+      }
+
       final otherUid = otherUserDoc.id;
+      final otherWaitingRef = waitingRef.doc(otherUid);
+      final otherUserRef = _firestore.collection('users').doc(otherUid);
       final roomRef = _firestore.collection('chat_rooms').doc();
 
-      final batch = _firestore.batch();
+      String? resolvedRoomId;
 
-      batch.delete(waitingRef.doc(otherUid));
-      batch.delete(waitingRef.doc(user.uid));
+      await _firestore.runTransaction((tx) async {
+        final selfWaitSnap = await tx.get(selfWaitingRef);
+        final otherWaitSnap = await tx.get(otherWaitingRef);
+        final selfUserSnapTx = await tx.get(userRef);
+        final otherUserSnap = await tx.get(otherUserRef);
 
-      batch.set(roomRef, {
-        'roomId': roomRef.id,
-        'participants': [user.uid, otherUid],
-        'status': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastActivityAt': FieldValue.serverTimestamp(),
+        final selfUserDataTx = selfUserSnapTx.data() ?? {};
+        final otherUserData = otherUserSnap.data() ?? {};
+        final selfWaitData = selfWaitSnap.data() ?? {};
+        final otherWaitData = otherWaitSnap.data() ?? {};
+
+        final selfCurrentRoom =
+            (selfUserDataTx['currentRoomId'] ?? '').toString().trim();
+        final otherCurrentRoom =
+            (otherUserData['currentRoomId'] ?? '').toString().trim();
+
+        if (selfCurrentRoom.isNotEmpty) {
+          resolvedRoomId = selfCurrentRoom;
+          tx.delete(selfWaitingRef);
+          return;
+        }
+
+        if (otherCurrentRoom.isNotEmpty) {
+          return;
+        }
+
+        if (!selfWaitSnap.exists || !otherWaitSnap.exists) {
+          return;
+        }
+
+        final safeSelfGender =
+            _normalizeGender(selfWaitData['userGender'] ?? selfUserDataTx['gender']);
+        final safeOtherGender =
+            _normalizeGender(otherWaitData['userGender'] ?? otherUserData['gender']);
+
+        if (safeSelfGender == null || safeOtherGender == null) {
+          return;
+        }
+
+        final safeSelfHasPremium = _hasActivePremiumFromMap(selfUserDataTx);
+        final safeOtherHasPremium = _hasActivePremiumFromMap(otherUserData);
+
+        final safeSelfPreference = safeSelfHasPremium
+            ? _normalizePreference(
+                selfWaitData['preferredPartnerGender'] ??
+                    selfUserDataTx['preferredMatchGender'],
+              )
+            : 'all';
+
+        final safeOtherPreference = safeOtherHasPremium
+            ? _normalizePreference(
+                otherWaitData['preferredPartnerGender'] ??
+                    otherUserData['preferredMatchGender'],
+              )
+            : 'all';
+
+        final compatible = _isGenderCompatible(
+          selfGender: safeSelfGender,
+          selfPreference: safeSelfPreference,
+          otherGender: safeOtherGender,
+          otherPreference: safeOtherPreference,
+        );
+
+        if (!compatible) {
+          return;
+        }
+
+        resolvedRoomId = roomRef.id;
+
+        tx.set(roomRef, {
+          'roomId': roomRef.id,
+          'participants': [user.uid, otherUid],
+          'participantGenders': {
+            user.uid: safeSelfGender,
+            otherUid: safeOtherGender,
+          },
+          'status': 'active',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastActivityAt': FieldValue.serverTimestamp(),
+        });
+
+        tx.set(
+          userRef,
+          {
+            'currentRoomId': roomRef.id,
+            'status': 'chatting',
+            'gender': safeSelfGender,
+            'preferredMatchGender': safeSelfPreference,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        tx.set(
+          otherUserRef,
+          {
+            'currentRoomId': roomRef.id,
+            'status': 'chatting',
+            'gender': safeOtherGender,
+            'preferredMatchGender': safeOtherPreference,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        tx.delete(selfWaitingRef);
+        tx.delete(otherWaitingRef);
       });
 
-      batch.set(
-        _firestore.collection('users').doc(user.uid),
-        {
-          'currentRoomId': roomRef.id,
-          'status': 'chatting',
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      batch.set(
-        _firestore.collection('users').doc(otherUid),
-        {
-          'currentRoomId': roomRef.id,
-          'status': 'chatting',
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      await batch.commit();
-      return roomRef.id;
+      return resolvedRoomId;
+    } catch (e, st) {
+      print('ERROR findMatch: $e');
+      print(st);
+      rethrow;
     }
-
-    await waitingRef.doc(user.uid).set({
-      'uid': user.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    return null;
   }
 
   Future<void> closeRoomIfIdle({
@@ -488,7 +712,6 @@ class ChatService {
     });
 
     final messagesSnapshot = await roomRef.collection('messages').get();
-
     final batch = _firestore.batch();
 
     for (final message in messagesSnapshot.docs) {
@@ -519,11 +742,15 @@ class ChatService {
         for (final uid in participants) {
           final userRef = _firestore.collection('users').doc(uid);
 
-          batch.set(userRef, {
-            'currentRoomId': null,
-            'status': 'idle',
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          batch.set(
+            userRef,
+            {
+              'currentRoomId': null,
+              'status': 'idle',
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
         }
 
         final messages = await roomDoc.reference.collection('messages').get();

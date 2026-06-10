@@ -1,133 +1,117 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class CommentModel {
-  String id;
-
-  String diaryId;
-
-  String username;
-
-  String profileImage;
-
-  String comment;
-
-  DateTime createdAt;
-
-  int likes;
-
-  bool isLiked;
-
-  // REPLY
-  List<CommentReplyModel> replies;
-
-  CommentModel({
-    required this.id,
-    required this.diaryId,
-    required this.username,
-    required this.profileImage,
-    required this.comment,
-    required this.createdAt,
-    required this.likes,
-    required this.replies,
-
-    this.isLiked = false,
-  });
-
-  factory CommentModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
-    return CommentModel(
-      id: doc.id,
-
-      diaryId: data["diary_id"] ?? "",
-
-      username: data["username"] ?? "",
-
-      profileImage: data["profile_image"] ?? "",
-
-      comment: data["comment"] ?? "",
-
-      createdAt: (data["created_at"] as Timestamp).toDate(),
-
-      likes: data["likes"] ?? 0,
-
-      replies: (data["replies"] as List<dynamic>? ?? [])
-          .map((reply) => CommentReplyModel.fromMap(reply))
-          .toList(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      "diary_id": diaryId,
-
-      "username": username,
-
-      "profile_image": profileImage,
-
-      "comment": comment,
-
-      "created_at": FieldValue.serverTimestamp(),
-
-      "likes": likes,
-
-      "replies": replies.map((e) => e.toMap()).toList(),
-    };
-  }
-}
-
-// =========================
-// REPLY MODEL
-// =========================
-
 class CommentReplyModel {
-  String username;
-
-  String profileImage;
-
-  String reply;
-
-  DateTime createdAt;
-
-  int likes;
-
-  bool isLiked;
+  final String username;
+  final String profileImage;
+  final String reply;
+  final int likes;
+  final DateTime createdAt;
+  final String uid;
 
   CommentReplyModel({
     required this.username,
     required this.profileImage,
     required this.reply,
-    required this.createdAt,
     required this.likes,
-
-    this.isLiked = false,
+    required this.createdAt,
+    required this.uid,
   });
 
   factory CommentReplyModel.fromMap(Map<String, dynamic> data) {
+    final rawCreatedAt = data['created_at'];
+
+    DateTime parsedCreatedAt;
+    if (rawCreatedAt is Timestamp) {
+      parsedCreatedAt = rawCreatedAt.toDate();
+    } else if (rawCreatedAt is int) {
+      parsedCreatedAt = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt);
+    } else {
+      parsedCreatedAt = DateTime.now();
+    }
+
     return CommentReplyModel(
-      username: data["username"] ?? "",
-
-      profileImage: data["profile_image"] ?? "",
-
-      reply: data["reply"] ?? "",
-
-      createdAt: (data["created_at"] as Timestamp).toDate(),
-
-      likes: data["likes"] ?? 0,
+      username: (data['username'] ?? '').toString(),
+      profileImage: (data['profile_image'] ?? '').toString(),
+      reply: (data['reply'] ?? '').toString(),
+      likes: (data['likes'] ?? 0) as int,
+      createdAt: parsedCreatedAt,
+      uid: (data['uid'] ?? '').toString(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      "username": username,
-
-      "profile_image": profileImage,
-
-      "reply": reply,
-
-      "created_at": FieldValue.serverTimestamp(),
-
-      "likes": likes,
+      'username': username,
+      'profile_image': profileImage,
+      'reply': reply,
+      'likes': likes,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'uid': uid,
     };
   }
+}
+
+class CommentModel {
+  final String id;
+  final String username;
+  final String profileImage;
+  final String comment;
+  final int likes;
+  final List<CommentReplyModel> replies;
+  final DateTime createdAt;
+  final String uid;
+
+  CommentModel({
+    required this.id,
+    required this.username,
+    required this.profileImage,
+    required this.comment,
+    required this.likes,
+    required this.replies,
+    required this.createdAt,
+    required this.uid,
+  });
+
+  factory CommentModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? {};
+    final rawCreatedAt = data['created_at'];
+
+    DateTime parsedCreatedAt;
+    if (rawCreatedAt is Timestamp) {
+      parsedCreatedAt = rawCreatedAt.toDate();
+    } else if (rawCreatedAt is int) {
+      parsedCreatedAt = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt);
+    } else {
+      parsedCreatedAt = DateTime.now();
+    }
+
+    final rawReplies = List<Map<String, dynamic>>.from(data['replies'] ?? []);
+
+    return CommentModel(
+      id: doc.id,
+      username: (data['username'] ?? '').toString(),
+      profileImage: (data['profile_image'] ?? '').toString(),
+      comment: (data['comment'] ?? '').toString(),
+      likes: (data['likes'] ?? 0) as int,
+      replies: rawReplies.map(CommentReplyModel.fromMap).toList(),
+      createdAt: parsedCreatedAt,
+      uid: (data['uid'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'username': username,
+      'profile_image': profileImage,
+      'comment': comment,
+      'likes': likes,
+      'replies': replies.map((e) => e.toMap()).toList(),
+      'created_at': createdAt,
+      'uid': uid,
+    };
+  }
+
+  bool get hasReplies => replies.isNotEmpty;
 }

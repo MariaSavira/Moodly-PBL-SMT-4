@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#F3F7E8"
+    android:padding="8dp">
 
     <ImageView
         android:id="@+id/widget_background"
@@ -10,12 +12,23 @@
         android:scaleType="centerCrop"
         android:src="@drawable/widget_bg_1" />
 
+    <TextView
+        android:id="@+id/widget_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#44000000"
+        android:text=""
+        android:textSize="1sp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:gravity="center"
-        android:padding="16dp">
+        android:orientation="vertical"
+        android:paddingLeft="14dp"
+        android:paddingTop="12dp"
+        android:paddingRight="14dp"
+        android:paddingBottom="12dp">
 
         <TextView
             android:id="@+id/widget_category"
@@ -27,20 +40,26 @@
             android:paddingRight="10dp"
             android:paddingBottom="4dp"
             android:text="Kesehatan Mental"
-            android:textColor="#222222"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textColor="#202020"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
 
         <TextView
             android:id="@+id/widget_quote"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="10dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
+            android:includeFontPadding="false"
+            android:lineSpacingExtra="1dp"
+            android:maxLines="3"
+            android:maxWidth="220dp"
             android:text="Aku boleh beristirahat tanpa merasa bersalah."
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:maxLines="4" />
+            android:textSize="15sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </FrameLayout>

@@ -1,53 +1,78 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportDiaryService {
+  ReportDiaryService._();
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static final CollectionReference reportRef = _db.collection("reports");
+  static CollectionReference<Map<String, dynamic>> get _reportRef =>
+      _db.collection("reports");
 
-  // =========================
-  // CREATE REPORT
-  // =========================
-
+  /// ================= CREATE REPORT =================
   static Future<void> createReport({
+    required String type,
+
+    /// USER YANG DILAPORKAN
     required String reportedUser,
-
-    // FOTO PROFIL USER YANG DILAPORKAN
     required String reportedProfile,
+    required String reportedUid,
 
+    /// PELAPOR
+    required String reportedByUid,
+    required String reportedByUsername,
+
+    /// REPORT
     required String reportCategory,
+    required String reportReason,
 
-    required String diaryText,
+    /// CONTENT
+    required String contentText,
 
-    // USER YANG MELAPORKAN
-    required String reportedBy,
-
+    /// TARGET ID
     required String diaryId,
   }) async {
-    await reportRef.add({
-      // USER YANG DILAPORKAN
+    final payload = <String, dynamic>{
+      /// TYPE
+      "type": type,
+
+      /// REPORTED USER
       "reported_user": reportedUser,
-
-      // FOTO PROFIL USER YANG DILAPORKAN
       "reported_profile": reportedProfile,
+      "reported_uid": reportedUid,
 
-      // KATEGORI REPORT
+      /// REPORTER
+      "reported_by_uid": reportedByUid,
+      "reported_by_username": reportedByUsername,
+
+      /// REPORT DETAIL
       "report_category": reportCategory,
+      "report_reason": reportReason,
 
-      // ISI DIARY
-      "diary_text": diaryText,
+      /// CONTENT
+      "content_text": contentText,
 
-      // USER PELAPOR
-      "reported_by": reportedBy,
-
-      // ID DIARY
+      /// TARGET
       "diary_id": diaryId,
 
-      // WAKTU REPORT
-      "created_at": FieldValue.serverTimestamp(),
+      /// EXTRA CONTEXT
+      "comment_id": null,
+      "reply_id": null,
+      "target_type": "diary",
 
-      // STATUS REPORT
+      /// SYSTEM
       "status": "pending",
-    });
+      "created_at": FieldValue.serverTimestamp(),
+    };
+
+    await _reportRef.add(payload);
+  }
+
+  /// ================= WATCH MY REPORTS (OPTIONAL) =================
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getReportsByReporter(
+    String reporterUid,
+  ) {
+    return _reportRef
+        .where("reported_by_uid", isEqualTo: reporterUid)
+        .orderBy("created_at", descending: true)
+        .snapshots();
   }
 }

@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'pages/admin/moderasi_admin.dart';
+import 'pages/admin/list_laporan_user_admin_page.dart';
+import 'pages/admin/list_ajuan_banding_admin_page.dart';
+import 'pages/admin/dashboard_admin.dart';
+import 'pages/admin/profil_admin_page.dart';
 
 // firebase
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'firebase_options.dart';
+import 'core/services/notification_service.dart';
 import 'pages/onboarding_page.dart';
 import 'pages/splash_screen.dart';
 
@@ -21,6 +27,7 @@ Future<void> main() async {
   );
 
   if (!kIsWeb) {
+    await NotificationService.instance.initialize();
     await MobileAds.instance.initialize();
   }
 
@@ -77,6 +84,15 @@ class MoodlyApp extends StatelessWidget {
         ),
       ),
       home: const RootPage(),
+      routes: {
+        '/admin-dashboard': (context) => const DashboardAdminPage(),
+        '/admin-moderasi': (context) => const ModerasiAdminPage(),
+        '/admin-banding': (context) => const ListAjuanBandingAdminPage(),
+        '/admin-profil': (context) => const ProfilAdminPage(),
+
+        // keep dulu biar file lama tidak rusak mendadak
+        '/admin-laporan': (context) => const ListLaporanUserAdminPage(),
+      },
     );
   }
 }

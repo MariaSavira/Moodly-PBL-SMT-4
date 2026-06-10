@@ -12,14 +12,12 @@ import 'auth.dart';
 class OtpVerificationPage extends StatefulWidget {
   final String fullName;
   final String email;
-  final String phoneNumber;
   final String password;
 
   const OtpVerificationPage({
     super.key,
     required this.fullName,
     required this.email,
-    required this.phoneNumber,
     required this.password,
   });
 
@@ -94,6 +92,17 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     });
   }
 
+  String _mapOtpError(Object e) {
+    final raw = e.toString().replaceFirst('Exception: ', '').trim();
+
+    if (raw.contains('Backend OTP belum dikonfigurasi') ||
+        raw.contains('OTP_BASE_URL belum diset')) {
+      return 'Backend OTP belum tersambung. Kalau kamu sedang testing di browser, pastikan backend berjalan di http://localhost:5000.';
+    }
+
+    return raw;
+  }
+
   String _formatCountdown(int totalSeconds) {
     final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
@@ -134,7 +143,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       await OtpService.instance.verifyRegisterOtpAndCreateUser(
         fullName: widget.fullName,
         email: widget.email,
-        phoneNumber: widget.phoneNumber,
         password: widget.password,
         otp: otp,
       );
@@ -154,7 +162,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
       _showPopup(
         title: 'Verifikasi gagal',
-        message: e.toString().replaceFirst('Exception: ', ''),
+        message: _mapOtpError(e),
         type: CutePopupType.error,
       );
     }
@@ -194,7 +202,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
       _showPopup(
         title: 'Gagal kirim ulang',
-        message: e.toString().replaceFirst('Exception: ', ''),
+        message: _mapOtpError(e),
         type: CutePopupType.error,
       );
     }

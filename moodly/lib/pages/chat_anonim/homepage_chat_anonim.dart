@@ -1,21 +1,27 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../premium/premium_page.dart';
+import '../premium/premium_catalog.dart';
+import '../../core/services/premium_service.dart';
 import '../../widgets/moodly_bottom_navbar.dart';
-import 'dart:math';
-import 'dart:async';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
-import 'package:flutter/gestures.dart';
 import '../pages.dart';
 
-// App entry point.
+const String _prefLanguageKey = 'moodly_settings_language_code';
+
 void main() {
   runApp(const HomeChatAnonim());
 }
 
-// Root application widget.
 class HomeChatAnonim extends StatelessWidget {
   const HomeChatAnonim({super.key});
 
@@ -25,7 +31,6 @@ class HomeChatAnonim extends StatelessWidget {
   }
 }
 
-// Homepage widget.
 class AnonymousChatHomePage extends StatefulWidget {
   const AnonymousChatHomePage({super.key});
 
@@ -35,12 +40,148 @@ class AnonymousChatHomePage extends StatefulWidget {
 
 class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-    _userRoomSubscription;
+      _userRoomSubscription;
 
   String? _lastKnownRoomId;
-  bool _isOpeningRoom = false;
   String? _lastHandledNoticeId;
+  bool _isOpeningRoom = false;
   bool _isMatchingPageOpen = false;
+
+  String _languageCode = 'id';
+
+  bool _hasPremiumAccess = false;
+  String? _userGender;
+
+  int selectedGenderIndex = 1;
+  int selectedNavIndex = 3;
+
+  int? pressedGenderIndex;
+  bool isProfilePressed = false;
+  bool isCtaPressed = false;
+
+  String profileName = '';
+  String selectedProfileImage = '';
+  List<String> ownedRewardAvatarIds = [];
+
+  static const List<String> _oranyeImutPack = [
+    'assets/profile_pic/PP_12.png',
+    'assets/profile_pic/PP_13.png',
+    'assets/profile_pic/PP_14.png',
+    'assets/profile_pic/PP_15.png',
+    'assets/profile_pic/PP_21.png',
+  ];
+
+  static const List<String> _matchaKalemPack = [
+    'assets/profile_pic/PP_16.png',
+    'assets/profile_pic/PP_17.png',
+    'assets/profile_pic/PP_18.png',
+    'assets/profile_pic/PP_19.png',
+    'assets/profile_pic/PP_2.png',
+  ];
+
+  final List<String> profileAvatars = const [
+    'assets/profile_pic/PP.png',
+    'assets/profile_pic/PP_2.png',
+    'assets/profile_pic/PP_3.png',
+    'assets/profile_pic/PP_4.png',
+    'assets/profile_pic/PP_5.png',
+    'assets/profile_pic/PP_6.png',
+    'assets/profile_pic/PP_7.png',
+    'assets/profile_pic/PP_8.png',
+    'assets/profile_pic/PP_9.png',
+    'assets/profile_pic/PP_10.png',
+    'assets/profile_pic/PP_11.png',
+    'assets/profile_pic/PP_12.png',
+    'assets/profile_pic/PP_13.png',
+    'assets/profile_pic/PP_14.png',
+    'assets/profile_pic/PP_15.png',
+    'assets/profile_pic/PP_16.png',
+    'assets/profile_pic/PP_17.png',
+    'assets/profile_pic/PP_18.png',
+    'assets/profile_pic/PP_19.png',
+    'assets/profile_pic/PP_20.png',
+    'assets/profile_pic/PP_21.png',
+    'assets/profile_pic/PP_22.png',
+  ];
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'header': 'Ruang Curhat',
+      'heroChip': 'Chat anonim',
+      'heroTitle': 'Temukan teman cerita yang lembut',
+      'heroSubtitle': 'Mulai obrolan hangat hari ini!',
+      'editProfile': 'Atur Profil',
+      'genderFilter': 'Filter Gender',
+      'male': 'Laki-laki',
+      'both': 'Keduanya',
+      'female': 'Perempuan',
+      'startChat': 'Mulai Bercerita',
+      'helperLead': 'Tolong hormati orang lain dan patuhi ',
+      'helperLink': 'peraturan kami',
+      'rulesTitle': 'Peraturan Ruang Curhat',
+      'rule1': 'Jaga privasi diri sendiri dan lawan bicara.',
+      'rule2': 'Gunakan bahasa yang sopan, hangat, dan tidak menyerang.',
+      'rule3':
+          'Jangan meminta data pribadi seperti nomor, alamat, atau akun media sosial.',
+      'rule4':
+          'Jangan membagikan isi chat, screenshot, atau rekaman percakapan ke platform lain.',
+      'rule5':
+          'Kalau merasa tidak nyaman, akhiri percakapan atau gunakan fitur laporan.',
+      'understand': 'Aku Mengerti',
+      'chatEndedTitle': 'Percakapan berakhir',
+      'chatEndedMessage': 'Teman chat telah mengakhiri percakapan atau room sudah ditutup.',
+      'noticeFallback': 'Room chat telah selesai.',
+      'profileFallback': 'Spaghetti Unyu',
+      'genderQuestionTitle': 'Kenalan dulu yuk',
+      'genderQuestionDesc': 'Sebelum mulai matching, pilih gender kamu dulu ya.',
+      'continueMatching': 'Lanjut Matching',
+      'selectGenderFirst': 'Pilih gender dulu yaa',
+      'genderSavedTitle': 'Gender tersimpan',
+      'genderSavedDesc': 'Sekarang kamu sudah bisa mulai matching.',
+      'premiumGenderTitle': 'Filter gender premium',
+      'premiumGenderDesc': 'Pilih preferensi gender matching khusus untuk pengguna premium.',
+      'myGender': 'Gender Kamu',
+      'genderNotSet': 'Belum diatur',
+    },
+    'en': {
+      'header': 'Chat Space',
+      'heroChip': 'Anonymous chat',
+      'heroTitle': 'Find a gentle space to talk',
+      'heroSubtitle': 'Start a warm conversation today!',
+      'editProfile': 'Edit Profile',
+      'genderFilter': 'Gender Filter',
+      'male': 'Male',
+      'both': 'Both',
+      'female': 'Female',
+      'startChat': 'Start Talking',
+      'helperLead': 'Please be kind and follow our ',
+      'helperLink': 'rules',
+      'rulesTitle': 'Chat Room Rules',
+      'rule1': 'Protect your privacy and your chat partner’s privacy.',
+      'rule2': 'Use kind language and avoid attacking or shaming others.',
+      'rule3':
+          'Do not ask for personal data such as phone numbers, addresses, or social media accounts.',
+      'rule4':
+          'Do not share chat contents, screenshots, or recordings outside the app.',
+      'rule5':
+          'If something feels uncomfortable, leave the conversation or use the report feature.',
+      'understand': 'Got it',
+      'chatEndedTitle': 'Conversation ended',
+      'chatEndedMessage': 'Your chat partner ended the conversation or the room was closed.',
+      'noticeFallback': 'The chat room has ended.',
+      'profileFallback': 'Spaghetti Unyu',
+      'genderQuestionTitle': 'Let’s get to know you first',
+      'genderQuestionDesc': 'Before matching, choose your gender first.',
+      'continueMatching': 'Continue Matching',
+      'selectGenderFirst': 'Please choose your gender first',
+      'genderSavedTitle': 'Gender saved',
+      'genderSavedDesc': 'You can start matching now.',
+      'premiumGenderTitle': 'Premium gender filter',
+      'premiumGenderDesc': 'Choose your matching gender preference as a premium user.',
+      'myGender': 'Your Gender',
+      'genderNotSet': 'Not set',
+    },
+  };
 
   @override
   void initState() {
@@ -48,12 +189,407 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     initApp();
   }
 
-  Future<void> initApp() async {
-    final user = FirebaseAuth.instance.currentUser;
+  @override
+  void dispose() {
+    _userRoomSubscription?.cancel();
+    super.dispose();
+  }
 
+  List<_GenderOption> get genders => [
+        _GenderOption(
+          label: _t('male'),
+          icon: Icons.male_rounded,
+          background: const Color(0xFFB8E8FF),
+          surface: const Color(0xFFEAF8FF),
+          border: const Color(0xFF7EC9F4),
+          iconColor: const Color(0xFF57A9DA),
+          showCrown: true,
+        ),
+        _GenderOption(
+          label: _t('both'),
+          icon: Icons.transgender_rounded,
+          background: const Color(0xFFF8FBF4),
+          surface: const Color(0xFFFFFFFF),
+          border: const Color(0xFFB8D996),
+          iconColor: const Color(0xFF72B35B),
+        ),
+        _GenderOption(
+          label: _t('female'),
+          icon: Icons.female_rounded,
+          background: const Color(0xFFFFD5DD),
+          surface: const Color(0xFFFFF1F4),
+          border: const Color(0xFFF09AAC),
+          iconColor: const Color(0xFFD86D88),
+          showCrown: true,
+        ),
+      ];
+
+  String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
+
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _preferredGenderValueFromIndex() {
+    switch (selectedGenderIndex) {
+      case 0:
+        return 'male';
+      case 2:
+        return 'female';
+      default:
+        return 'all';
+    }
+  }
+
+  Future<void> _loadPremiumAccess() async {
+    final hasPremium = await PremiumService.instance.hasActivePremium();
+
+    if (!mounted) return;
+    setState(() {
+      _hasPremiumAccess = hasPremium;
+      if (!_hasPremiumAccess && selectedGenderIndex != 1) {
+        selectedGenderIndex = 1;
+      }
+    });
+  }
+
+  Future<void> _loadUserGenderFromFirestore() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final snap =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = snap.data() ?? {};
+
+    if (!mounted) return;
+    setState(() {
+      _userGender = _normalizeGender(data['gender']);
+    });
+  }
+
+  Future<String?> _showGenderQuestionDialog() async {
+    String? pickedGender;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.42),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Widget genderCard({
+              required String value,
+              required String label,
+              required IconData icon,
+              required Color fill,
+              required Color border,
+              required Color iconColor,
+            }) {
+              final isSelected = pickedGender == value;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setModalState(() {
+                      pickedGender = value;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: fill,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: isSelected ? border : border.withOpacity(0.55),
+                        width: isSelected ? 2.3 : 1.4,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: border.withOpacity(0.18),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.92),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: iconColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 14,
+                                color: const Color(0xFF243021),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFDF9),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 22,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFFFEEF3),
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Color(0xFFE58696),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      _t('genderQuestionTitle'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontSize: 22,
+                            color: const Color(0xFF1F1F1F),
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t('genderQuestionDesc'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: const Color(0xFF6B7763),
+                          ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        genderCard(
+                          value: 'male',
+                          label: _t('male'),
+                          icon: Icons.male_rounded,
+                          fill: const Color(0xFFEAF8FF),
+                          border: const Color(0xFF7EC9F4),
+                          iconColor: const Color(0xFF57A9DA),
+                        ),
+                        const SizedBox(width: 10),
+                        genderCard(
+                          value: 'female',
+                          label: _t('female'),
+                          icon: Icons.female_rounded,
+                          fill: const Color(0xFFFFF1F4),
+                          border: const Color(0xFFF09AAC),
+                          iconColor: const Color(0xFFD86D88),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: pickedGender == null
+                            ? null
+                            : () => Navigator.pop(context, pickedGender),
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: const Color(0xFF84C76A),
+                          disabledBackgroundColor: const Color(0xFFD5E8C6),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Text(
+                          _t('continueMatching'),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _ensureUserGenderBeforeMatching() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final snap = await userRef.get();
+    final data = snap.data() ?? {};
+
+    final existingGender = _normalizeGender(data['gender']);
+    if (existingGender != null) {
+      if (mounted) {
+        setState(() {
+          _userGender = existingGender;
+        });
+      }
+      return true;
+    }
+
+    final pickedGender = await _showGenderQuestionDialog();
+    if (pickedGender == null) return false;
+
+    await userRef.set({
+      'gender': pickedGender,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    if (!mounted) return false;
+
+    setState(() {
+      _userGender = pickedGender;
+    });
+
+    showCuteTopPopup(
+      context,
+      title: _t('genderSavedTitle'),
+      message: _t('genderSavedDesc'),
+      type: CutePopupType.success,
+    );
+
+    return true;
+  }
+
+  Widget _buildPageHeader() {
+    const textDark = Color(0xFF1F1F1F);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.88),
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.10),
+                    offset: Offset(0, 6),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: textDark,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('header'),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: textDark,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> get unlockedProfileAvatars {
+    final lockedRewardAssets = <String>{
+      ..._oranyeImutPack,
+      ..._matchaKalemPack,
+    };
+
+    final baseUnlocked =
+        profileAvatars.where((avatar) => !lockedRewardAssets.contains(avatar)).toList();
+
+    final result = [...baseUnlocked];
+
+    if (ownedRewardAvatarIds.contains('avatar_oren_imut')) {
+      result.addAll(_oranyeImutPack);
+    }
+
+    if (ownedRewardAvatarIds.contains('avatar_matcha_calm')) {
+      result.addAll(_matchaKalemPack);
+    }
+
+    return result.toSet().toList();
+  }
+
+  Future<void> initApp() async {
+    await _loadLanguagePreference();
+
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -63,15 +599,14 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
       return;
     }
 
+    await _loadRewardInventory();
     await loadProfileFromFirestoreOrLocal();
+    await _loadPremiumAccess();
+    await _loadUserGenderFromFirestore();
 
     if (!mounted) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final userData = userDoc.data();
     final initialRoomId = userData?['currentRoomId'];
     final initialNotice = userData?['chatNotice'];
@@ -99,20 +634,40 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     await syncUserProfileToFirestore();
   }
 
-  @override
-  void dispose() {
-    _userRoomSubscription?.cancel();
-    super.dispose();
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLanguage = prefs.getString(_prefLanguageKey);
+
+    if (!mounted) return;
+    setState(() {
+      _languageCode = savedLanguage == 'en' ? 'en' : 'id';
+    });
   }
 
-  void _showChatEndedPopup() {
+  Future<void> _consumeChatNotice(String uid, Map<String, dynamic> notice) async {
+    final noticeId = notice['id']?.toString();
+    if (noticeId == null || noticeId.isEmpty) return;
+    if (_lastHandledNoticeId == noticeId) return;
+
+    _lastHandledNoticeId = noticeId;
     if (!mounted) return;
 
     showCuteTopPopup(
       context,
-      title: 'Percakapan berakhir',
-      message: 'Teman chat telah mengakhiri percakapan atau room sudah ditutup.',
-      type: CutePopupType.warning,
+      title: (notice['title']?.toString().isNotEmpty ?? false)
+          ? notice['title'].toString()
+          : _t('chatEndedTitle'),
+      message: (notice['message']?.toString().isNotEmpty ?? false)
+          ? notice['message'].toString()
+          : _t('noticeFallback'),
+      type: _mapNoticeType(notice['type']?.toString()),
+    );
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set(
+      {
+        'chatNotice': null,
+      },
+      SetOptions(merge: true),
     );
   }
 
@@ -129,156 +684,28 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
     }
   }
 
-  void _showRulesDialog() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.45),
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFCF8),
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Peraturan Ruang Curhat',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                      ),
-                ),
-                const SizedBox(height: 14),
-                _ruleItem('Jaga privasi diri sendiri dan lawan bicara.'),
-                _ruleItem('Gunakan bahasa yang sopan dan tidak menyerang.'),
-                _ruleItem('Jangan meminta data pribadi seperti nomor, alamat, atau akun media sosial.'),
-                _ruleItem('Jangan membagikan isi chat, screenshot, atau rekaman percakapan ke media sosial atau platform apa pun demi menjaga privasi dan kenyamanan pengguna.'),
-                _ruleItem('Kalau merasa tidak nyaman, akhiri percakapan atau gunakan fitur laporan.'),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: const Color(0xFF84C76A),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                    ),
-                    child: const Text(
-                      'Aku Mengerti',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _ruleItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 6),
-            decoration: const BoxDecoration(
-              color: Color(0xFF84C76A),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    height: 1.5,
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _consumeChatNotice(
-    String uid,
-    Map<String, dynamic> notice,
-  ) async {
-    final noticeId = notice['id']?.toString();
-    if (noticeId == null || noticeId.isEmpty) return;
-    if (_lastHandledNoticeId == noticeId) return;
-
-    _lastHandledNoticeId = noticeId;
-
-    if (!mounted) return;
-
-    showCuteTopPopup(
-      context,
-      title: (notice['title']?.toString().isNotEmpty ?? false)
-          ? notice['title'].toString()
-          : 'Percakapan berakhir',
-      message: (notice['message']?.toString().isNotEmpty ?? false)
-          ? notice['message'].toString()
-          : 'Room chat telah selesai.',
-      type: _mapNoticeType(notice['type']?.toString()),
-    );
-
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'chatNotice': null,
-    }, SetOptions(merge: true));
-  }
-
   Future<void> _openRoomIfNeeded(String roomId) async {
     if (_isOpeningRoom || !mounted) return;
 
     _isOpeningRoom = true;
 
     try {
-      final roomDoc = await FirebaseFirestore.instance
-          .collection('chat_rooms')
-          .doc(roomId)
-          .get();
+      final roomDoc =
+          await FirebaseFirestore.instance.collection('chat_rooms').doc(roomId).get();
 
       if (!mounted) return;
 
       if (!roomDoc.exists) {
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid != null) {
-          await FirebaseFirestore.instance.collection('users').doc(uid).set({
-            'currentRoomId': null,
-            'status': 'idle',
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          await FirebaseFirestore.instance.collection('users').doc(uid).set(
+            {
+              'currentRoomId': null,
+              'status': 'idle',
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
         }
         return;
       }
@@ -312,10 +739,8 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
         await _consumeChatNotice(uid, Map<String, dynamic>.from(notice));
       }
 
-      final hasRoomNow =
-          currentRoomId is String && currentRoomId.trim().isNotEmpty;
-      final hadRoomBefore =
-          _lastKnownRoomId != null && _lastKnownRoomId!.trim().isNotEmpty;
+      final hasRoomNow = currentRoomId is String && currentRoomId.trim().isNotEmpty;
+      final hadRoomBefore = _lastKnownRoomId != null && _lastKnownRoomId!.trim().isNotEmpty;
 
       if (hadRoomBefore && !hasRoomNow) {
         _lastKnownRoomId = null;
@@ -335,97 +760,27 @@ class _AnonymousChatHomePageState extends State<AnonymousChatHomePage> {
 
   Future<void> syncUserProfileToFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('FIRESTORE SYNC BATAL: user null');
-      return;
-    }
+    if (user == null) return;
 
-    print('SYNCING USER: ${user.uid}');
-    print('nickname: $profileName');
-    print('avatarId: $selectedProfileImage');
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final currentSnap = await userRef.get();
+    final currentData = currentSnap.data() ?? {};
 
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'uid': user.uid,
-      'nickname': profileName.isNotEmpty ? profileName : generateRandomNickname(),
-      'avatarId': selectedProfileImage,
-      'status': 'idle',
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    print('FIRESTORE WRITE BERHASIL');
+    await userRef.set(
+      {
+        'uid': user.uid,
+        'nickname': profileName.isNotEmpty
+            ? profileName
+            : generateRandomNickname(),
+        'avatarId': selectedProfileImage,
+        'gender': _userGender,
+        'status': currentData['status'] ?? 'idle',
+        'currentRoomId': currentData['currentRoomId'],
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
-
-  int selectedGenderIndex = 1;
-  int selectedNavIndex = 3;
-
-  int? pressedGenderIndex;
-  bool isProfilePressed = false;
-  bool isCtaPressed = false;
-
-  bool showProfileOverlay = false;
-
-  String profileName = '';
-  String selectedProfileImage = '';
-
-  // Avatar yang terbuka untuk user baru.
-// NANTI kalau sistem streak/reward sudah jadi, pindahkan kontrol unlock ke Firestore/user inventory di sini.
-final List<String> unlockedProfileAvatars = const [
-  'assets/profile_pic/PP.png',
-  'assets/profile_pic/PP_2.png',
-  'assets/profile_pic/PP_3.png',
-  'assets/profile_pic/PP_4.png',
-  'assets/profile_pic/PP_5.png',
-  'assets/profile_pic/PP_6.png',
-];
-
-  final List<String> profileAvatars = const [
-    'assets/profile_pic/PP.png',
-    'assets/profile_pic/PP_2.png',
-    'assets/profile_pic/PP_3.png',
-    'assets/profile_pic/PP_4.png',
-    'assets/profile_pic/PP_5.png',
-    'assets/profile_pic/PP_6.png',
-    'assets/profile_pic/PP_7.png',
-    'assets/profile_pic/PP_8.png',
-    'assets/profile_pic/PP_9.png',
-    'assets/profile_pic/PP_10.png',
-    'assets/profile_pic/PP_11.png',
-    'assets/profile_pic/PP_12.png',
-    'assets/profile_pic/PP_13.png',
-    'assets/profile_pic/PP_14.png',
-    'assets/profile_pic/PP_15.png',
-    'assets/profile_pic/PP_16.png',
-    'assets/profile_pic/PP_17.png',
-    'assets/profile_pic/PP_18.png',
-    'assets/profile_pic/PP_19.png',
-    'assets/profile_pic/PP_20.png',
-    'assets/profile_pic/PP_21.png',
-    'assets/profile_pic/PP_22.png',
-  ];
-
-  final List<_GenderOption> genders = const [
-    _GenderOption(
-      label: 'Laki-laki',
-      icon: Icons.male_rounded,
-      background: Color(0xFFA5E2F9),
-      border: Color(0xFFC97B26),
-      iconColor: Color(0xFFF8FAFF),
-    ),
-    _GenderOption(
-      label: 'Keduanya',
-      icon: Icons.transgender_rounded,
-      background: Color(0xFFF3F5F2),
-      border: Color(0xFFAED48B),
-      iconColor: Color(0xFF7FC066),
-    ),
-    _GenderOption(
-      label: 'Perempuan',
-      icon: Icons.female_rounded,
-      background: Color(0xFFF8BDC0),
-      border: Color(0xFFC97B26),
-      iconColor: Color(0xFFF8FAFF),
-    ),
-  ];
 
   String generateRandomNickname() {
     final random = Random();
@@ -498,7 +853,6 @@ final List<String> unlockedProfileAvatars = const [
 
     final food = foods[random.nextInt(foods.length)];
     final adjective = adjectives[random.nextInt(adjectives.length)];
-
     return '$food $adjective';
   }
 
@@ -507,12 +861,30 @@ final List<String> unlockedProfileAvatars = const [
     return unlockedProfileAvatars[random.nextInt(unlockedProfileAvatars.length)];
   }
 
+  Future<void> _loadRewardInventory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('reward_inventory')
+        .doc('main')
+        .get();
+
+    final data = snap.data() ?? {};
+    if (!mounted) return;
+
+    setState(() {
+      ownedRewardAvatarIds = List<String>.from(data['ownedAvatarIds'] ?? []);
+    });
+  }
+
   Future<void> loadProfileFromFirestoreOrLocal() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final prefs = await SharedPreferences.getInstance();
-
     final nameKey = 'profileName_${user.uid}';
     final avatarKey = 'selectedProfileImage_${user.uid}';
 
@@ -524,47 +896,43 @@ final List<String> unlockedProfileAvatars = const [
         localAvatar != null &&
         localAvatar.isNotEmpty) {
       if (!mounted) return;
-
       setState(() {
         profileName = localName;
         selectedProfileImage = localAvatar;
       });
-
       return;
     }
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final data = userDoc.data();
 
     final firestoreName = data?['nickname'] as String?;
     final firestoreAvatar = data?['avatarId'] as String?;
 
     final resolvedName =
-        firestoreName != null && firestoreName.isNotEmpty
-            ? firestoreName
-            : generateRandomNickname();
+        firestoreName != null && firestoreName.isNotEmpty ? firestoreName : generateRandomNickname();
 
-    final resolvedAvatar =
-      firestoreAvatar != null && firestoreAvatar.isNotEmpty
-          ? firestoreAvatar
-          : generateRandomUnlockedAvatar();
+    final fallbackAvatar = generateRandomUnlockedAvatar();
+    final resolvedAvatar = firestoreAvatar != null &&
+            firestoreAvatar.isNotEmpty &&
+            unlockedProfileAvatars.contains(firestoreAvatar)
+        ? firestoreAvatar
+        : fallbackAvatar;
 
     await prefs.setString(nameKey, resolvedName);
     await prefs.setString(avatarKey, resolvedAvatar);
 
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'uid': user.uid,
-      'nickname': resolvedName,
-      'avatarId': resolvedAvatar,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+      {
+        'uid': user.uid,
+        'nickname': resolvedName,
+        'avatarId': resolvedAvatar,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
 
     if (!mounted) return;
-
     setState(() {
       profileName = resolvedName;
       selectedProfileImage = resolvedAvatar;
@@ -576,7 +944,6 @@ final List<String> unlockedProfileAvatars = const [
     if (user == null) return;
 
     final prefs = await SharedPreferences.getInstance();
-
     final nameKey = 'profileName_${user.uid}';
     final avatarKey = 'selectedProfileImage_${user.uid}';
 
@@ -595,7 +962,6 @@ final List<String> unlockedProfileAvatars = const [
           (route) => false,
         );
         break;
-
       case 1:
         Navigator.push(
           context,
@@ -604,16 +970,13 @@ final List<String> unlockedProfileAvatars = const [
           ),
         );
         break;
-
       case 3:
-        // Sudah di halaman Connect / Chat Anonim
         if (selectedNavIndex != 3) {
           setState(() {
             selectedNavIndex = 3;
           });
         }
         break;
-
       case 4:
         Navigator.push(
           context,
@@ -634,171 +997,392 @@ final List<String> unlockedProfileAvatars = const [
     );
   }
 
+  Future<void> _openProfileOverlay() async {
+    FocusScope.of(context).unfocus();
+
+    final result = await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: false,
+        pageBuilder: (context, animation, secondaryAnimation) => ProfileOverlayPage(
+          profileName: profileName.isNotEmpty ? profileName : generateRandomNickname(),
+          selectedProfileImage: selectedProfileImage.isNotEmpty
+              ? selectedProfileImage
+              : unlockedProfileAvatars.first,
+          profileAvatars: profileAvatars,
+          unlockedProfileAvatars: unlockedProfileAvatars,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result is Map<String, dynamic>) {
+      setState(() {
+        profileName = result['profileName'] as String? ?? profileName;
+        selectedProfileImage =
+            result['selectedProfileImage'] as String? ?? selectedProfileImage;
+      });
+
+      await saveProfileData();
+      await syncUserProfileToFirestore();
+    }
+  }
+
+  Future<void> _startMatchingFlow() async {
+    await _loadPremiumAccess();
+
+    final hasGender = await _ensureUserGenderBeforeMatching();
+    if (!hasGender) return;
+
+    final preferredGender =
+        _hasPremiumAccess ? _preferredGenderValueFromIndex() : 'all';
+
+    if (!_hasPremiumAccess && selectedGenderIndex != 1) {
+      setState(() {
+        selectedGenderIndex = 1;
+      });
+    }
+
+    setState(() {
+      _isMatchingPageOpen = true;
+    });
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MatchingPage(
+          preferredGender: preferredGender,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isMatchingPageOpen = false;
+    });
+  }
+
+  void _showRulesDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFCF8),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t('rulesTitle'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 20,
+                    color: const Color(0xFF222222),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _ruleItem(_t('rule1')),
+                _ruleItem(_t('rule2')),
+                _ruleItem(_t('rule3')),
+                _ruleItem(_t('rule4')),
+                _ruleItem(_t('rule5')),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF84C76A),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      _t('understand'),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _ruleItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: const BoxDecoration(
+              color: Color(0xFF84C76A),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                color: const Color(0xFF3A3A3A),
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final safeBottom = media.padding.bottom;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFFF3FADC),
+        statusBarColor: Color(0xFFF7FAEE),
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFFF3FADC),
+        systemNavigationBarColor: Color(0xFFF7FAEE),
         systemNavigationBarIconBrightness: Brightness.dark,
-        systemNavigationBarDividerColor: Color(0xFFE0EBBB),
+        systemNavigationBarDividerColor: Color(0xFFF7FAEE),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFDDE2C4),
+        backgroundColor: const Color(0xFFF7FAEE),
         extendBody: true,
         resizeToAvoidBottomInset: false,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Positioned.fill(child: Container(color: const Color(0xFFF3FADC))),
-
-              // TOP CONTENT
-              Positioned(
-                top: 16,
-                left: 20,
-                right: 20,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: _ChatHomeBackground()),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(20, 14, 20, 132 + safeBottom),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Opacity(
-                      opacity: showProfileOverlay ? 0.0 : 1.0,
-                      child: IgnorePointer(
-                        ignoring: showProfileOverlay,
-                        child: _buildHeader(),
-                      ),
+                    _buildPageHeader(),
+                    const SizedBox(height: 18),
+                    _buildHeroCard(),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildProfileButton(),
                     ),
-                    const SizedBox(height: 88),
-                    Opacity(
-                      opacity: showProfileOverlay ? 0.0 : 1.0,
-                      child: IgnorePointer(
-                        ignoring: showProfileOverlay,
-                        child: _buildCenterContent(),
-                      ),
-                    ),
-                    const SizedBox(height: 52),
+                    const SizedBox(height: 18),
+                    _buildFilterCard(),
                   ],
                 ),
               ),
-
-              Positioned(
-                right: 20,
-                bottom: 350,
-                child: Opacity(
-                  opacity: showProfileOverlay ? 0.0 : 1.0,
-                  child: IgnorePointer(
-                    ignoring: showProfileOverlay,
-                    child: _buildProfileButton(),
-                  ),
-                ),
-              ),
-
-              // BOTTOM SHEET
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildFilterCard(),
-              ),
-
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 140,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0x00EFCACC),
-                          Color(0x66EFCACC),
-                          Color(0xFFEFCACC),
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         bottomNavigationBar: MoodlyBottomNavbar(
           currentIndex: selectedNavIndex,
           onTap: _onNavbarTap,
           onEmergencyTap: _onEmergencyTap,
+          outerBackgroundColor: const Color(0xFFF7FAEE),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const Homepage(),
-              ),
-              (route) => false,
-            );
-          },
-          child: const Padding(
-            padding: EdgeInsets.all(4),
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 20,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Ruang Curhat',
-          style: Theme.of(context).textTheme.headlineLarge,
-        ),
-      ],
-    );
-  }
+  Widget _buildHeroCard() {
+    final textTheme = Theme.of(context).textTheme;
 
-  Widget _buildCenterContent() {
-    return Center(
-      child: Column(
+    final avatar = selectedProfileImage.isNotEmpty
+        ? selectedProfileImage
+        : (unlockedProfileAvatars.isNotEmpty
+            ? unlockedProfileAvatars.first
+            : 'assets/profile_pic/PP.png');
+
+    final displayName =
+        profileName.isNotEmpty ? profileName : _t('profileFallback');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.90),
+        borderRadius: BorderRadius.circular(34),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFB7CC98).withOpacity(0.30),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xFFFFFFFF),
+          width: 1.2,
+        ),
+      ),
+      child: Stack(
         children: [
-          Container(
-            width: 105,
-            height: 105,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                selectedProfileImage.isNotEmpty
-                    ? selectedProfileImage
-                    : 'assets/profile_pic/PP.png', // <- placeholder sementara kalau state belum selesai load
-                fit: BoxFit.cover,
+          Positioned(
+            top: 12,
+            right: 4,
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFF7DDE4),
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          Text(profileName, style: Theme.of(context).textTheme.headlineLarge),
-          const SizedBox(height: 6),
-          Text(
-            'Mulailah Mengobrol!',
-            style: Theme.of(context).textTheme.bodySmall,
+          Positioned(
+            bottom: 8,
+            left: 0,
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFE4F3D0),
+              ),
+            ),
+          ),
+          Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8EF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.forum_rounded,
+                        size: 15,
+                        color: Color(0xFFD86D88),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _t('heroChip'),
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 12,
+                          color: const Color(0xFFD86D88),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 138,
+                    height: 138,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFFFF6F7), Color(0xFFEAF6DB)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFC7D7AA).withOpacity(0.46),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  MoodlyInventoryFrameAvatar(
+                    uid: FirebaseAuth.instance.currentUser?.uid,
+                    size: 128,
+                    innerPadding: 5,
+                    child: Container(
+                      width: 116,
+                      height: 116,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 16,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          avatar,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                displayName,
+                textAlign: TextAlign.center,
+                style: textTheme.headlineLarge?.copyWith(
+                  fontSize: 28,
+                  color: const Color(0xFF181818),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(
+                  _t('heroSubtitle'),
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    color: const Color(0xFF6F7C69),
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -806,6 +1390,8 @@ final List<String> unlockedProfileAvatars = const [
   }
 
   Widget _buildProfileButton() {
+    final textTheme = Theme.of(context).textTheme;
+
     return GestureDetector(
       onTapDown: (_) {
         setState(() {
@@ -822,74 +1408,40 @@ final List<String> unlockedProfileAvatars = const [
           isProfilePressed = false;
         });
       },
-      onTap: () async {
-        FocusScope.of(context).unfocus();
-
-        setState(() {
-          showProfileOverlay = true;
-        });
-
-        final result = await Navigator.of(context).push(
-          PageRouteBuilder(
-            opaque: false,
-            barrierDismissible: false,
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                ProfileOverlayPage(
-                  profileName: profileName,
-                  selectedProfileImage: selectedProfileImage.isNotEmpty
-                      ? selectedProfileImage
-                      : unlockedProfileAvatars.first,
-                  profileAvatars: profileAvatars,
-                  unlockedProfileAvatars: unlockedProfileAvatars,
-                ),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-            transitionDuration: const Duration(milliseconds: 150),
-            reverseTransitionDuration: const Duration(milliseconds: 150),
-          ),
-        );
-
-        if (!mounted) return;
-
-        setState(() {
-          showProfileOverlay = false;
-        });
-
-        if (result is Map<String, dynamic>) {
-          setState(() {
-            profileName = result['profileName'] as String;
-            selectedProfileImage = result['selectedProfileImage'] as String;
-          });
-
-          await saveProfileData();
-          await syncUserProfileToFirestore();
-        }
-      },
+      onTap: _openProfileOverlay,
       child: AnimatedScale(
         scale: isProfilePressed ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 120),
-        child: SizedBox(
-          width: 126,
-          height: 36,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF82C46B),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF84C76A),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF84C76A).withOpacity(0.26),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.edit_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _t('editProfile'),
+                style: textTheme.labelLarge?.copyWith(
+                  fontSize: 14,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'Atur Profil',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -897,56 +1449,46 @@ final List<String> unlockedProfileAvatars = const [
   }
 
   Widget _buildFilterCard() {
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
-      height: 340,
-      decoration: const BoxDecoration(
-        color: Color(0xFFDCE9BE),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDDECBF),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFA8C67A).withOpacity(0.24),
+            blurRadius: 26,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x33A4CD87),
-                      blurRadius: 20,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-              ),
+          Text(
+            _t('genderFilter'),
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 15,
+              color: const Color(0xFF1D271C),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 138),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Filter Gender',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 14),
-                _buildGenderOptions(),
-                const SizedBox(height: 16),
-                _buildCTAButton(),
-                const SizedBox(height: 10),
-                _buildHelperText(),
-              ],
-            ),
-          ),
+          const SizedBox(height: 14),
+          _buildGenderOptions(),
+          const SizedBox(height: 16),
+          _buildCTAButton(),
+          const SizedBox(height: 12),
+          _buildHelperText(),
         ],
       ),
     );
   }
 
   Widget _buildGenderOptions() {
+    final textTheme = Theme.of(context).textTheme;
+
     return Row(
       children: List.generate(genders.length, (index) {
         final option = genders[index];
@@ -956,7 +1498,7 @@ final List<String> unlockedProfileAvatars = const [
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(
-              right: index == genders.length - 1 ? 0 : 12,
+              right: index == genders.length - 1 ? 0 : 10,
             ),
             child: GestureDetector(
               onTapDown: (_) {
@@ -967,6 +1509,19 @@ final List<String> unlockedProfileAvatars = const [
               onTapUp: (_) {
                 setState(() {
                   pressedGenderIndex = null;
+                });
+
+                final needPremium = index == 0 || index == 2;
+
+                if (needPremium && !_hasPremiumAccess) {
+                  openMoodlyPremiumPage(
+                    context,
+                    source: PremiumEntrySource.chatGender,
+                  );
+                  return;
+                }
+
+                setState(() {
                   selectedGenderIndex = index;
                 });
               },
@@ -976,59 +1531,83 @@ final List<String> unlockedProfileAvatars = const [
                 });
               },
               child: AnimatedScale(
-                scale: isPressed ? 0.96 : 1.0,
+                scale: isPressed ? 0.97 : 1.0,
                 duration: const Duration(milliseconds: 120),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    SizedBox(
-                      height: 74,
-                      width: double.infinity,
-                      child: AnimatedContainer(
+                child: SizedBox(
+                  height: 126,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: option.background,
-                          borderRadius: BorderRadius.circular(14),
+                          color: isSelected ? option.background : option.surface,
+                          borderRadius: BorderRadius.circular(22),
                           border: Border.all(
                             color: isSelected
                                 ? option.border
-                                : option.border.withOpacity(0.7),
-                            width: isSelected ? 2.0 : 1.4,
+                                : option.border.withOpacity(0.62),
+                            width: isSelected ? 2.2 : 1.4,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: option.border.withOpacity(0.22),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(
+                                    isSelected ? 0.75 : 0.95,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  option.icon,
+                                  size: 28,
+                                  color: option.iconColor,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                option.label,
+                                textAlign: TextAlign.center,
+                                style: textTheme.bodySmall?.copyWith(
+                                  fontSize: 14,
+                                  color: const Color(0xFF263123),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              option.icon,
-                              size: 26,
-                              color: isSelected
-                                  ? option.iconColor
-                                  : const Color(0xFF88B97A),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              option.label,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                    if (index != 1)
-                      Positioned(
-                        top: -8,
-                        right: 6,
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
+                      if (option.showCrown && !_hasPremiumAccess)
+                        Positioned(
+                          top: -6,
+                          right: -2,
                           child: Image.asset(
                             'assets/icons/crown.png',
+                            width: 20,
+                            height: 20,
                             fit: BoxFit.contain,
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1039,6 +1618,8 @@ final List<String> unlockedProfileAvatars = const [
   }
 
   Widget _buildCTAButton() {
+    final textTheme = Theme.of(context).textTheme;
+
     return GestureDetector(
       onTapDown: (_) {
         setState(() {
@@ -1055,37 +1636,31 @@ final List<String> unlockedProfileAvatars = const [
           isCtaPressed = false;
         });
       },
-      onTap: () async {
-        setState(() {
-          _isMatchingPageOpen = true;
-        });
-
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const MatchingPage(),
-          ),
-        );
-
-        if (!mounted) return;
-
-        setState(() {
-          _isMatchingPageOpen = false;
-        });
-      },
+      onTap: _startMatchingFlow,
       child: AnimatedScale(
-        scale: isCtaPressed ? 0.97 : 1.0,
+        scale: isCtaPressed ? 0.98 : 1.0,
         duration: const Duration(milliseconds: 120),
         child: Container(
           width: double.infinity,
-          height: 36,
+          height: 54,
           decoration: BoxDecoration(
             color: const Color(0xFF84C76A),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF84C76A).withOpacity(0.28),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           alignment: Alignment.center,
           child: Text(
-            'Mulai Bercerita',
-            style: Theme.of(context).textTheme.labelLarge,
+            _t('startChat'),
+            style: textTheme.labelLarge?.copyWith(
+              fontSize: 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -1093,25 +1668,124 @@ final List<String> unlockedProfileAvatars = const [
   }
 
   Widget _buildHelperText() {
+    final textTheme = Theme.of(context).textTheme;
+
     return Center(
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(height: 1.2, color: Colors.black87),
+          style: textTheme.bodySmall?.copyWith(
+            height: 1.35,
+            color: const Color(0xFF2C3628),
+          ),
           children: [
-            const TextSpan(text: 'Tolong hormati orang lain dan patuhi '),
+            TextSpan(text: _t('helperLead')),
             TextSpan(
-              text: 'peraturan kami',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF7DCB66),
-                    fontWeight: FontWeight.w900,
-                  ),
+              text: _t('helperLink'),
+              style: textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF79BE62),
+              ),
               recognizer: TapGestureRecognizer()..onTap = _showRulesDialog,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatHomeBackground extends StatelessWidget {
+  const _ChatHomeBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned(
+          top: -48,
+          right: -40,
+          child: Container(
+            width: 190,
+            height: 190,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFFFE5EC),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 210,
+          left: -84,
+          child: Container(
+            width: 210,
+            height: 210,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFE6F2D4),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 90,
+          right: -72,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFE8F6D8),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -18,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 170,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.0),
+                  Colors.white.withOpacity(0.40),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RoundIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _RoundIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.95),
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(
+            icon,
+            size: 18,
+            color: const Color(0xFF1F231D),
+          ),
         ),
       ),
     );
@@ -1122,14 +1796,18 @@ class _GenderOption {
   final String label;
   final IconData icon;
   final Color background;
+  final Color surface;
   final Color border;
   final Color iconColor;
+  final bool showCrown;
 
   const _GenderOption({
     required this.label,
     required this.icon,
     required this.background,
+    required this.surface,
     required this.border,
     required this.iconColor,
+    this.showCrown = false,
   });
 }

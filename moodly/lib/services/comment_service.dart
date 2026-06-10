@@ -1,17 +1,34 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CommentService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // =========================
-  // COLLECTION REPORT
-  // =========================
+  static CollectionReference<Map<String, dynamic>> _commentRef(String diaryId) {
+    return _db.collection('public_diary').doc(diaryId).collection('comments');
+  }
 
-  static final CollectionReference reportRef = _db.collection("reports");
+  static DocumentReference<Map<String, dynamic>> _commentDoc(
+    String diaryId,
+    String commentId,
+  ) {
+    return _commentRef(diaryId).doc(commentId);
+  }
 
-  // =========================
-  // ADD COMMENT
-  // =========================
+  static Future<void> _syncCommentCount(String diaryId) async {
+    final snapshot = await _commentRef(diaryId).get();
+    final total = snapshot.docs.length;
+
+    final batch = _db.batch();
+
+    final publicDiaryDoc = _db.collection('public_diary').doc(diaryId);
+    final privateDiaryDoc = _db.collection('diaries').doc(diaryId);
+
+    batch.set(publicDiaryDoc, {'comments': total}, SetOptions(merge: true));
+    batch.set(privateDiaryDoc, {'comments': total}, SetOptions(merge: true));
+
+    await batch.commit();
+  }
 
   static Future<void> addComment({
     required String diaryId,
@@ -19,61 +36,62 @@ class CommentService {
     required String profileImage,
     required String comment,
   }) async {
-    await _db
-        .collection("public_diary")
-        .doc(diaryId)
-        .collection("comments")
-        .add({
-          "diary_id": diaryId,
+    final user = FirebaseAuth.instance.currentUser;
 
-          "username": username,
+    await _commentRef(diaryId).add({
+      'uid': user?.uid ?? '',
+      'username': username,
+      'profile_image': profileImage,
+      'comment': comment,
+      'likes': 0,
+      'likedBy': <String>[],
+      'created_at': FieldValue.serverTimestamp(),
+      'replies': <Map<String, dynamic>>[],
+    });
 
-          "profile_image": profileImage,
-
-          "comment": comment,
-
-          "likes": 0,
-
-          "created_at": FieldValue.serverTimestamp(),
-
-          "replies": [],
-        });
+    await _syncCommentCount(diaryId);
   }
 
-  // =========================
-  // GET COMMENTS REALTIME
-  // =========================
-
-  static Stream<QuerySnapshot> getComments(String diaryId) {
-    return _db
-        .collection("public_diary")
-        .doc(diaryId)
-        .collection("comments")
-        .orderBy("created_at", descending: true)
+  static Stream<QuerySnapshot<Map<String, dynamic>>> getComments(String diaryId) {
+    return _commentRef(diaryId)
+        .orderBy('created_at', descending: true)
         .snapshots();
   }
-
-  // =========================
-  // LIKE COMMENT
-  // =========================
 
   static Future<void> likeComment({
     required String diaryId,
     required String commentId,
     required bool isLiked,
+    String? userId,
   }) async {
-    final doc = _db
-        .collection("public_diary")
-        .doc(diaryId)
-        .collection("comments")
-        .doc(commentId);
+    final uid = userId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
 
-    await doc.update({"likes": FieldValue.increment(isLiked ? -1 : 1)});
+    final ref = _commentDoc(diaryId, commentId);
+
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      if (!snapshot.exists) return;
+
+      final data = snapshot.data() ?? {};
+      final likedBy = List<String>.from(data['likedBy'] ?? const []);
+      final currentLikes = (data['likes'] as num?)?.toInt() ?? 0;
+
+      if (isLiked) {
+        transaction.update(ref, {
+          'likedBy': FieldValue.arrayRemove([uid]),
+          'likes': currentLikes > 0 ? currentLikes - 1 : 0,
+        });
+      } else {
+        if (!likedBy.contains(uid)) {
+          transaction.update(ref, {
+            'likedBy': FieldValue.arrayUnion([uid]),
+            'likes': currentLikes + 1,
+          });
+        }
+      }
+    });
   }
-
-  // =========================
-  // ADD REPLY
-  // =========================
 
   static Future<void> addReply({
     required String diaryId,
@@ -82,62 +100,37 @@ class CommentService {
     required String profileImage,
     required String reply,
   }) async {
-    final doc = _db
-        .collection("public_diary")
-        .doc(diaryId)
-        .collection("comments")
-        .doc(commentId);
+    final user = FirebaseAuth.instance.currentUser;
 
-    await doc.update({
-      "replies": FieldValue.arrayUnion([
-        {
-          "username": username,
+    final replyData = {
+      'uid': user?.uid ?? '',
+      'username': username,
+      'profile_image': profileImage,
+      'reply': reply,
+      'likes': 0,
+      'created_at': Timestamp.now(),
+    };
 
-          "profile_image": profileImage,
-
-          "reply": reply,
-
-          "likes": 0,
-
-          "created_at": FieldValue.serverTimestamp(),
-        },
-      ]),
+    await _commentDoc(diaryId, commentId).update({
+      'replies': FieldValue.arrayUnion([replyData]),
     });
   }
 
-  // =========================
-  // REPORT COMMENT
-  // =========================
-
-  static Future<void> reportComment({
+  static Future<void> deleteComment({
     required String diaryId,
     required String commentId,
-    required String reportedUser,
-    required String reportedProfile,
-    required String commentText,
-    required String reportedBy,
-    required String reportCategory,
   }) async {
-    await reportRef.add({
-      "type": "comment",
+    await _commentDoc(diaryId, commentId).delete();
+    await _syncCommentCount(diaryId);
+  }
 
-      "diary_id": diaryId,
-
-      "comment_id": commentId,
-
-      "reported_user": reportedUser,
-
-      "reported_profile": reportedProfile,
-
-      "comment_text": commentText,
-
-      "reported_by": reportedBy,
-
-      "report_category": reportCategory,
-
-      "status": "pending",
-
-      "created_at": FieldValue.serverTimestamp(),
+  static Future<void> deleteReply({
+    required String diaryId,
+    required String commentId,
+    required Map<String, dynamic> replyData,
+  }) async {
+    await _commentDoc(diaryId, commentId).update({
+      'replies': FieldValue.arrayRemove([replyData]),
     });
   }
 }

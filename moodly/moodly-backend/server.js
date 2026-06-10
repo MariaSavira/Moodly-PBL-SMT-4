@@ -13,6 +13,7 @@ app.use(express.json());
 const requiredEnv = [
   "BREVO_API_KEY",
   "BREVO_SENDER_EMAIL",
+  "BREVO_SENDER_NAME",
   "FIREBASE_PROJECT_ID",
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
@@ -40,6 +41,105 @@ function generateOtp() {
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+async function sendBrevoEmail({ to, subject, htmlContent }) {
+  await axios.post(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      sender: {
+        name: process.env.BREVO_SENDER_NAME,
+        email: process.env.BREVO_SENDER_EMAIL,
+      },
+      to,
+      subject,
+      htmlContent,
+    },
+    {
+      headers: {
+        "api-key": process.env.BREVO_API_KEY,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    }
+  );
+}
+
+async function sendForgotPasswordWithBrevo({ email, resetLink }) {
+  const htmlContent = `
+    <div style="margin:0;padding:0;background:#f6f8ef;font-family:Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+        <div style="
+          background:#eef6d7;
+          border-radius:28px;
+          padding:32px 28px;
+          color:#1f1f1f;
+          box-shadow:0 10px 30px rgba(0,0,0,0.06);
+        ">
+          <div style="font-size:28px;font-weight:700;color:#6ab05a;margin-bottom:12px;">
+            Moodly
+          </div>
+
+          <div style="font-size:24px;font-weight:700;line-height:1.3;margin-bottom:14px;">
+            Atur ulang kata sandimu
+          </div>
+
+          <div style="font-size:15px;line-height:1.8;color:#4d5548;margin-bottom:20px;">
+            Halo,<br><br>
+            Kami menerima permintaan untuk mengatur ulang kata sandi akun Moodly milikmu.
+            Tekan tombol di bawah ini untuk membuat kata sandi baru.
+          </div>
+
+          <div style="margin:28px 0;">
+            <a href="${resetLink}" style="
+              display:inline-block;
+              background:#84C96C;
+              color:#ffffff;
+              text-decoration:none;
+              padding:14px 24px;
+              border-radius:16px;
+              font-size:15px;
+              font-weight:700;
+            ">
+              Atur ulang kata sandi
+            </a>
+          </div>
+
+          <div style="font-size:14px;line-height:1.8;color:#5f675a;margin-bottom:18px;">
+            Kalau tombolnya tidak bisa ditekan, kamu bisa buka tautan ini secara manual:
+          </div>
+
+          <div style="
+            word-break:break-word;
+            font-size:13px;
+            line-height:1.7;
+            color:#56714d;
+            background:#ffffff;
+            border-radius:16px;
+            padding:14px 16px;
+            margin-bottom:20px;
+          ">
+            ${resetLink}
+          </div>
+
+          <div style="font-size:14px;line-height:1.8;color:#5f675a;">
+            Kalau kamu tidak merasa meminta reset password, abaikan email ini saja ya.
+          </div>
+
+          <div style="margin-top:28px;font-size:14px;color:#5f675a;">
+            Dengan hangat,<br>
+            <strong>Tim Moodly</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+    await sendBrevoEmail({
+      to: [{ email }],
+      subject: "Reset kata sandi Moodly",
+      htmlContent,
+  });
 }
 
 app.get("/", (req, res) => {
@@ -70,11 +170,20 @@ app.post("/send-register-otp", async (req, res) => {
       });
     } catch (error) {
       if (error.code !== "auth/user-not-found") {
-        console.error("CHECK EMAIL ERROR:", error);
+        const detail =
+          error?.response?.data?.message ||
+          error?.response?.data?.code ||
+          error?.message ||
+          "Unknown error";
+
+        console.error("CHECK EMAIL ERROR:", error.response?.data || error.message);
 
         return res.status(500).json({
           success: false,
-          message: "Gagal mengecek email.",
+          message:
+            process.env.NODE_ENV === "development"
+              ? `Gagal mengecek email. Detail: ${detail}`
+              : "Gagal mengecek email.",
         });
       }
     }
@@ -123,29 +232,16 @@ app.post("/send-register-otp", async (req, res) => {
       </div>
     `;
 
-    await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        sender: {
-          name: process.env.BREVO_SENDER_NAME || "Moodly",
-          email: process.env.BREVO_SENDER_EMAIL,
+    await sendBrevoEmail({
+      to: [
+        {
+          email,
+          name: fullName,
         },
-        to: [
-          {
-            email,
-            name: fullName,
-          },
-        ],
-        subject: "Kode verifikasi akun Moodly kamu",
-        htmlContent,
-      },
-      {
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+      ],
+      subject: "Kode verifikasi akun Moodly kamu",
+      htmlContent,
+    });
 
     return res.json({
       success: true,
@@ -161,15 +257,58 @@ app.post("/send-register-otp", async (req, res) => {
   }
 });
 
+app.post("/send-forgot-password-email", async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({
+        success: false,
+        message: "Email wajib diisi dengan benar.",
+      });
+    }
+
+    await admin.auth().getUserByEmail(email);
+
+    const resetLink = await admin.auth().generatePasswordResetLink(email);
+
+    await sendForgotPasswordWithBrevo({
+      email,
+      resetLink,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Tautan reset kata sandi sudah dikirim ke email.",
+    });
+  } catch (error) {
+    console.error(
+      "SEND FORGOT PASSWORD ERROR:",
+      error.response?.data || error.message || error
+    );
+
+    if (error?.code === "auth/user-not-found") {
+      return res.status(404).json({
+        success: false,
+        message: "Email tidak ditemukan atau belum terdaftar.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengirim email reset password.",
+    });
+  }
+});
+
 app.post("/verify-register-otp", async (req, res) => {
   try {
     const fullName = String(req.body.fullName || "").trim();
     const email = normalizeEmail(req.body.email);
-    const phoneNumber = String(req.body.phoneNumber || "").trim();
     const password = String(req.body.password || "");
     const otp = String(req.body.otp || "").trim();
 
-    if (!fullName || !email || !phoneNumber || !password || !otp) {
+    if (!fullName || !email || !password || !otp) {
       return res.status(400).json({
         success: false,
         message: "Semua data wajib diisi.",
@@ -223,19 +362,6 @@ app.post("/verify-register-otp", async (req, res) => {
       });
     }
 
-    const phoneQuery = await db
-      .collection("users")
-      .where("phoneNumber", "==", phoneNumber)
-      .limit(1)
-      .get();
-
-    if (!phoneQuery.empty) {
-      return res.status(409).json({
-        success: false,
-        message: "Nomor telepon sudah digunakan.",
-      });
-    }
-
     let userRecord;
 
     try {
@@ -262,17 +388,22 @@ app.post("/verify-register-otp", async (req, res) => {
     }
 
     await db.collection("users").doc(userRecord.uid).set({
-        uid: userRecord.uid,
-        fullName,
-        email,
-        phoneNumber,
-        isEmailVerified: true,
-        nickname: "",
-        avatarId: "assets/profile_pic/PP.png",
-        status: "idle",
-        currentRoomId: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      uid: userRecord.uid,
+      fullName,
+      email,
+      role: "user",
+      isEmailVerified: true,
+      isPremium: false,
+      premiumActivatedAt: null,
+      premiumExpiresAt: null,
+      nickname: "",
+      username: "",
+      avatarId: "assets/profile_pic/PP.png",
+      photoUrl: "",
+      status: "idle",
+      currentRoomId: null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     await otpRef.set(

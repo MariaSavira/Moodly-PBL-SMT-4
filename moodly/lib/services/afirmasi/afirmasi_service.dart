@@ -8,24 +8,147 @@ class AfirmasiService {
 
   static final List<Map<String, String>> _favoritItems = [];
   static const String _favoriteItemsKey = 'favorite_afirmasi_items';
+  static const String _languagePrefKey = 'moodly_settings_language_code';
+
+  static const Map<String, String> _categoryIdToEn = {
+    'Rasa Syukur': 'Gratitude',
+    'Meredakan Kecemasan': 'Ease Anxiety',
+    'Motivasi': 'Motivation',
+    'Kesehatan Mental': 'Mental Health',
+    'Cinta Diri': 'Self Love',
+    'Afirmasi': 'Affirmation',
+  };
+
+  static const Map<String, String> _categoryAliasToCanonical = {
+    'Rasa Syukur': 'Rasa Syukur',
+    'Gratitude': 'Rasa Syukur',
+    'Meredakan Kecemasan': 'Meredakan Kecemasan',
+    'Ease Anxiety': 'Meredakan Kecemasan',
+    'Motivasi': 'Motivasi',
+    'Motivation': 'Motivasi',
+    'Kesehatan Mental': 'Kesehatan Mental',
+    'Mental Health': 'Kesehatan Mental',
+    'Cinta Diri': 'Cinta Diri',
+    'Self Love': 'Cinta Diri',
+    'Afirmasi': 'Afirmasi',
+    'Affirmation': 'Afirmasi',
+  };
+
+  static Future<String> _resolveLanguageCode([String? languageCode]) async {
+    if (languageCode != null && languageCode.trim().isNotEmpty) {
+      return languageCode.trim() == 'en' ? 'en' : 'id';
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_languagePrefKey);
+    return saved == 'en' ? 'en' : 'id';
+  }
+
+  static String canonicalCategoryKey(String? value) {
+    final cleaned = value?.trim() ?? '';
+    if (cleaned.isEmpty) return 'Afirmasi';
+    return _categoryAliasToCanonical[cleaned] ?? cleaned;
+  }
+
+  static String localizedCategoryLabel(
+    String? value, {
+    String languageCode = 'id',
+  }) {
+    final canonical = canonicalCategoryKey(value);
+    if (languageCode == 'en') {
+      return _categoryIdToEn[canonical] ?? canonical;
+    }
+    return canonical;
+  }
+
+  static Map<String, String> _normalizeStoredFavorite(Map<String, String> item) {
+    final id = (item['id'] ?? '').trim();
+    final kategoriKey = canonicalCategoryKey(
+      item['kategori_key'] ?? item['kategori'],
+    );
+    final textId = (item['teks_id'] ?? item['teks'] ?? '').trim();
+    final textEn = (item['teks_en'] ?? '').trim();
+
+    return {
+      'id': id,
+      'kategori_key': kategoriKey,
+      'kategori': localizedCategoryLabel(kategoriKey, languageCode: 'id'),
+      'kategori_en': localizedCategoryLabel(kategoriKey, languageCode: 'en'),
+      'teks': textId,
+      'teks_id': textId,
+      'teks_en': textEn,
+    };
+  }
+
+  static Map<String, String> _localizedFavoriteItem(
+    Map<String, String> rawItem,
+    String languageCode,
+  ) {
+    final normalized = _normalizeStoredFavorite(rawItem);
+    final localizedText = languageCode == 'en' &&
+            (normalized['teks_en'] ?? '').trim().isNotEmpty
+        ? (normalized['teks_en'] ?? '').trim()
+        : (normalized['teks_id'] ?? normalized['teks'] ?? '').trim();
+
+    return {
+      'id': normalized['id'] ?? '',
+      'kategori_key': normalized['kategori_key'] ?? 'Afirmasi',
+      'kategori': localizedCategoryLabel(
+        normalized['kategori_key'],
+        languageCode: languageCode,
+      ),
+      'teks': localizedText,
+      'teks_id': normalized['teks_id'] ?? '',
+      'teks_en': normalized['teks_en'] ?? '',
+    };
+  }
 
   static Future<List<Map<String, String>>> getAfirmasiByCategories(
-    List<String> categories,
-  ) async {
+    List<String> categories, {
+    String? languageCode,
+  }) async {
     if (categories.isEmpty) return [];
+
+    final activeLanguage = await _resolveLanguageCode(languageCode);
+    final canonicalCategories = categories
+        .map(canonicalCategoryKey)
+        .where((item) => item.trim().isNotEmpty)
+        .toSet()
+        .toList();
 
     try {
       final snapshot = await _firestore
           .collection('afirmasi')
-          .where('kategori', whereIn: categories)
+          .where('kategori', whereIn: canonicalCategories)
           .get();
 
       return snapshot.docs.map((doc) {
         final data = doc.data();
+        final kategoriKey = canonicalCategoryKey(
+          (data['kategori'] ?? '').toString(),
+        );
+        final textId = (data['teks'] ?? '').toString().trim();
+        final textEn = (data['teks_en'] ?? data['teksEn'] ?? '')
+            .toString()
+            .trim();
+        final localizedText = activeLanguage == 'en' && textEn.isNotEmpty
+            ? textEn
+            : textId;
+
         return {
           'id': doc.id,
-          'kategori': (data['kategori'] ?? '').toString(),
-          'teks': (data['teks'] ?? '').toString(),
+          'kategori_key': kategoriKey,
+          'kategori': localizedCategoryLabel(
+            kategoriKey,
+            languageCode: activeLanguage,
+          ),
+          'kategori_en': localizedCategoryLabel(
+            kategoriKey,
+            languageCode: 'en',
+          ),
+          'teks': localizedText,
+          'teks_id': textId,
+          'teks_en': textEn,
         };
       }).toList();
     } catch (_) {
@@ -53,8 +176,12 @@ class AfirmasiService {
     await prefs.setStringList(_favoriteItemsKey, encodedItems);
   }
 
-  static List<Map<String, String>> getFavoritItems() {
-    return List<Map<String, String>>.from(_favoritItems);
+  static List<Map<String, String>> getFavoritItems({
+    String languageCode = 'id',
+  }) {
+    return _favoritItems
+        .map((item) => _localizedFavoriteItem(item, languageCode))
+        .toList();
   }
 
   static bool isFavorite(Map<String, String> item) {
@@ -63,7 +190,8 @@ class AfirmasiService {
   }
 
   static Future<void> toggleFavorite(Map<String, String> item) async {
-    final itemId = item['id'] ?? '';
+    final normalized = _normalizeStoredFavorite(item);
+    final itemId = normalized['id'] ?? '';
     final index = _favoritItems.indexWhere(
       (fav) => (fav['id'] ?? '') == itemId,
     );
@@ -71,7 +199,7 @@ class AfirmasiService {
     if (index >= 0) {
       _favoritItems.removeAt(index);
     } else {
-      _favoritItems.add(Map<String, String>.from(item));
+      _favoritItems.add(normalized);
     }
 
     await _saveFavoritesToLocal();

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/moodly_notification_model.dart';
+import 'notification_service.dart';
 
 class MoodlyNotificationService {
   MoodlyNotificationService._();
@@ -13,8 +14,6 @@ class MoodlyNotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  static const String _moodDocumentId = 'BeZzql14Y8xGyoLUDb0L';
-
   CollectionReference<Map<String, dynamic>> _notificationRef(String uid) {
     return _firestore.collection('users').doc(uid).collection('notifications');
   }
@@ -23,40 +22,129 @@ class MoodlyNotificationService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  Future<Map<String, String>> _loadMoodDatabase() async {
+  Future<Map<String, bool>> _loadNotificationPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'dailyNote': prefs.getBool('dailyNote') ?? false,
+      'morningAwareness': prefs.getBool('morningAwareness') ?? true,
+      'achievementAlert': prefs.getBool('achievementAlert') ?? false,
+    };
+  }
+
+  Future<String> _loadLanguageCode() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Kalau key language kamu ternyata beda, cukup ganti satu baris ini.
+    final raw = prefs.getString('languageCode') ?? 'id';
+    return raw == 'en' ? 'en' : 'id';
+  }
+
+  ({String title, String message}) _localTextForType(
+    String languageCode,
+    String type,
+  ) {
+    switch (type) {
+      case 'daily_checkin':
+        return (
+          title: languageCode == 'en'
+              ? 'Don’t forget your mood check-in'
+              : 'Jangan lupa check-in mood',
+          message: languageCode == 'en'
+              ? 'Try recording how you feel today. One small step still matters.'
+              : 'Coba catat perasaanmu hari ini. Satu langkah kecil tetap berarti.',
+        );
+
+      case 'low_mood':
+        return (
+          title: languageCode == 'en'
+              ? 'Your mood seems quite heavy'
+              : 'Moodmu terlihat cukup berat',
+          message: languageCode == 'en'
+              ? 'Two of your last three mood entries were heavy. Try opening emergency support or seeking professional help.'
+              : 'Dua dari tiga catatan mood terakhirmu cenderung berat. Coba buka bantuan darurat atau cari dukungan profesional.',
+        );
+
+      case 'morning_awareness':
+        return (
+          title: languageCode == 'en'
+              ? 'Good morning, take a gentle pause'
+              : 'Selamat pagi, ambil jeda sebentar',
+          message: languageCode == 'en'
+              ? 'Start your day a little more calmly today.'
+              : 'Mulai harimu dengan sedikit lebih tenang hari ini.',
+        );
+
+      case 'achievement':
+        return (
+          title: languageCode == 'en'
+              ? 'Celebrate your small progress'
+              : 'Rayakan progres kecilmu',
+          message: languageCode == 'en'
+              ? 'Even a small step still counts today.'
+              : 'Langkah kecilmu tetap berarti hari ini.',
+        );
+
+      default:
+        return (
+          title: languageCode == 'en' ? 'Notification' : 'Notifikasi',
+          message: languageCode == 'en'
+              ? 'You have a new Moodly notification.'
+              : 'Kamu punya notifikasi baru dari Moodly.',
+        );
+    }
+  }
+
+  Future<Map<String, String>> _loadMoodDatabase(String uid) async {
     final Map<String, String> moods = {};
 
     final prefs = await SharedPreferences.getInstance();
-    final localKeys = prefs.getKeys().where((k) => k.startsWith('mood_'));
+    final moodPrefix = 'mood_${uid}_';
+    final localKeys = prefs.getKeys().where((k) => k.startsWith(moodPrefix));
 
     for (final key in localKeys) {
-      final dateKey = key.replaceFirst('mood_', '');
+      final dateKey = key.replaceFirst(moodPrefix, '');
       final mood = prefs.getString(key);
       if (mood != null && mood.trim().isNotEmpty) {
         moods[dateKey] = mood.trim();
       }
     }
 
-    final doc = await _firestore.collection('moods').doc(_moodDocumentId).get();
+    final doc = await _firestore.collection('moods').doc(uid).get();
     if (doc.exists) {
-      final data = doc.data() as Map<String, dynamic>?;
+      final data = doc.data();
       final entries = data?['entries'] as Map<String, dynamic>? ?? {};
       entries.forEach((key, value) {
-        moods[key] = value.toString();
+        final mood = value.toString().trim();
+        if (mood.isNotEmpty) {
+          moods[key] = mood;
+        }
       });
     }
 
     return moods;
   }
 
+  Future<void> _showLocalIfPossibleForType(String type) async {
+    try {
+      final languageCode = await _loadLanguageCode();
+      final text = _localTextForType(languageCode, type);
+
+      await NotificationService.instance.initialize();
+      await NotificationService.instance.showInstantNotification(
+        title: text.title,
+        body: text.message,
+      );
+    } catch (_) {
+      // Abaikan kalau permission/device belum siap.
+    }
+  }
+
   Future<void> _createIfMissing({
     required String uid,
     required String uniqueKey,
-    required String title,
-    required String message,
     required String type,
-    String? ctaLabel,
     Map<String, dynamic> payload = const {},
+    bool showLocalNow = false,
   }) async {
     final existing = await _notificationRef(uid)
         .where('uniqueKey', isEqualTo: uniqueKey)
@@ -66,26 +154,73 @@ class MoodlyNotificationService {
     if (existing.docs.isNotEmpty) return;
 
     await _notificationRef(uid).add({
-      'title': title,
-      'message': message,
       'type': type,
       'uniqueKey': uniqueKey,
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
-      'ctaLabel': ctaLabel,
       'payload': payload,
     });
+
+    if (showLocalNow) {
+      await _showLocalIfPossibleForType(type);
+    }
   }
 
   Future<void> syncForCurrentUser() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    final moods = await _loadMoodDatabase();
+    final moods = await _loadMoodDatabase(uid);
+    final prefs = await _loadNotificationPrefs();
     final todayKey = _dateKey(DateTime.now());
 
-    await _syncDailyCheckIn(uid, moods, todayKey);
+    if (prefs['morningAwareness'] == true) {
+      await _syncMorningAwareness(uid, todayKey);
+    }
+
+    if (prefs['dailyNote'] == true) {
+      await _syncDailyCheckIn(uid, moods, todayKey);
+    }
+
+    if (prefs['achievementAlert'] == true) {
+      await _syncAchievement(uid, todayKey);
+    }
+
     await _syncLowMoodWarning(uid, moods, todayKey);
+  }
+
+  Future<void> createDebugNotificationForCurrentUser({
+    required String type,
+    bool showLocalNow = true,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    final uniqueKey = 'debug_${type}_${DateTime.now().millisecondsSinceEpoch}';
+
+    await _createIfMissing(
+      uid: uid,
+      uniqueKey: uniqueKey,
+      type: type,
+      payload: {
+        'debug': true,
+        'type': type,
+        'createdAtMs': DateTime.now().millisecondsSinceEpoch,
+      },
+      showLocalNow: showLocalNow,
+    );
+  }
+
+  Future<void> _syncMorningAwareness(
+    String uid,
+    String todayKey,
+  ) async {
+    await _createIfMissing(
+      uid: uid,
+      uniqueKey: 'morning_awareness_$todayKey',
+      type: 'morning_awareness',
+      payload: {'dateKey': todayKey},
+    );
   }
 
   Future<void> _syncDailyCheckIn(
@@ -99,13 +234,22 @@ class MoodlyNotificationService {
       await _createIfMissing(
         uid: uid,
         uniqueKey: 'daily_checkin_$todayKey',
-        title: 'Jangan lupa check-in mood',
-        message: 'Coba catat perasaanmu hari ini. Satu langkah kecil tetap berarti.',
         type: 'daily_checkin',
-        ctaLabel: 'Isi mood',
         payload: {'dateKey': todayKey},
       );
     }
+  }
+
+  Future<void> _syncAchievement(
+    String uid,
+    String todayKey,
+  ) async {
+    await _createIfMissing(
+      uid: uid,
+      uniqueKey: 'achievement_$todayKey',
+      type: 'achievement',
+      payload: {'dateKey': todayKey},
+    );
   }
 
   Future<void> _syncLowMoodWarning(
@@ -133,14 +277,11 @@ class MoodlyNotificationService {
       await _createIfMissing(
         uid: uid,
         uniqueKey: 'low_mood_$todayKey',
-        title: 'Moodmu terlihat cukup berat',
-        message:
-            'Dua dari tiga catatan mood terakhirmu cenderung berat. Coba buka bantuan darurat atau cari dukungan profesional.',
         type: 'low_mood',
-        ctaLabel: 'Lihat bantuan',
         payload: {
           'latestKeys': latestKeys,
         },
+        showLocalNow: true,
       );
     }
   }

@@ -1,15 +1,23 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/services/chat_service.dart';
 import '../pages.dart';
+import '../../widgets/shared/moodly_reward_frame_avatar.dart';
+
+const String _prefLanguageKey = 'moodly_settings_language_code';
 
 class MatchingPage extends StatefulWidget {
-  const MatchingPage({super.key});
+  final String preferredGender;
+
+  const MatchingPage({
+    super.key,
+    this.preferredGender = 'all',
+  });
 
   @override
   State<MatchingPage> createState() => _MatchingPageState();
@@ -20,6 +28,11 @@ class _MatchingPageState extends State<MatchingPage>
   final ChatService _chatService = ChatService();
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _matchSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _onlineUsersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _matchingUsersSubscription;
+
   late final AnimationController _pulseController;
 
   bool _isSearching = true;
@@ -28,22 +41,75 @@ class _MatchingPageState extends State<MatchingPage>
   bool _isEnteringChat = false;
 
   String? _pendingRoomId;
+  String _languageCode = 'id';
+
+  int _onlineUsersCount = 0;
+  int _matchingUsersCount = 0;
 
   String myNickname = 'Kamu';
   String myAvatar = 'assets/profile_pic/PP.png';
+  String? myGender;
 
   String partnerNickname = 'Teman Baru';
   String partnerAvatar = 'assets/profile_pic/PP_default.jpg';
+  String? partnerUid;
+  String? partnerGender;
 
   static const Color _bgColor = Color(0xFFF3FADC);
   static const Color _greenMain = Color(0xFF84C76A);
   static const Color _greenSoft = Color(0xFFBFE3AF);
-  static const Color _greenDark = Color(0xFF5FA84D);
   static const Color _pinkSoft = Color(0xFFF8BDC0);
   static const Color _pinkLight = Color(0xFFFFE6EA);
   static const Color _cardColor = Color(0xFFFFFDF9);
   static const Color _textDark = Color(0xFF222222);
   static const Color _textSoft = Color(0xFF6E7D61);
+
+  static const Map<String, Map<String, String>> _copy = {
+    'id': {
+      'you': 'Kamu',
+      'newFriend': 'Teman Baru',
+      'searchingTitle': 'Mencari Teman Curhat',
+      'foundTitle': 'Teman Curhat Ditemukan',
+      'searchingHeadline': 'Mencari teman ngobrol...',
+      'searchingDesc':
+          'Moodly sedang mencarikan teman curhat yang siap saling mendengar dengan nyaman.',
+      'searchingBadge': 'Tunggu sebentar yaa...',
+      'foundBadge': 'Teman ditemukan!',
+      'foundDesc':
+          'Kamu sekarang sudah terhubung. Yuk mulai percakapan yang hangat dan saling menghargai.',
+      'startChat': 'Mulai ngobrol',
+      'online': 'online',
+      'matching': 'matching',
+      'male': 'Laki-laki',
+      'female': 'Perempuan',
+      'genderUnknown': 'Belum diatur',
+      'prefMale': 'Preferensi laki-laki',
+      'prefFemale': 'Preferensi perempuan',
+      'prefAll': 'Semua gender',
+    },
+    'en': {
+      'you': 'You',
+      'newFriend': 'New Friend',
+      'searchingTitle': 'Looking for a Chat Buddy',
+      'foundTitle': 'Chat Buddy Found',
+      'searchingHeadline': 'Looking for someone to talk to...',
+      'searchingDesc':
+          'Moodly is finding a chat buddy who is ready to listen and talk comfortably.',
+      'searchingBadge': 'Just a moment...',
+      'foundBadge': 'Match found!',
+      'foundDesc':
+          'You are now connected. Let’s start a warm and respectful conversation.',
+      'startChat': 'Start chatting',
+      'online': 'online',
+      'matching': 'matching',
+      'male': 'Male',
+      'female': 'Female',
+      'genderUnknown': 'Not set',
+      'prefMale': 'Male preference',
+      'prefFemale': 'Female preference',
+      'prefAll': 'All genders',
+    },
+  };
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
@@ -54,6 +120,85 @@ class _MatchingPageState extends State<MatchingPage>
         ),
       ];
 
+  String _t(String key) => _copy[_languageCode]?[key] ?? _copy['id']![key] ?? key;
+
+  String? _normalizeGender(dynamic value) {
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw == 'male' ||
+        raw == 'laki-laki' ||
+        raw == 'laki_laki' ||
+        raw == 'cowok' ||
+        raw == 'pria') {
+      return 'male';
+    }
+
+    if (raw == 'female' ||
+        raw == 'perempuan' ||
+        raw == 'cewek' ||
+        raw == 'wanita') {
+      return 'female';
+    }
+
+    return null;
+  }
+
+  String _genderLabel(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return _t('male');
+    if (normalized == 'female') return _t('female');
+    return _t('genderUnknown');
+  }
+
+  Color _genderBg(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFFEAF6FF);
+    if (normalized == 'female') return const Color(0xFFFFEEF3);
+    return const Color(0xFFF1F4EC);
+  }
+
+  Color _genderText(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return const Color(0xFF57A9DA);
+    if (normalized == 'female') return const Color(0xFFD86D88);
+    return const Color(0xFF7B8671);
+  }
+
+  IconData _genderIcon(String? value) {
+    final normalized = _normalizeGender(value);
+    if (normalized == 'male') return Icons.male_rounded;
+    if (normalized == 'female') return Icons.female_rounded;
+    return Icons.help_outline_rounded;
+  }
+
+  bool _isRecentTimestamp(
+    dynamic value, {
+    Duration window = const Duration(minutes: 3),
+  }) {
+    DateTime? time;
+
+    if (value is Timestamp) {
+      time = value.toDate();
+    } else if (value is String) {
+      time = DateTime.tryParse(value);
+    }
+
+    if (time == null) return false;
+
+    return DateTime.now().difference(time) <= window;
+  }
+
+  bool _shouldCountAsOnline(Map<String, dynamic> data) {
+    final role = (data['role'] ?? 'user').toString();
+    final status = (data['status'] ?? '').toString();
+
+    if (role == 'admin') return false;
+    if (!['idle', 'matching', 'chatting'].contains(status)) return false;
+
+    return _isRecentTimestamp(data['updatedAt']);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,22 +208,78 @@ class _MatchingPageState extends State<MatchingPage>
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
+    _loadLanguagePreference();
+    _startStatsWatcher();
     startMatching();
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLanguage = prefs.getString(_prefLanguageKey);
+
+    if (!mounted) return;
+    setState(() {
+      _languageCode = savedLanguage == 'en' ? 'en' : 'id';
+    });
+  }
+
+  void _startStatsWatcher() {
+    _onlineUsersSubscription?.cancel();
+    _matchingUsersSubscription?.cancel();
+
+    _onlineUsersSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      final count =
+          snapshot.docs.where((doc) => _shouldCountAsOnline(doc.data())).length;
+
+      setState(() {
+        _onlineUsersCount = count;
+      });
+    });
+
+    _matchingUsersSubscription = FirebaseFirestore.instance
+        .collection('waiting_users')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      final count = snapshot.docs.where((doc) {
+        final data = doc.data();
+        return _isRecentTimestamp(
+          data['updatedAt'] ?? data['createdAt'] ?? data['joinedAt'],
+        );
+      }).length;
+
+      setState(() {
+        _matchingUsersCount = count;
+      });
+    });
   }
 
   Future<void> startMatching() async {
     await _loadCurrentUserProfile();
 
-    final roomId = await _chatService.findMatch();
+    try {
+      final roomId = await _chatService.findMatch(
+        preferredGender: widget.preferredGender,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (roomId != null) {
-      await _prepareMatchFound(roomId);
-      return;
+      if (roomId != null) {
+        await _prepareMatchFound(roomId);
+        return;
+      }
+
+      _listenForMatch();
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pop(context);
     }
-
-    _listenForMatch();
   }
 
   void _listenForMatch() {
@@ -117,10 +318,11 @@ class _MatchingPageState extends State<MatchingPage>
     setState(() {
       myNickname = (data?['nickname'] as String?)?.trim().isNotEmpty == true
           ? data!['nickname'] as String
-          : 'Kamu';
+          : _t('you');
       myAvatar = (data?['avatarId'] as String?)?.trim().isNotEmpty == true
           ? data!['avatarId'] as String
           : 'assets/profile_pic/PP.png';
+      myGender = _normalizeGender(data?['gender']);
     });
   }
 
@@ -153,6 +355,8 @@ class _MatchingPageState extends State<MatchingPage>
       await _loadCurrentUserProfile();
 
       if (otherUid != null) {
+        partnerUid = otherUid;
+
         final otherDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(otherUid)
@@ -162,12 +366,14 @@ class _MatchingPageState extends State<MatchingPage>
         partnerNickname =
             (otherData?['nickname'] as String?)?.trim().isNotEmpty == true
                 ? otherData!['nickname'] as String
-                : 'Teman Baru';
+                : _t('newFriend');
 
         partnerAvatar =
             (otherData?['avatarId'] as String?)?.trim().isNotEmpty == true
                 ? otherData!['avatarId'] as String
                 : 'assets/profile_pic/PP_default.jpg';
+
+        partnerGender = _normalizeGender(otherData?['gender']);
       }
 
       if (!mounted) return;
@@ -203,11 +409,29 @@ class _MatchingPageState extends State<MatchingPage>
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc(uid);
+
     try {
-      await FirebaseFirestore.instance.collection('waiting_users').doc(uid).delete();
-    } catch (_) {
-      // diabaikan, biar user tetap bisa keluar page walau doc queue tidak ada
-    }
+      await firestore.collection('waiting_users').doc(uid).delete();
+    } catch (_) {}
+
+    try {
+      final snap = await userRef.get();
+      final data = snap.data() ?? {};
+      final currentRoomId = (data['currentRoomId'] ?? '').toString().trim();
+
+      if (currentRoomId.isEmpty) {
+        await userRef.set(
+          {
+            'status': 'idle',
+            'currentRoomId': null,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<bool> _handleBack() async {
@@ -230,36 +454,139 @@ class _MatchingPageState extends State<MatchingPage>
   @override
   void dispose() {
     _matchSubscription?.cancel();
+    _onlineUsersSubscription?.cancel();
+    _matchingUsersSubscription?.cancel();
     _pulseController.dispose();
     _cancelMatchingQueue();
     super.dispose();
   }
 
-  Widget _buildAvatar(String assetPath, {double size = 84}) {
+  Widget _buildLiveStatsChip() {
     return Container(
-      width: size,
-      height: size,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: _pinkLight,
+        color: Colors.white.withOpacity(0.86),
+        borderRadius: BorderRadius.circular(999),
         boxShadow: _softShadow,
         border: Border.all(
-          color: const Color(0xFFF0D2D6),
-          width: 4,
+          color: const Color(0xFFE4EED4),
+          width: 1,
         ),
       ),
-      child: ClipOval(
-        child: Image.asset(
-          assetPath,
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          errorBuilder: (_, __, ___) {
-            return Image.asset(
-              'assets/profile_pic/PP_default.jpg',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.favorite_rounded,
+            size: 15,
+            color: Color(0xFFE05C75),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$_onlineUsersCount ${_t('online')}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: _textSoft.withOpacity(0.65),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const Icon(
+            Icons.auto_awesome_rounded,
+            size: 15,
+            color: Color(0xFF84C76A),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$_matchingUsersCount ${_t('matching')}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: _textDark,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderBadge(String? gender) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _genderBg(gender),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _genderText(gender).withOpacity(0.20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _genderIcon(gender),
+            size: 13,
+            color: _genderText(gender),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            _genderLabel(gender),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: _genderText(gender),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar(
+    String assetPath, {
+    double size = 84,
+    String? uid,
+  }) {
+    final double frameSize = size + 12;
+
+    return SizedBox(
+      width: frameSize,
+      height: frameSize,
+      child: MoodlyInventoryFrameAvatar(
+        uid: uid,
+        size: frameSize,
+        innerPadding: 4,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: _softShadow,
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              assetPath,
               fit: BoxFit.cover,
               alignment: Alignment.center,
-            );
-          },
+              errorBuilder: (_, __, ___) {
+                return Image.asset(
+                  'assets/profile_pic/PP_default.jpg',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -308,7 +635,7 @@ class _MatchingPageState extends State<MatchingPage>
           ),
           const SizedBox(height: 24),
           Text(
-            'Mencari teman ngobrol...',
+            _t('searchingHeadline'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontSize: 28,
@@ -317,7 +644,7 @@ class _MatchingPageState extends State<MatchingPage>
           ),
           const SizedBox(height: 10),
           Text(
-            'Moodly sedang mencarikan teman curhat yang siap saling mendengar dengan nyaman.',
+            _t('searchingDesc'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
@@ -334,7 +661,7 @@ class _MatchingPageState extends State<MatchingPage>
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
-              'Tunggu sebentar yaa...',
+              _t('searchingBadge'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     color: const Color(0xFF7D5A68),
@@ -366,7 +693,7 @@ class _MatchingPageState extends State<MatchingPage>
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
-              'Teman ditemukan!',
+              _t('foundBadge'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 18,
                     color: const Color(0xFFE05C75),
@@ -376,7 +703,7 @@ class _MatchingPageState extends State<MatchingPage>
           ),
           const SizedBox(height: 18),
           Text(
-            'Kamu sekarang sudah terhubung. Yuk mulai percakapan yang hangat dan saling menghargai.',
+            _t('foundDesc'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
@@ -390,9 +717,11 @@ class _MatchingPageState extends State<MatchingPage>
             children: [
               Expanded(
                 child: _buildMatchPersonCard(
-                  title: 'Kamu',
+                  title: _t('you'),
                   name: myNickname,
                   avatar: myAvatar,
+                  uid: FirebaseAuth.instance.currentUser?.uid,
+                  gender: myGender,
                 ),
               ),
               const SizedBox(width: 14),
@@ -412,9 +741,11 @@ class _MatchingPageState extends State<MatchingPage>
               const SizedBox(width: 14),
               Expanded(
                 child: _buildMatchPersonCard(
-                  title: 'Teman baru',
+                  title: _t('newFriend'),
                   name: partnerNickname,
                   avatar: partnerAvatar,
+                  uid: partnerUid,
+                  gender: partnerGender,
                 ),
               ),
             ],
@@ -443,7 +774,7 @@ class _MatchingPageState extends State<MatchingPage>
                       ),
                     )
                   : Text(
-                      'Mulai ngobrol',
+                      _t('startChat'),
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -461,6 +792,8 @@ class _MatchingPageState extends State<MatchingPage>
     required String title,
     required String name,
     required String avatar,
+    required String? gender,
+    String? uid,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -470,7 +803,11 @@ class _MatchingPageState extends State<MatchingPage>
       ),
       child: Column(
         children: [
-          _buildAvatar(avatar, size: 74),
+          _buildAvatar(
+            avatar,
+            size: 74,
+            uid: uid,
+          ),
           const SizedBox(height: 10),
           Text(
             title,
@@ -492,6 +829,7 @@ class _MatchingPageState extends State<MatchingPage>
                   fontWeight: FontWeight.w800,
                 ),
           ),
+          _buildGenderBadge(gender),
         ],
       ),
     );
@@ -551,7 +889,8 @@ class _MatchingPageState extends State<MatchingPage>
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: index.isEven ? _greenMain : const Color(0xFFE798A7),
+                      color:
+                          index.isEven ? _greenMain : const Color(0xFFE798A7),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -604,9 +943,14 @@ class _MatchingPageState extends State<MatchingPage>
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _isFound ? 'Teman Curhat Ditemukan' : 'Mencari Teman Curhat',
+                            _isFound
+                                ? _t('foundTitle')
+                                : _t('searchingTitle'),
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
                                   fontSize: 26,
                                   color: _textDark,
                                 ),
@@ -614,6 +958,10 @@ class _MatchingPageState extends State<MatchingPage>
                         ),
                         const SizedBox(width: 52),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: _buildLiveStatsChip(),
                     ),
                     const Spacer(),
                     AnimatedSwitcher(
@@ -634,11 +982,11 @@ class _MatchingPageState extends State<MatchingPage>
                       },
                       child: _isFound
                           ? KeyedSubtree(
-                              key: const ValueKey('found'),
+                              key: const ValueKey('found_card'),
                               child: _buildFoundCard(),
                             )
                           : KeyedSubtree(
-                              key: const ValueKey('searching'),
+                              key: const ValueKey('search_card'),
                               child: _buildSearchingCard(),
                             ),
                     ),

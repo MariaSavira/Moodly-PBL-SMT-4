@@ -57,6 +57,7 @@ class LaporanUserModel {
   final String namaTerlapor;
   final String avatarTerlapor;
   final String reportedUid;
+  final String alasanLaporan;
   final String kategoriLaporan;
   final DateTime tanggal;
   final LaporanStatus status;
@@ -73,6 +74,7 @@ class LaporanUserModel {
     required this.namaTerlapor,
     required this.avatarTerlapor,
     required this.reportedUid,
+    required this.alasanLaporan,
     required this.kategoriLaporan,
     required this.tanggal,
     required this.status,
@@ -90,17 +92,48 @@ class LaporanUserModel {
     return LaporanUserModel(
       documentId: doc.id,
       id: data['id'] ?? doc.id,
-      tipeKonten: data['tipeKonten'] ?? '',
-      namaPelapor: data['namaPelapor'] ?? '',
-      namaTerlapor: data['namaTerlapor'] ?? '',
-      avatarTerlapor: data['avatarTerlapor'] ?? '',
-      reportedUid: data['reportedUid'] ?? '',
-      kategoriLaporan: data['kategoriLaporan'] ?? 'Tidak ada kategori',
+      tipeKonten: data['tipeKonten'] ??
+          (data['type'] == 'diary' ? 'Diary Online' : ''),
+      namaPelapor: data['namaPelapor'] ??
+          data['reported_by_username'] ??
+          data['reporterInfo']?['displayName'] ??
+          '-',
+      namaTerlapor: data['namaTerlapor'] ??
+          data['reported_user'] ??
+          data['reportedUserInfo']?['userData']?['nickname'] ??
+          data['reportedUserInfo']?['userData']?['fullName'] ??
+          'User',
+      avatarTerlapor: data['avatarTerlapor'] ??
+          data['reported_profile'] ??
+          data['reportedUserInfo']?['userData']?['photoUrl'] ??
+          '',
+      reportedUid: data['reportedUid'] ??
+          data['reported_uid'] ??
+          data['reportedUserInfo']?['uid'] ??
+          '',
+      alasanLaporan:
+          data['alasanLaporan'] ??
+          data['report_reason'] ??
+          '',
+      kategoriLaporan: data['kategoriLaporan'] ??
+          data['report_category'] ??
+          data['reportTag'] ??
+          'Tidak ada kategori',
       tanggal: data['tanggal'] is Timestamp
           ? (data['tanggal'] as Timestamp).toDate()
-          : DateTime.now(),
+          : data['created_at'] is Timestamp
+              ? (data['created_at'] as Timestamp).toDate()
+              : data['createdAt'] is Timestamp
+                  ? (data['createdAt'] as Timestamp).toDate()
+                  : DateTime.now(),
       status: laporanStatusFromString(data['status'] ?? 'pending'),
-      isiLaporan: data['isiLaporan'] ?? '',
+      isiLaporan: data['isiLaporan'] ??
+          data['content_text'] ??
+          (data['reportedMessages'] is List &&
+                  (data['reportedMessages'] as List).isNotEmpty
+              ? data['reportedMessages'][0]['text'] ?? ''
+              : '') ??
+          'Diary tidak tersedia',
       catatanAdmin: data['catatanAdmin'] ?? '',
       diaryId: data['diaryId'] ?? data['diary_id'] ?? '',
       imageUrls: List<String>.from(data['imageUrls'] ?? const []),
@@ -115,6 +148,7 @@ class LaporanUserModel {
       'namaTerlapor': namaTerlapor,
       'avatarTerlapor': avatarTerlapor,
       'reportedUid': reportedUid,
+      'alasanLaporan': alasanLaporan,
       'kategoriLaporan': kategoriLaporan,
       'tanggal': Timestamp.fromDate(tanggal),
       'status': status.value,
