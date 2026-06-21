@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../premium/premium_catalog.dart';
+import '../premium/premium_page.dart';
 import '../afirmasi/widgets/cute_top_popup.dart';
 import '../pages.dart';
 import '../../core/services/premium_service.dart';
@@ -81,6 +82,9 @@ class _MoodCalendarState extends State<MoodCalendar> {
       'addMood': 'Tambah mood',
       'noDataTitle': 'Belum ada catatan',
       'noDataDesc': 'Tanggal ini belum punya mood maupun cerita.',
+      'premiumLockedTitle': 'Belum tersedia',
+      'premiumLockedDesc':
+          'Analisa mood untuk akun reguler dibuka setiap tanggal 1. Premium bisa akses kapan saja.',
     },
     'en': {
       'title': 'Mood Calendar',
@@ -131,6 +135,9 @@ class _MoodCalendarState extends State<MoodCalendar> {
       'addMood': 'Add mood',
       'noDataTitle': 'No record yet',
       'noDataDesc': 'This date has no mood or story yet.',
+      'premiumLockedTitle': 'Not available yet',
+      'premiumLockedDesc':
+          'Mood analysis for regular accounts opens every 1st day of the month. Premium can access it anytime.',
     },
   };
 
@@ -165,6 +172,8 @@ class _MoodCalendarState extends State<MoodCalendar> {
   }
 
   String _t(String key) => _copy[_languageCode]?[key] ?? key;
+
+  bool get _canOpenMoodAnalysisToday => DateTime.now().day == 1;
 
   String _replace(String template, Map<String, String> values) {
     var result = template;
@@ -625,11 +634,42 @@ class _MoodCalendarState extends State<MoodCalendar> {
     try {
       await PremiumService.instance.refreshPremiumStatus();
       final access = await PremiumService.instance.getAccess();
+      final hasPremiumAccess = access.hasPremiumAccess;
 
-      if (access.hasPremiumAccess) {
+      if (!hasPremiumAccess && !_canOpenMoodAnalysisToday) {
+        showCuteTopPopup(
+          context,
+          title: _t('premiumLockedTitle'),
+          message: _t('premiumLockedDesc'),
+          type: CutePopupType.info,
+        );
+
+        Future.delayed(const Duration(milliseconds: 350), () async {
+          if (!mounted) return;
+
+          await openMoodlyPremiumPage(
+            context,
+            source: PremiumEntrySource.moodAnalysisLocked,
+          );
+        });
+
+        return;
+      }
+
+      if (hasPremiumAccess) {
         targetPage = const MoodStatisticPremium();
       }
     } catch (_) {
+      if (!_canOpenMoodAnalysisToday) {
+        showCuteTopPopup(
+          context,
+          title: _t('premiumLockedTitle'),
+          message: _t('premiumLockedDesc'),
+          type: CutePopupType.info,
+        );
+        return;
+      }
+
       targetPage = const MoodAnalysis();
     }
 

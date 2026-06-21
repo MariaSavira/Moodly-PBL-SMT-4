@@ -113,6 +113,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       'thu': 'Kam',
       'fri': 'Jum',
       'sat': 'Sab',
+      'futureDateTitle': 'Tanggal belum tersedia',
+      'futureDateDesc': 'Kamu tidak bisa memilih tanggal setelah hari ini.',
     },
     'en': {
       'writeDiary': 'Write Diary',
@@ -172,6 +174,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       'thu': 'Thu',
       'fri': 'Fri',
       'sat': 'Sat',
+      'futureDateTitle': 'Date not available yet',
+      'futureDateDesc': 'You cannot choose a date later than today.',
     },
   };
 
@@ -192,6 +196,28 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   String _t(String key) => _copy[_languageCode]?[key] ?? key;
   TextTheme get _text => Theme.of(context).textTheme;
   bool get _isEditMode => widget.diaryId != null;
+
+  DateTime get _todayOnly {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  bool _isFutureDate(DateTime date) {
+    return _dateOnly(date).isAfter(_todayOnly);
+  }
+
+  void _showFutureDateGuardPopup() {
+    showCuteTopPopup(
+      context,
+      title: _t('futureDateTitle'),
+      message: _t('futureDateDesc'),
+      type: CutePopupType.info,
+    );
+  }
 
   List<BoxShadow> get _softShadow => const [
         BoxShadow(
@@ -243,6 +269,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     _titleController.text = widget.initialTitle ?? '';
     _contentController.text = widget.initialContent ?? '';
     _selectedDate = widget.initialDate ?? DateTime.now();
+    final initialDate = widget.initialDate ?? DateTime.now();
+    _selectedDate = _isFutureDate(initialDate)
+        ? _todayOnly
+        : _dateOnly(initialDate);
     _selectedMood = _normalizeMood(widget.initialMood ?? 'netral');
     _isPublic = widget.initialIsPublic ?? false;
     _selectedTime = widget.initialTime ?? _nowTimeString();
@@ -405,7 +435,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   }
 
   Future<void> _pickDate() async {
-    DateTime tempDate = _selectedDate;
+    final today = _todayOnly;
+    DateTime tempDate = _isFutureDate(_selectedDate)
+        ? today
+        : _dateOnly(_selectedDate);
 
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
@@ -484,10 +517,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                               child: CalendarDatePicker(
                                 initialDate: tempDate,
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime(2100),
+                                lastDate: today,
                                 onDateChanged: (value) {
                                   setModalState(() {
-                                    tempDate = value;
+                                    tempDate = _dateOnly(value);
                                   });
                                 },
                               ),
@@ -526,8 +559,13 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     );
 
     if (picked != null && mounted) {
+      if (_isFutureDate(picked)) {
+        _showFutureDateGuardPopup();
+        return;
+      }
+
       setState(() {
-        _selectedDate = picked;
+        _selectedDate = _dateOnly(picked);
       });
     }
   }
@@ -900,6 +938,11 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   Future<void> _saveDiary() async {
     if (_isSaving) return;
+
+    if (_isFutureDate(_selectedDate)) {
+      _showFutureDateGuardPopup();
+      return;
+    }
 
     if (_contentController.text.trim().isEmpty) {
       showCuteTopPopup(
